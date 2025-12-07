@@ -1275,9 +1275,20 @@ void MainMenuBar::OnPaste(wxCommandEvent &WXUNUSED(event)) {
 }
 
 void MainMenuBar::OnToggleAutomagic(wxCommandEvent &WXUNUSED(event)) {
-	g_settings.setInteger(Config::USE_AUTOMAGIC, IsItemChecked(MenuBar::AUTOMAGIC));
-	g_settings.setInteger(Config::BORDER_IS_GROUND, IsItemChecked(MenuBar::AUTOMAGIC));
-	if (g_settings.getInteger(Config::USE_AUTOMAGIC)) {
+	bool current_state = g_settings.getInteger(Config::USE_AUTOMAGIC) != 0;
+	bool ui_state = IsItemChecked(MenuBar::AUTOMAGIC);
+
+	// If the UI state matches the current setting, it means the event came from an accelerator
+	// (which doesn't toggle the UI checkmark automatically) rather than a mouse click.
+	// In this case, we must manually toggle the UI state.
+	if (current_state == ui_state) {
+		ui_state = !current_state;
+		CheckItem(MenuBar::AUTOMAGIC, ui_state);
+	}
+
+	g_settings.setInteger(Config::USE_AUTOMAGIC, ui_state);
+	g_settings.setInteger(Config::BORDER_IS_GROUND, ui_state);
+	if (ui_state) {
 		g_gui.SetStatusText("Automagic enabled.");
 	} else {
 		g_gui.SetStatusText("Automagic disabled.");
