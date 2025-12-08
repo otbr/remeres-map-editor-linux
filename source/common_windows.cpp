@@ -40,6 +40,13 @@
 	#pragma warning(disable : 4018) // signed/unsigned mismatch
 #endif
 
+// Helper function to ensure button text visibility in GTK3 dark themes
+inline void EnsureButtonTextVisible(wxButton* button) {
+#ifdef __WXGTK__
+	button->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_BTNTEXT));
+#endif
+}
+
 // ============================================================================
 // Map Properties Window
 
@@ -150,8 +157,12 @@ MapPropertiesWindow::MapPropertiesWindow(wxWindow* parent, MapTab* view, Editor 
 	topsizer->Add(grid_sizer, wxSizerFlags(1).Expand().Border(wxALL, 20));
 
 	wxSizer* subsizer = newd wxBoxSizer(wxHORIZONTAL);
-	subsizer->Add(newd wxButton(this, wxID_OK, "OK"), wxSizerFlags(1).Center());
-	subsizer->Add(newd wxButton(this, wxID_CANCEL, "Cancel"), wxSizerFlags(1).Center());
+	wxButton* ok_btn = newd wxButton(this, wxID_OK, "OK");
+	wxButton* cancel_btn = newd wxButton(this, wxID_CANCEL, "Cancel");
+	EnsureButtonTextVisible(ok_btn);
+	EnsureButtonTextVisible(cancel_btn);
+	subsizer->Add(ok_btn, wxSizerFlags(1).Center());
+	subsizer->Add(cancel_btn, wxSizerFlags(1).Center());
 	topsizer->Add(subsizer, wxSizerFlags(0).Center().Border(wxLEFT | wxRIGHT | wxBOTTOM, 20));
 
 	SetSizerAndFit(topsizer);
@@ -428,8 +439,12 @@ ImportMapWindow::ImportMapWindow(wxWindow* parent, Editor &editor) :
 
 	// OK/Cancel buttons
 	wxBoxSizer* buttons = newd wxBoxSizer(wxHORIZONTAL);
-	buttons->Add(newd wxButton(this, wxID_OK, "Ok"), 0, wxALL, 5);
-	buttons->Add(newd wxButton(this, wxID_CANCEL, "Cancel"), 0, wxALL, 5);
+	wxButton* ok_btn = newd wxButton(this, wxID_OK, "Ok");
+	wxButton* cancel_btn = newd wxButton(this, wxID_CANCEL, "Cancel");
+	EnsureButtonTextVisible(ok_btn);
+	EnsureButtonTextVisible(cancel_btn);
+	buttons->Add(ok_btn, 0, wxALL, 5);
+	buttons->Add(cancel_btn, 0, wxALL, 5);
 	sizer->Add(buttons, wxSizerFlags(1).Center());
 
 	SetSizer(sizer);
@@ -587,8 +602,12 @@ ExportMiniMapWindow::ExportMiniMapWindow(wxWindow* parent, Editor &editor) :
 
 	// OK/Cancel buttons
 	tmpsizer = newd wxBoxSizer(wxHORIZONTAL);
-	tmpsizer->Add(ok_button = newd wxButton(this, wxID_OK, "OK"), wxSizerFlags(1).Center());
-	tmpsizer->Add(newd wxButton(this, wxID_CANCEL, "Cancel"), wxSizerFlags(1).Center());
+	ok_button = newd wxButton(this, wxID_OK, "OK");
+	wxButton* cancel_btn = newd wxButton(this, wxID_CANCEL, "Cancel");
+	EnsureButtonTextVisible(ok_button);
+	EnsureButtonTextVisible(cancel_btn);
+	tmpsizer->Add(ok_button, wxSizerFlags(1).Center());
+	tmpsizer->Add(cancel_btn, wxSizerFlags(1).Center());
 	sizer->Add(tmpsizer, 0, wxCENTER, 10);
 
 	SetSizer(sizer);
@@ -727,8 +746,12 @@ ExportTilesetsWindow::ExportTilesetsWindow(wxWindow* parent, Editor &editor) :
 
 	// OK/Cancel buttons
 	tmpsizer = newd wxBoxSizer(wxHORIZONTAL);
-	tmpsizer->Add(ok_button = newd wxButton(this, wxID_OK, "OK"), wxSizerFlags(1).Center());
-	tmpsizer->Add(newd wxButton(this, wxID_CANCEL, "Cancel"), wxSizerFlags(1).Center());
+	ok_button = newd wxButton(this, wxID_OK, "OK");
+	wxButton* cancel_btn = newd wxButton(this, wxID_CANCEL, "Cancel");
+	EnsureButtonTextVisible(ok_button);
+	EnsureButtonTextVisible(cancel_btn);
+	tmpsizer->Add(ok_button, wxSizerFlags(1).Center());
+	tmpsizer->Add(cancel_btn, wxSizerFlags(1).Center());
 	sizer->Add(tmpsizer, 0, wxCENTER, 10);
 
 	SetSizer(sizer);
@@ -919,8 +942,12 @@ FindDialog::FindDialog(wxWindow* parent, wxString title) :
 	sizer->Add(item_list, wxSizerFlags(1).Expand().Border());
 
 	wxSizer* stdsizer = newd wxBoxSizer(wxHORIZONTAL);
-	stdsizer->Add(newd wxButton(this, wxID_OK, "OK"), wxSizerFlags(1).Center());
-	stdsizer->Add(newd wxButton(this, wxID_CANCEL, "Cancel"), wxSizerFlags(1).Center());
+	wxButton* ok_btn = newd wxButton(this, wxID_OK, "OK");
+	wxButton* cancel_btn = newd wxButton(this, wxID_CANCEL, "Cancel");
+	EnsureButtonTextVisible(ok_btn);
+	EnsureButtonTextVisible(cancel_btn);
+	stdsizer->Add(ok_btn, wxSizerFlags(1).Center());
+	stdsizer->Add(cancel_btn, wxSizerFlags(1).Center());
 	sizer->Add(stdsizer, wxSizerFlags(0).Center().Border());
 
 	SetSizerAndFit(sizer);
@@ -1442,8 +1469,12 @@ EditTownsDialog::EditTownsDialog(wxWindow* parent, Editor &editor) :
 
 	// OK/Cancel buttons
 	tmpsizer = newd wxBoxSizer(wxHORIZONTAL);
-	tmpsizer->Add(newd wxButton(this, wxID_OK, "OK"), wxSizerFlags(1).Center());
-	tmpsizer->Add(newd wxButton(this, wxID_CANCEL, "Cancel"), wxSizerFlags(1).Center());
+	wxButton* ok_btn = newd wxButton(this, wxID_OK, "OK");
+	wxButton* cancel_btn = newd wxButton(this, wxID_CANCEL, "Cancel");
+	EnsureButtonTextVisible(ok_btn);
+	EnsureButtonTextVisible(cancel_btn);
+	tmpsizer->Add(ok_btn, wxSizerFlags(1).Center());
+	tmpsizer->Add(cancel_btn, wxSizerFlags(1).Center());
 	sizer->Add(tmpsizer, 0, wxCENTER | wxALL, 10);
 
 	SetSizerAndFit(sizer);
@@ -1716,8 +1747,12 @@ GotoPositionDialog::GotoPositionDialog(wxWindow* parent, Editor &editor) :
 
 	// OK/Cancel buttons
 	wxSizer* tmpsizer = newd wxBoxSizer(wxHORIZONTAL);
-	tmpsizer->Add(newd wxButton(this, wxID_OK, "OK"), wxSizerFlags(1).Center());
-	tmpsizer->Add(newd wxButton(this, wxID_CANCEL, "Cancel"), wxSizerFlags(1).Center());
+	wxButton* ok_btn = newd wxButton(this, wxID_OK, "OK");
+	wxButton* cancel_btn = newd wxButton(this, wxID_CANCEL, "Cancel");
+	EnsureButtonTextVisible(ok_btn);
+	EnsureButtonTextVisible(cancel_btn);
+	tmpsizer->Add(ok_btn, wxSizerFlags(1).Center());
+	tmpsizer->Add(cancel_btn, wxSizerFlags(1).Center());
 	sizer->Add(tmpsizer, 0, wxALL | wxCENTER, 20); // Border to top too
 
 	SetSizerAndFit(sizer);
