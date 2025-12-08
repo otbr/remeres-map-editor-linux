@@ -156,6 +156,9 @@ MapCanvas::MapCanvas(MapWindow* parent, Editor &editor, int* attriblist) :
 	is_rendering(false),
 	render_pending(false) {
 	popup_menu = newd MapPopupMenu(editor);
+#ifdef __LINUX__
+	dismiss_filter = newd MenuDismissFilter();
+#endif
 	animation_timer = newd AnimationTimer(this);
 	drawer = new MapDrawer(this);
 	keyCode = WXK_NONE;
@@ -163,6 +166,9 @@ MapCanvas::MapCanvas(MapWindow* parent, Editor &editor, int* attriblist) :
 
 MapCanvas::~MapCanvas() {
 	delete popup_menu;
+#ifdef __LINUX__
+	delete dismiss_filter;
+#endif
 	delete animation_timer;
 	delete drawer;
 	free(screenshot_buffer);
@@ -1735,82 +1741,64 @@ void MapCanvas::OnMousePropertiesRelease(wxMouseEvent &event) {
 	popup_menu->Update();
 
 #ifdef __LINUX__
-	// === GTK Click-Through Fix ===
+	// === GTK Click-Through Fix v3.9.16 ===
 	// GTK's popup menu is modal and consumes the dismiss click.
-	// We use position-delta detection to simulate Windows-like pass-through.
-	
-	// Step 1: Snapshot mouse position BEFORE opening menu
-	wxPoint startScreenPos = wxGetMousePosition();
-	int start_map_x = mouse_map_x;
-	int start_map_y = mouse_map_y;
+	// Use wxEventFilter to detect which button dismissed the menu.
+
+	// Install event filter to detect dismiss button
+	dismiss_filter->Reset();
+	wxEvtHandler::AddFilter(dismiss_filter);
 #endif
 
 	PopupMenu(popup_menu);
 
 #ifdef __LINUX__
-	// Step 2: Menu has closed. Check if user clicked elsewhere.
-	
-	// Check if ESC was pressed (user wants to cancel, not click-through)
-	bool escPressed = wxGetKeyState(WXK_ESCAPE);
-	
-	if (!escPressed) {
-		// Get current mouse position
-		wxPoint endScreenPos = wxGetMousePosition();
-		
-		// Convert to map coordinates
-		wxPoint clientPos = ScreenToClient(endScreenPos);
-		int end_map_x, end_map_y;
-		ScreenToMap(clientPos.x, clientPos.y, &end_map_x, &end_map_y);
-		
-		// Step 3: Check if mouse moved to a different tile
-		if (end_map_x != start_map_x || end_map_y != start_map_y) {
-			// User dismissed menu by clicking elsewhere!
-			// Update selection to new tile immediately
-			mouse_map_x = end_map_x;
-			mouse_map_y = end_map_y;
-			
-			Tile* tile = editor.getMap().getTile(mouse_map_x, mouse_map_y, floor);
-			if (tile) {
-				Selection& selection = editor.getSelection();
-				selection.start();
-				selection.clear();
-				selection.commit();
-				if (tile->spawnMonster && g_settings.getInteger(Config::SHOW_SPAWNS_MONSTER)) {
-					selection.add(tile, tile->spawnMonster);
-				} else if (const auto monster = tile->getTopMonster(); monster && g_settings.getInteger(Config::SHOW_MONSTERS)) {
-					selection.add(tile, monster);
-				} else if (tile->npc && g_settings.getInteger(Config::SHOW_NPCS)) {
-					selection.add(tile, tile->npc);
-				} else if (tile->spawnNpc && g_settings.getInteger(Config::SHOW_SPAWNS_NPC)) {
-					selection.add(tile, tile->spawnNpc);
-				} else if (Item* item = tile->getTopItem()) {
-					selection.add(tile, item);
-				}
-				selection.finish();
-				selection.updateSelectionCount();
+	// Remove filter after menu closes
+	wxEvtHandler::RemoveFilter(dismiss_filter);
+
+	// Check if tile changed (user clicked elsewhere)
+	wxPoint endScreenPos = wxGetMousePosition();
+	wxPoint clientPos = ScreenToClient(endScreenPos);
+	int end_map_x, end_map_y;
+	ScreenToMap(clientPos.x, clientPos.y, &end_map_x, &end_map_y);
+
+	if (!wxGetKeyState(WXK_ESCAPE) && (end_map_x != mouse_map_x || end_map_y != mouse_map_y)) {
+		// Update selection to new tile
+		mouse_map_x = end_map_x;
+		mouse_map_y = end_map_y;
+
+		Tile* tile = editor.getMap().getTile(mouse_map_x, mouse_map_y, floor);
+		if (tile) {
+			Selection& selection = editor.getSelection();
+			selection.start();
+			selection.clear();
+			selection.commit();
+			if (tile->spawnMonster && g_settings.getInteger(Config::SHOW_SPAWNS_MONSTER)) {
+				selection.add(tile, tile->spawnMonster);
+			} else if (const auto monster = tile->getTopMonster(); monster && g_settings.getInteger(Config::SHOW_MONSTERS)) {
+				selection.add(tile, monster);
+			} else if (tile->npc && g_settings.getInteger(Config::SHOW_NPCS)) {
+				selection.add(tile, tile->npc);
+			} else if (tile->spawnNpc && g_settings.getInteger(Config::SHOW_SPAWNS_NPC)) {
+				selection.add(tile, tile->spawnNpc);
+			} else if (Item* item = tile->getTopItem()) {
+				selection.add(tile, item);
 			}
-			
-			g_gui.RefreshView();
+			selection.finish();
+			selection.updateSelectionCount();
+		}
+
+		// Only reopen menu if RIGHT-CLICK dismissed it (not left-click)
+		if (dismiss_filter->WasRightClick()) {
+			// Defer canvas update to after menu reopens (avoid event queue congestion)
+			CallAfter([this]() {
+				popup_menu->Update();
+				PopupMenu(popup_menu);
+				Update();
+			});
+		} else {
+			// Left-click dismiss - update canvas immediately
 			Update();
-			
-			// Step 4: Check if right button is still pressed (user wants new menu)
-			wxMouseState mouseState = wxGetMouseState();
-			if (mouseState.RightIsDown()) {
-				// Use CallAfter to defer menu re-open, allowing GTK to clean up
-				int captured_x = mouse_map_x;
-				int captured_y = mouse_map_y;
-				int captured_z = floor;
-				CallAfter([this, captured_x, captured_y, captured_z]() {
-					// Re-open menu at new position
-					popup_menu->Update();
-					PopupMenu(popup_menu);
-					
-					last_cursor_map_x = captured_x;
-					last_cursor_map_y = captured_y;
-					last_cursor_map_z = captured_z;
-					g_gui.RefreshView();
-				});
-			}
 		}
 	}
 #endif
@@ -2676,7 +2664,7 @@ void MapCanvas::Reset() {
 }
 
 MapPopupMenu::MapPopupMenu(Editor &editor) :
-	wxMenu(""), editor(editor) {
+	wxMenu(""), editor(editor), cached_position(0, 0, 0), cached_selection_size(0), has_cache(false) {
 	////
 }
 
@@ -2685,14 +2673,37 @@ MapPopupMenu::~MapPopupMenu() {
 }
 
 void MapPopupMenu::Update() {
+	// v3.9.16 optimization: Skip rebuild if selection hasn't changed
+	bool anything_selected = editor.hasSelection();
+	size_t current_size = anything_selected ? editor.getSelection().size() : 0;
+	Position current_pos(0, 0, 0);
+
+	if (current_size == 1) {
+		Tile* tile = editor.getSelection().getSelectedTile();
+		if (tile) {
+			current_pos = tile->getPosition();
+		}
+	}
+
+	// Check cache validity
+	if (has_cache &&
+	    cached_selection_size == current_size &&
+	    (current_size != 1 || cached_position == current_pos)) {
+		// Selection unchanged - skip expensive rebuild
+		return;
+	}
+
+	// Update cache
+	cached_position = current_pos;
+	cached_selection_size = current_size;
+	has_cache = true;
+
 	// Clear the menu of all items
 	while (GetMenuItemCount() != 0) {
 		wxMenuItem* m_item = FindItemByPosition(0);
 		// If you add a submenu, this won't delete it.
 		Delete(m_item);
 	}
-
-	bool anything_selected = editor.hasSelection();
 
 	wxMenuItem* cutItem = Append(MAP_POPUP_MENU_CUT, "&Cut\tCTRL+X", "Cut out all selected items");
 	cutItem->Enable(anything_selected);
@@ -2726,20 +2737,21 @@ void MapPopupMenu::Update() {
 			Npc* topNpc = tile->npc;
 			SpawnNpc* topSpawnNpc = tile->spawnNpc;
 
+			// v3.9.16 optimization: early-exit when all flags found
 			for (auto* item : tile->items) {
-				if (item->isWall()) {
+				if (!hasWall && item->isWall()) {
 					Brush* wb = item->getWallBrush();
 					if (wb && wb->visibleInPalette()) {
 						hasWall = true;
 					}
 				}
-				if (item->isTable()) {
+				if (!hasTable && item->isTable()) {
 					Brush* tb = item->getTableBrush();
 					if (tb && tb->visibleInPalette()) {
 						hasTable = true;
 					}
 				}
-				if (item->isCarpet()) {
+				if (!hasCarpet && item->isCarpet()) {
 					Brush* cb = item->getCarpetBrush();
 					if (cb && cb->visibleInPalette()) {
 						hasCarpet = true;

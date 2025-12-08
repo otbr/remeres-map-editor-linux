@@ -31,6 +31,32 @@ class MapPopupMenu;
 class AnimationTimer;
 class MapDrawer;
 
+#ifdef __LINUX__
+// Event filter to detect which mouse button dismissed the popup menu
+// This allows proper click-through behavior on GTK (right-click reopens, left-click doesn't)
+class MenuDismissFilter : public wxEventFilter {
+public:
+	MenuDismissFilter() : right_clicked(false) { }
+
+	virtual int FilterEvent(wxEvent& event) override {
+		if (event.GetEventType() == wxEVT_RIGHT_DOWN) {
+			right_clicked = true;
+		}
+		return Event_Skip; // Always let event propagate normally
+	}
+
+	bool WasRightClick() const {
+		return right_clicked;
+	}
+	void Reset() {
+		right_clicked = false;
+	}
+
+private:
+	bool right_clicked;
+};
+#endif
+
 class MapCanvas : public wxGLCanvas {
 public:
 	MapCanvas(MapWindow* parent, Editor &editor, int* attriblist);
@@ -187,6 +213,11 @@ private:
 	int last_mmb_click_x;
 	int last_mmb_click_y;
 
+#ifdef __LINUX__
+	// GTK Click-Through: Event filter to detect which button dismissed popup menu
+	MenuDismissFilter* dismiss_filter;
+#endif
+
 	int view_scroll_x;
 	int view_scroll_y;
 
@@ -215,6 +246,11 @@ public:
 
 protected:
 	Editor &editor;
+
+	// Cache to avoid redundant menu rebuilds (v3.9.16 optimization)
+	Position cached_position;
+	size_t cached_selection_size;
+	bool has_cache;
 };
 
 class AnimationTimer : public wxTimer {

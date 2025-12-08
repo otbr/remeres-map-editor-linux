@@ -71,7 +71,7 @@ OldPropertiesWindow::OldPropertiesWindow(wxWindow* win_parent, const Map* map, c
 		subsizer->Add(action_id_field, wxSizerFlags(1).Expand());
 
 		subsizer->Add(newd wxStaticText(this, wxID_ANY, "Unique ID"));
-		unique_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(edit_item->getUniqueID()), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, 0xFFFF, edit_item->getUniqueID());
+		unique_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(edit_item->getUniqueID()), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 0xFFFF, edit_item->getUniqueID());
 		subsizer->Add(unique_id_field, wxSizerFlags(1).Expand());
 
 		boxsizer->Add(subsizer, wxSizerFlags(0).Expand());
@@ -135,7 +135,7 @@ OldPropertiesWindow::OldPropertiesWindow(wxWindow* win_parent, const Map* map, c
 		subsizer->Add(action_id_field, wxSizerFlags(1).Expand());
 
 		subsizer->Add(newd wxStaticText(this, wxID_ANY, "Unique ID"));
-		unique_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(edit_item->getUniqueID()), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, 0xFFFF, edit_item->getUniqueID());
+		unique_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(edit_item->getUniqueID()), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 0xFFFF, edit_item->getUniqueID());
 		subsizer->Add(unique_id_field, wxSizerFlags(1).Expand());
 
 		boxsizer->Add(subsizer, wxSizerFlags(1).Expand());
@@ -198,7 +198,7 @@ OldPropertiesWindow::OldPropertiesWindow(wxWindow* win_parent, const Map* map, c
 		subsizer->Add(action_id_field, wxSizerFlags(1).Expand());
 
 		subsizer->Add(newd wxStaticText(this, wxID_ANY, "Unique ID"));
-		unique_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(edit_item->getUniqueID()), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, 0xFFFF, edit_item->getUniqueID());
+		unique_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(edit_item->getUniqueID()), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 0xFFFF, edit_item->getUniqueID());
 		subsizer->Add(unique_id_field, wxSizerFlags(1).Expand());
 
 		boxsizer->Add(subsizer, wxSizerFlags(1).Expand());
@@ -300,20 +300,20 @@ OldPropertiesWindow::OldPropertiesWindow(wxWindow* win_parent, const Map* map, c
 		subsizer->Add(action_id_field, wxSizerFlags(1).Expand());
 
 		subsizer->Add(newd wxStaticText(this, wxID_ANY, "Unique ID"));
-		unique_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(edit_item->getUniqueID()), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, 0xFFFF, edit_item->getUniqueID());
+		unique_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(edit_item->getUniqueID()), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 0xFFFF, edit_item->getUniqueID());
 		subsizer->Add(unique_id_field, wxSizerFlags(1).Expand());
 
 		/*
 		if(item->canHoldDescription()) {
 			subsizer->Add(newd wxStaticText(this, wxID_ANY, "Description"));
-			description_field = newd wxTextCtrl(this, wxID_ANY, edit_item->getText(), wxDefaultPosition, wxSize(-1, 20));
+			description_field = newd wxTextCtrl(this, wxID_ANY, edit_item->getText(), wxDefaultPosition, wxDefaultSize);
 			subsizer->Add(description_field, wxSizerFlags(1).Expand());
 		}
 		*/
 
 		if (door) {
 			subsizer->Add(newd wxStaticText(this, wxID_ANY, "Door ID"));
-			door_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(door->getDoorID()), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, 0xFF, door->getDoorID());
+			door_id_field = newd wxSpinCtrl(this, wxID_ANY, i2ws(door->getDoorID()), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 0xFF, door->getDoorID());
 			if (!edit_tile || !edit_tile->isHouseTile()) {
 				door_id_field->Disable();
 			}

@@ -153,7 +153,7 @@ void PropertiesWindow::createTeleportDestinationCtrl(wxPanel* panel, wxFlexGridS
 void PropertiesWindow::createDoorIdCtrl(wxPanel* panel, wxFlexGridSizer* gridsizer) {
 	if (const auto door = edit_item->getDoor()) {
 		gridsizer->Add(newd wxStaticText(panel, wxID_ANY, "Door ID"));
-		doorIdField = newd wxSpinCtrl(panel, wxDOOR_CTRL, i2ws(door->getDoorID()), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, 0xFFFF, door->getDoorID());
+		doorIdField = newd wxSpinCtrl(panel, wxDOOR_CTRL, i2ws(door->getDoorID()), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 0xFFFF, door->getDoorID());
 		if (!edit_tile->isHouseTile()) {
 			doorIdField->Disable();
 		}
@@ -241,7 +241,7 @@ wxWindow* PropertiesWindow::createGeneralPanel(wxWindow* parent) {
 	gridsizer->Add(simpleActionIdField, wxSizerFlags(1).Expand());
 
 	gridsizer->Add(newd wxStaticText(panel, wxID_ANY, "Unique ID"));
-	simpleUniqueIdField = newd wxSpinCtrl(panel, wxUID_CTRL, i2ws(edit_item->getUniqueID()), wxDefaultPosition, wxSize(-1, 20), wxSP_ARROW_KEYS, 0, 0xFFFF, edit_item->getUniqueID());
+	simpleUniqueIdField = newd wxSpinCtrl(panel, wxUID_CTRL, i2ws(edit_item->getUniqueID()), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 0xFFFF, edit_item->getUniqueID());
 	gridsizer->Add(simpleUniqueIdField, wxSizerFlags(1).Expand());
 
 	createDepotIdChoiceCtrl(panel, gridsizer);
