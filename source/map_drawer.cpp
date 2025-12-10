@@ -85,6 +85,7 @@ void DrawingOptions::SetDefault() {
 	show_spawns_monster = true;
 	show_npcs = true;
 	show_spawns_npc = true;
+	show_containers_with_items = false;
 	show_houses = true;
 	show_shade = true;
 	show_special_tiles = true;
@@ -199,7 +200,7 @@ void MapDrawer::SetupVars() {
 }
 
 void MapDrawer::SetupGL() {
-	// === CRITICAL DIAGNOSTIC: Print GL renderer info on first call ===
+	// Print GL renderer info on first call (concise, single log line)
 	static bool gl_info_printed = false;
 	if (!gl_info_printed) {
 		gl_info_printed = true;
@@ -208,18 +209,10 @@ void MapDrawer::SetupGL() {
 		const char* renderer = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
 		const char* version = reinterpret_cast<const char*>(glGetString(GL_VERSION));
 		
-		spdlog::critical("=== OPENGL RENDERER DIAGNOSTIC ===");
-		spdlog::critical("GL_VENDOR:   {}", vendor ? vendor : "NULL");
-		spdlog::critical("GL_RENDERER: {}", renderer ? renderer : "NULL");
-		spdlog::critical("GL_VERSION:  {}", version ? version : "NULL");
-		spdlog::critical("=================================");
-		
-		// Also print to stderr for visibility
-		fprintf(stderr, "\n=== OPENGL RENDERER DIAGNOSTIC ===\n");
-		fprintf(stderr, "GL_VENDOR:   %s\n", vendor ? vendor : "NULL");
-		fprintf(stderr, "GL_RENDERER: %s\n", renderer ? renderer : "NULL");
-		fprintf(stderr, "GL_VERSION:  %s\n", version ? version : "NULL");
-		fprintf(stderr, "=================================\n\n");
+		spdlog::info("OpenGL loaded",
+			vendor ? vendor : "NULL",
+			renderer ? renderer : "NULL",
+			version ? version : "NULL");
 		
 		// CRITICAL CHECK: If using software renderer, warn loudly
 		if (renderer) {
@@ -291,7 +284,9 @@ void MapDrawer::Draw() {
 	if (options.show_ingame_box) {
 		DrawIngameBox();
 	}
-	if (options.isTooltips()) {
+	// Draw tooltips when either the generic tooltips (Y) or container tooltips (B) are on
+	const bool should_draw_tooltips = (options.show_tooltips || options.show_containers_with_items) && !options.isOnlyColors();
+	if (should_draw_tooltips) {
 		DrawTooltips();
 	}
 }
@@ -1533,6 +1528,47 @@ void MapDrawer::WriteTooltip(const Waypoint* waypoint, std::ostringstream &strea
 	stream << "wp: " << waypoint->name << "\n";
 }
 
+void MapDrawer::WriteTooltip(Container* container, std::ostringstream &stream) {
+	if (!container || container->getItemCount() == 0) {
+		return;
+	}
+
+	if (stream.tellp() > 0) {
+		stream << "\n";
+	}
+
+	stream << "Container ID: " << container->getID() << "\n";
+	stream << "Items inside (" << container->getItemCount() << "):\n";
+
+	// Lista todos os itens dentro do container
+	const ItemVector &contents = container->getVector();
+	for (size_t i = 0; i < contents.size(); ++i) {
+		const Item* item = contents[i];
+		if (item) {
+			stream << "  [" << (i + 1) << "] id: " << item->getID();
+
+			// Mostra nome do item se disponível
+			const std::string &name = item->getName();
+			if (!name.empty()) {
+				stream << " (" << name << ")";
+			}
+
+			// Se for container aninhado, mostra quantidade de itens
+			if (Container* nested = const_cast<Item*>(item)->getContainer()) {
+				if (nested->getItemCount() > 0) {
+					stream << " [+" << nested->getItemCount() << " items]";
+				}
+			}
+
+			stream << "\n";
+		}
+	}
+
+	// Log para debug
+	spdlog::debug("Container ID {} with {} items at tile being displayed",
+		container->getID(), container->getItemCount());
+}
+
 void MapDrawer::DrawTile(TileLocation* location) {
 	if (!location) {
 		return;
@@ -1549,6 +1585,14 @@ void MapDrawer::DrawTile(TileLocation* location) {
 
 	const Position &position = location->getPosition();
 	bool show_tooltips = options.isTooltips();
+	bool show_container_items = options.show_containers_with_items;
+
+	// DEBUG: Log quando a opção está ativada
+	static bool logged_once = false;
+	if (show_container_items && !logged_once) {
+		spdlog::info("show_container_items is ACTIVE - checking tiles for containers");
+		logged_once = true;
+	}
 
 	if (show_tooltips && location->getWaypointCount() > 0) {
 		Waypoint* waypoint = canvas->editor.getMap().waypoints.getWaypoint(position);
@@ -1660,11 +1704,26 @@ void MapDrawer::DrawTile(TileLocation* location) {
 	}
 
 	bool hidden = only_colors || (options.hide_items_when_zoomed && zoom > 10.f);
+	bool container_with_items_on_tile = false;
 
 	if (!hidden && !tile->items.empty()) {
 		for (Item* item : tile->items) {
+			// Y - Mostra tooltips normais de itens (aid, uid, text)
 			if (show_tooltips && position.z == floor) {
 				WriteTooltip(item, tooltip);
+			}
+
+			// B - Mostra APENAS containers com itens (separado do Y)
+			if (show_container_items && position.z == floor) {
+				if (Container* container = item->getContainer()) {
+					if (container->getItemCount() > 0) {
+						container_with_items_on_tile = true;
+		spdlog::debug("FOUND CONTAINER with {} items at ({},{},{})",
+			container->getItemCount(), position.x, position.y, position.z);
+		WriteTooltip(container, tooltip);
+		spdlog::debug("After WriteTooltip, tooltip has content: {}", (tooltip.tellp() > 0 ? "YES" : "NO"));
+	}
+				}
 			}
 
 			if (options.show_preview && zoom <= 2.0) {
@@ -1687,16 +1746,26 @@ void MapDrawer::DrawTile(TileLocation* location) {
 
 	if (!hidden && options.show_npcs && tile->npc) {
 		BlitCreature(draw_x, draw_y, tile->npc);
-	}
-
-	if (show_tooltips) {
-		if (location->getWaypointCount() > 0) {
-			MakeTooltip(draw_x, draw_y, tooltip.str(), 0, 255, 0);
-		} else {
-			MakeTooltip(draw_x, draw_y, tooltip.str());
 		}
-		tooltip.str("");
-	}
+
+		// Mostra tooltip se qualquer uma das opções estiver ativa
+		if (show_tooltips || show_container_items) {
+			if (tooltip.tellp() > 0) {  // Só mostra se tiver conteúdo
+				spdlog::debug("CREATING TOOLTIP at ({},{})", draw_x, draw_y);
+				if (location->getWaypointCount() > 0) {
+					MakeTooltip(draw_x, draw_y, tooltip.str(), 0, 255, 0);
+				} else {
+					MakeTooltip(draw_x, draw_y, tooltip.str());
+				}
+			} else {
+				// Somente alerta se havia container com itens neste tile e mesmo assim nada foi escrito,
+				// evitando flood quando nenhum container existe no tile.
+				if (show_container_items && container_with_items_on_tile) {
+					spdlog::warn("show_container_items is ON but tooltip is EMPTY");
+				}
+			}
+			tooltip.str("");
+		}
 }
 
 void MapDrawer::DrawBrushIndicator(int x, int y, Brush* brush, uint8_t r, uint8_t g, uint8_t b) {
@@ -1858,6 +1927,7 @@ void MapDrawer::DrawTileIndicators(TileLocation* location) {
 			DrawIndicator(x, y, EDITOR_SPRITE_NPCS, 255, 255, 255);
 		}
 	}
+
 }
 
 void MapDrawer::DrawIndicator(int x, int y, int indicator, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
@@ -1895,7 +1965,8 @@ void MapDrawer::DrawPositionIndicator(int z) {
 
 void MapDrawer::DrawTooltips() {
 #if defined(__LINUX__) || defined(__WINDOWS__)
-	if (!options.show_tooltips || tooltips.empty()) {
+	const bool should_draw_tooltips = (options.show_tooltips || options.show_containers_with_items) && !options.isOnlyColors();
+	if (!should_draw_tooltips || tooltips.empty()) {
 		return;
 	}
 

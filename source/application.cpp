@@ -103,6 +103,9 @@ bool Application::OnInit() {
 	spdlog::info("Visit our website for updates, support, and resources: https://docs.opentibiabr.com/");
 	spdlog::info("Application started sucessfull!\n");
 	spdlog::info("Version: {}", __RME_VERSION__);
+	// Highlight Linux initiative maintainer (warn level shows in orange)
+	spdlog::info("Linux initiative by Habdel-Edenfield");
+	spdlog::info("Linux repository: https://github.com/Habdel-Edenfield/Remeres-map-editor-linux");
 
 	mt_seed(time(nullptr));
 	srand(time(nullptr));
