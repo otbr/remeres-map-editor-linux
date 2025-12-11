@@ -123,6 +123,7 @@ public:
 	void EnsureVisible(const BrushButton* brushButto);
 
 	bool LoadContentByPage(int page = 1);
+	bool LoadAllContent();
 
 	// Select the first brush
 	void SelectFirstBrush();

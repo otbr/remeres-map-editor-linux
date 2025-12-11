@@ -167,9 +167,7 @@ void BrushPalettePanel::SetListType(BrushListType newListType) {
 
 	RemovePagination();
 
-	if (newListType == BRUSHLIST_SMALL_ICONS || newListType == BRUSHLIST_LARGE_ICONS) {
-		AddPagination();
-	}
+	// Pagination UI removed - icons now use scrolling like listbox mode
 
 	for (auto pageIndex = 0; pageIndex < choicebook->GetPageCount(); ++pageIndex) {
 		const auto panel = dynamic_cast<BrushPanel*>(choicebook->GetPage(pageIndex));
@@ -280,13 +278,7 @@ void BrushPalettePanel::OnSwitchingPage(wxChoicebookEvent &event) {
 	const auto panel = dynamic_cast<BrushPanel*>(page);
 	if (panel) {
 		panel->OnSwitchIn();
-		const auto &brushbox = panel->GetBrushBox();
-		const auto currentPage = brushbox->GetCurrentPage();
-		const auto totalPages = brushbox->GetTotalPages();
-		SetPageInfo(wxString::Format("/%d", totalPages));
-		SetCurrentPage(wxString::Format("%d", currentPage));
-		EnableNextPage(totalPages > currentPage);
-		EnablePreviousPage(currentPage > 1);
+		// Pagination UI removed - no updates needed
 		for (const auto palettePanel : tool_bars) {
 			palettePanel->SelectBrush(rememberedBrushes[panel]);
 		}
@@ -343,51 +335,19 @@ void BrushPalettePanel::OnClickAddItemToTileset(wxCommandEvent &WXUNUSED(event))
 }
 
 void BrushPalettePanel::OnPageUpdate(BrushBoxInterface* brushbox, int page) {
-	if (brushbox->SetPage(page)) {
-		const auto currentPage = brushbox->GetCurrentPage();
-		const auto totalPages = brushbox->GetTotalPages();
-		currentPageCtrl->SetValue(wxString::Format("%d", currentPage));
-		Fit();
-		g_gui.aui_manager->Update();
-		brushbox->SelectFirstBrush();
-		nextPageButton->Enable(totalPages > currentPage);
-		previousPageButton->Enable(currentPage > 1);
-	}
+	// No-op: Pagination removed in favor of scrolling
 }
 
 void BrushPalettePanel::OnSetPage(wxCommandEvent &WXUNUSED(event)) {
-	const auto &brushPanel = dynamic_cast<BrushPanel*>(choicebook->GetCurrentPage());
-	if (!brushPanel) {
-		return;
-	}
-
-	const auto &brushbox = brushPanel->GetBrushBox();
-
-	int page;
-	if (!currentPageCtrl->GetValue().ToInt(&page)) {
-		return;
-	}
-
-	if (page > brushbox->GetTotalPages() || page < 1) {
-		return;
-	}
-
-	OnPageUpdate(brushbox, page);
+	// No-op: Pagination removed in favor of scrolling
 }
 
 void BrushPalettePanel::OnNextPage(wxCommandEvent &WXUNUSED(event)) {
-	const auto &brushPanel = dynamic_cast<BrushPanel*>(choicebook->GetCurrentPage());
-	if (brushPanel) {
-		const auto &brushbox = brushPanel->GetBrushBox();
-		OnPageUpdate(brushbox, brushbox->GetCurrentPage() + 1);
-	}
+	// No-op: Pagination removed in favor of scrolling
 }
+
 void BrushPalettePanel::OnPreviousPage(wxCommandEvent &WXUNUSED(event)) {
-	const auto &brushPanel = dynamic_cast<BrushPanel*>(choicebook->GetCurrentPage());
-	if (brushPanel) {
-		const auto &brushbox = brushPanel->GetBrushBox();
-		OnPageUpdate(brushbox, brushbox->GetCurrentPage() - 1);
-	}
+	// No-op: Pagination removed in favor of scrolling
 }
 
 void BrushPalettePanel::EnableNextPage(bool enable /* = true*/) {
@@ -563,21 +523,15 @@ BrushIconBox::BrushIconBox(wxWindow* parent, const TilesetCategory* tileset, Ren
 	iconSize(rsz) {
 	ASSERT(tileset->getType() >= TILESET_UNKNOWN && tileset->getType() <= TILESET_HOUSE);
 	width = iconSize == RENDER_SIZE_32x32 ? std::max(g_settings.getInteger(Config::PALETTE_COL_COUNT) / 2 + 1, 1) : std::max(g_settings.getInteger(Config::PALETTE_COL_COUNT) + 1, 1);
+	// Note: 'height' is kept for settings compatibility but doesn't limit scrolling
 	height = iconSize == RENDER_SIZE_32x32 ? std::max(g_settings.getInteger(Config::PALETTE_ROW_COUNT) / 2 + 1, 1) : std::max(g_settings.getInteger(Config::PALETTE_ROW_COUNT) + 1, 1);
 
-	const auto totalItems = (width * height);
-	totalPages = (tileset->brushlist.size() / totalItems) + 1;
-
-	SetScrollbars(20, 20, 8, 0, 0, 0, false);
-
+	// Reserve space for all items (not just one page)
+	const auto totalItems = tileset->brushlist.size();
 	brushButtons.reserve(totalItems);
 
-	LoadContentByPage();
-
-	const auto &brushPalettePanel = g_gui.GetParentWindowByType<BrushPalettePanel*>(this);
-	brushPalettePanel->SetPageInfo(wxString::Format("/%d", totalPages));
-	brushPalettePanel->EnableNextPage(totalPages > currentPage);
-	brushPalettePanel->EnablePreviousPage(currentPage > 1);
+	// Load all content with scrolling enabled
+	LoadAllContent();
 }
 
 bool BrushIconBox::LoadContentByPage(int page /* = 1 */) {
@@ -628,6 +582,61 @@ bool BrushIconBox::LoadContentByPage(int page /* = 1 */) {
 	return true;
 }
 
+bool BrushIconBox::LoadAllContent() {
+	// Clear existing content
+	if (stacksizer) {
+		stacksizer->ShowItems(false);
+		stacksizer->Clear();
+		rowsizers.clear();
+		brushButtons.clear();
+	}
+
+	stacksizer = newd wxBoxSizer(wxVERTICAL);
+	SetSizer(stacksizer);
+
+	auto rowSizer = newd wxBoxSizer(wxHORIZONTAL);
+
+	// Load ALL brushes (not just one page)
+	for (auto i = 0; i < tileset->brushlist.size(); ++i) {
+		const auto brushButton = newd BrushButton(this, tileset->brushlist[i], iconSize);
+		brushButtons.emplace_back(brushButton);
+		rowSizer->Add(brushButton);
+
+		// Start new row after 'width' items
+		if ((i + 1) % width == 0) {
+			stacksizer->Add(rowSizer);
+			rowsizers.emplace_back(rowSizer);
+			rowSizer = newd wxBoxSizer(wxHORIZONTAL);
+		}
+	}
+
+	// Add final row if it has any items
+	if (rowSizer->GetItemCount() > 0) {
+		stacksizer->Add(rowSizer);
+		rowsizers.emplace_back(rowSizer);
+	}
+
+	// Calculate virtual size for ALL content to enable scrolling
+	const auto totalRows = (tileset->brushlist.size() + width - 1) / width;
+	const auto buttonHeight = iconSize == RENDER_SIZE_32x32 ? 32 : 16;
+	const auto buttonWidth = iconSize == RENDER_SIZE_32x32 ? 32 : 16;
+
+	// Set scrollbar for entire content - this enables scrolling through all items
+	SetScrollbars(
+		buttonWidth,  // x scroll unit
+		buttonHeight, // y scroll unit
+		width,        // x units (columns)
+		totalRows,    // y units (rows) - enables scrolling!
+		0, 0, false
+	);
+
+	if (!stacksizer->AreAnyItemsShown()) {
+		stacksizer->ShowItems(true);
+	}
+
+	return true;
+}
+
 void BrushIconBox::SelectFirstBrush() {
 	if (tileset && tileset->size() > 0) {
 		Select(brushButtons[0]);
@@ -643,24 +652,14 @@ Brush* BrushIconBox::GetSelectedBrush() const {
 }
 
 bool BrushIconBox::SelectPaginatedBrush(const Brush* whatBrush, BrushPalettePanel* brushPalettePanel) {
-	const auto index = std::ranges::find(tileset->brushlist.begin(), tileset->brushlist.end(), whatBrush) - tileset->brushlist.begin();
+	// All brushes are now loaded, so simply find and select
+	const auto it = std::ranges::find_if(brushButtons, [&](const auto &brushButton) {
+		return brushButton->brush == whatBrush;
+	});
 
-	if (index < tileset->brushlist.size()) {
-		const auto page = std::ceil(index / (width * height)) + 1;
-		if (currentPage != page) {
-			brushPalettePanel->OnPageUpdate(this, page);
-		}
-
-		const auto it = std::ranges::find_if(brushButtons, [&](const auto &brushButton) {
-			return brushButton->brush == whatBrush;
-		});
-
-		if (it != brushButtons.end()) {
-			Select(*it);
-			return true;
-		}
-
-		return false;
+	if (it != brushButtons.end()) {
+		Select(*it);
+		return true;
 	}
 
 	return false;
@@ -673,12 +672,7 @@ bool BrushIconBox::SelectBrush(const Brush* whatBrush) {
 		return false;
 	}
 
-	const auto &brushPalettePanel = g_gui.GetParentWindowByType<BrushPalettePanel*>(GetSelfWindow());
-	const auto listType = brushPalettePanel->GetListType();
-	if (listType == BRUSHLIST_LARGE_ICONS || listType == BRUSHLIST_SMALL_ICONS) {
-		return SelectPaginatedBrush(whatBrush, brushPalettePanel);
-	}
-
+	// Direct selection - all brushes are loaded
 	const auto it = std::ranges::find_if(brushButtons, [&](const auto &brushButton) {
 		return brushButton->brush == whatBrush;
 	});
@@ -692,15 +686,18 @@ bool BrushIconBox::SelectBrush(const Brush* whatBrush) {
 }
 
 bool BrushIconBox::NextPage() {
-	return LoadContentByPage(currentPage + 1);
+	// No-op: Scrolling replaces pagination
+	return false;
 }
 
 bool BrushIconBox::SetPage(int page) {
-	return LoadContentByPage(page);
+	// No-op: Scrolling replaces pagination
+	return false;
 }
 
 bool BrushIconBox::PreviousPage() {
-	return LoadContentByPage(currentPage - 1);
+	// No-op: Scrolling replaces pagination
+	return false;
 }
 
 void BrushIconBox::Select(BrushButton* brushButton) {
