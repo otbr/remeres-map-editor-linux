@@ -19,9 +19,12 @@
 #include <wx/choice.h>
 #include <vector>
 #include <map>
+#include <wx/treectrl.h>
 
 class BorderItemButton;
+
 class BorderGridPanel;
+class WallVisualPanel;
 
 // Represents a border edge position
 enum BorderEdgePosition {
@@ -85,6 +88,46 @@ struct GroundItem {
     bool operator!=(const GroundItem& other) const {
         return !(*this == other);
     }
+
+};
+
+// Represents a wall type group (e.g., "vertical", "horizontal")
+struct WallTypeData {
+    std::string typeName;
+    std::vector<GroundItem> items; // Reuse GroundItem as it has {itemId, chance}
+};
+
+// Represents a wall item position
+struct WallItem {
+    int x; // Grid X (0-2)
+    int y; // Grid Y (0-2)
+    uint16_t itemId;
+    
+    WallItem() : x(-1), y(-1), itemId(0) {}
+    WallItem(int _x, int _y, uint16_t id) : x(_x), y(_y), itemId(id) {}
+};
+
+// Tree item data to store asset info
+class BorderAssetItemData : public wxTreeItemData {
+public:
+    enum AssetType {
+        FOLDER,
+        BORDER,
+        GROUND,
+        WALL
+    };
+    
+    BorderAssetItemData(AssetType type, int id = 0, const wxString& name = "") 
+        : m_type(type), m_id(id), m_name(name) {}
+        
+    AssetType GetType() const { return m_type; }
+    int GetId() const { return m_id; }
+    wxString GetName() const { return m_name; }
+    
+private:
+    AssetType m_type;
+    int m_id;
+    wxString m_name;
 };
 
 class BorderEditorDialog : public wxDialog {
@@ -93,9 +136,13 @@ public:
     virtual ~BorderEditorDialog();
 
     // Event handlers - made public so they can be accessed by other components
+    void OnItemIdChanged(wxCommandEvent& event);
+    void OnPositionSelected(wxCommandEvent& event);
+    void OnAddItem(wxCommandEvent& event);
     void OnClear(wxCommandEvent& event);
     void OnSave(wxCommandEvent& event);
     void OnClose(wxCommandEvent& event);
+    void OnBrowse(wxCommandEvent& event);
     void OnLoadBorder(wxCommandEvent& event);
     void OnGridCellClicked(wxMouseEvent& event);
     void OnPageChanged(wxBookCtrlEvent& event);
@@ -104,9 +151,15 @@ public:
     void OnLoadGroundBrush(wxCommandEvent& event);
     void OnGroundBrowse(wxCommandEvent& event);
     
-    // Helper methods for direct interaction from GridPanel
-    void SetBorderItem(BorderEdgePosition pos, uint16_t itemId);
-    void RemoveBorderItem(BorderEdgePosition pos);
+    // Wall events
+    void OnLoadWallBrush(wxCommandEvent& event);
+    void OnWallBrowse(wxCommandEvent& event);
+    void OnAddWallItem(wxCommandEvent& event);
+    void OnRemoveWallItem(wxCommandEvent& event);
+    
+    // Sidebar events
+    void OnAssetTreeSelection(wxTreeEvent& event);
+    void OnAssetSearch(wxCommandEvent& event);
 
 protected:
     void CreateGUIControls();
@@ -116,11 +169,21 @@ protected:
     void SaveBorder();
     void SaveGroundBrush();
     bool ValidateBorder();
+
     bool ValidateGroundBrush();
+    bool ValidateWallBrush();
+    void LoadExistingWallBrushes();
+    void SaveWallBrush();
+    void ClearWallItems();
+    void UpdateWallItemsList();
     void UpdatePreview();
     void ClearItems();
     void ClearGroundItems();
     void UpdateGroundItemsList();
+    
+    // Sidebar helpers
+    void PopulateAssetTree();
+    void FilterAssetTree(const wxString& query);
 
 public:
     // UI Elements - made public so they can be accessed by other components
@@ -129,12 +192,21 @@ public:
     wxSpinCtrl* m_idCtrl;
     wxNotebook* m_notebook;
     
+    // Sidebar
+    wxTextCtrl* m_searchCtrl;
+    wxTreeCtrl* m_assetTree;
+    wxTreeItemId m_rootId;
+    wxTreeItemId m_bordersRootId;
+    wxTreeItemId m_groundsRootId;
+    wxTreeItemId m_wallsRootId;
+
     // Border Tab
     wxPanel* m_borderPanel;
     wxComboBox* m_existingBordersCombo;
     wxCheckBox* m_isOptionalCheck;
     wxCheckBox* m_isGroundCheck;
     wxSpinCtrl* m_groupCtrl;
+    wxSpinCtrl* m_itemIdCtrl;
     
     // Ground Tab
     wxPanel* m_groundPanel;
@@ -144,6 +216,24 @@ public:
     wxSpinCtrl* m_groundItemIdCtrl;
     wxSpinCtrl* m_groundItemChanceCtrl;
     wxListBox* m_groundItemsList;
+    
+    // Wall Tab
+    wxPanel* m_wallPanel;
+    wxComboBox* m_existingWallBrushesCombo;
+    wxSpinCtrl* m_wallServerLookIdCtrl;
+    wxSpinCtrl* m_wallGroupCtrl; // Added missing Group control
+    wxSpinCtrl* m_wallZOrderCtrl;
+    wxSpinCtrl* m_wallItemIdCtrl;
+    wxSpinCtrl* m_wallItemChanceCtrl;
+    wxListBox* m_wallItemsList;
+    wxCheckBox* m_wallIsOptionalCheck;
+    wxCheckBox* m_wallIsGroundCheck; // For "Force Ground"
+    WallVisualPanel* m_wallVisualPanel;
+    
+    // Wall items
+    std::map<std::string, WallTypeData> m_wallTypes;
+    wxString m_currentWallType;
+    wxChoice* m_wallTypeChoice;
     
     // Border alignment for ground brushes
     wxChoice* m_borderAlignmentChoice;
@@ -210,16 +300,16 @@ public:
     uint16_t GetItemId(BorderEdgePosition pos) const;
     void Clear();
     
+    // Selection management
     void SetSelectedPosition(BorderEdgePosition pos);
     BorderEdgePosition GetSelectedPosition() const { return m_selectedPosition; }
+    
+    // Override to ensure correct sizing
+    virtual wxSize DoGetBestSize() const override;
     
     void OnPaint(wxPaintEvent& event);
     void OnMouseClick(wxMouseEvent& event);
     void OnMouseDown(wxMouseEvent& event);
-    void OnMouseMove(wxMouseEvent& event);
-    void OnRightDown(wxMouseEvent& event);
-    void OnLeftDClick(wxMouseEvent& event);
-    void OnLeaveWindow(wxMouseEvent& event);
     
     // Made public so it can be accessed from other components
     wxPoint GetPositionCoordinates(BorderEdgePosition pos) const;
@@ -228,7 +318,6 @@ public:
 private:
     std::map<BorderEdgePosition, uint16_t> m_items;
     BorderEdgePosition m_selectedPosition;
-    BorderEdgePosition m_hoveredPosition;
     
     DECLARE_EVENT_TABLE()
 };
@@ -246,6 +335,23 @@ public:
     
 private:
     std::vector<BorderItem> m_borderItems;
+    
+    DECLARE_EVENT_TABLE()
+};
+
+// Panel to visually edit wall brushes
+class WallVisualPanel : public wxPanel {
+public:
+    WallVisualPanel(wxWindow* parent, wxWindowID id = wxID_ANY);
+    virtual ~WallVisualPanel();
+    
+    void SetWallItems(const std::map<std::string, WallTypeData>& items);
+    void Clear();
+    
+    void OnPaint(wxPaintEvent& event);
+    
+private:
+    std::map<std::string, WallTypeData> m_items;
     
     DECLARE_EVENT_TABLE()
 };

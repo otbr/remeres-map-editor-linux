@@ -26,6 +26,7 @@
 #include "items.h"
 #include "brush.h"
 #include "ground_brush.h"
+#include "client_assets.h"
 #include <wx/sizer.h>
 #include <wx/gbsizer.h>
 #include <wx/statline.h>
@@ -40,7 +41,6 @@
 #define BORDER_GRID_CELL_SIZE 32
 #define ID_BORDER_GRID_SELECT wxID_HIGHEST + 1
 #define ID_GROUND_ITEM_LIST wxID_HIGHEST + 2
-#define ID_EXISTING_BORDERS wxID_HIGHEST + 3
 
 // Utility functions for edge string/position conversion
 BorderEdgePosition edgeStringToPosition(const std::string& edgeStr) {
@@ -77,33 +77,18 @@ std::string edgePositionToString(BorderEdgePosition pos) {
     }
 }
 
-// Helper function to get the borders.xml file path
-wxString GetBordersFilePath() {
-    return g_gui.GetDataDirectory() + "materials" + wxFileName::GetPathSeparator() +
-           "borders" + wxFileName::GetPathSeparator() + "borders.xml";
-}
-
-// Helper function to get the grounds.xml file path
-wxString GetGroundsFilePath() {
-    return g_gui.GetDataDirectory() + "materials" + wxFileName::GetPathSeparator() +
-           "brushs" + wxFileName::GetPathSeparator() + "grounds.xml";
-}
-
-// Helper function to get the tilesets.xml file path
-wxString GetTilesetsFilePath() {
-    return g_gui.GetDataDirectory() + "materials" + wxFileName::GetPathSeparator() + "tilesets.xml";
-}
-
 // Add a helper function at the top of the file to get item ID from brush
 uint16_t GetItemIDFromBrush(Brush* brush) {
     if (!brush) {
         wxLogDebug("GetItemIDFromBrush: Brush is null");
+
         return 0;
     }
     
     uint16_t id = 0;
     
     wxLogDebug("GetItemIDFromBrush: Checking brush type: %s", wxString(brush->getName()).c_str());
+
     
     // First prioritize RAW brush - this is the most direct approach
     if (brush->isRaw()) {
@@ -111,6 +96,7 @@ uint16_t GetItemIDFromBrush(Brush* brush) {
         if (rawBrush) {
             id = rawBrush->getItemID();
             wxLogDebug("GetItemIDFromBrush: Found RAW brush ID: %d", id);
+
             if (id > 0) {
                 return id;
             }
@@ -121,6 +107,7 @@ uint16_t GetItemIDFromBrush(Brush* brush) {
     id = brush->getID();
     if (id > 0) {
         wxLogDebug("GetItemIDFromBrush: Got ID from brush->getID(): %d", id);
+
         return id;
     }
     
@@ -128,36 +115,44 @@ uint16_t GetItemIDFromBrush(Brush* brush) {
     id = brush->getLookID();
     if (id > 0) {
         wxLogDebug("GetItemIDFromBrush: Got ID from getLookID(): %d", id);
+
         return id;
     }
     
     // Try specific brush type methods - when all else fails
     if (brush->isGround()) {
         wxLogDebug("GetItemIDFromBrush: Detected Ground brush");
+
         GroundBrush* groundBrush = brush->asGround();
         if (groundBrush) {
             // For ground brush, id is usually the server_lookid from grounds.xml
             // Try to find something else
             wxLogDebug("GetItemIDFromBrush: Failed to get ID for Ground brush");
+
         }
     }
     else if (brush->isWall()) {
         wxLogDebug("GetItemIDFromBrush: Detected Wall brush");
+
         WallBrush* wallBrush = brush->asWall();
         if (wallBrush) {
             wxLogDebug("GetItemIDFromBrush: Failed to get ID for Wall brush");
+
         }
     }
     else if (brush->isDoodad()) {
         wxLogDebug("GetItemIDFromBrush: Detected Doodad brush");
+
         DoodadBrush* doodadBrush = brush->asDoodad();
         if (doodadBrush) {
             wxLogDebug("GetItemIDFromBrush: Failed to get ID for Doodad brush");
+
         }
     }
     
     if (id == 0) {
         wxLogDebug("GetItemIDFromBrush: Failed to get item ID from brush %s", wxString(brush->getName()).c_str());
+
     }
     
     return id;
@@ -165,11 +160,12 @@ uint16_t GetItemIDFromBrush(Brush* brush) {
 
 // Event table for BorderEditorDialog
 BEGIN_EVENT_TABLE(BorderEditorDialog, wxDialog)
+    EVT_BUTTON(wxID_ADD, BorderEditorDialog::OnAddItem)
     EVT_BUTTON(wxID_CLEAR, BorderEditorDialog::OnClear)
     EVT_BUTTON(wxID_SAVE, BorderEditorDialog::OnSave)
-    EVT_BUTTON(wxID_CANCEL, BorderEditorDialog::OnClose)
-    // Removed IDs for FIND, ADD
-    EVT_COMBOBOX(ID_EXISTING_BORDERS, BorderEditorDialog::OnLoadBorder)
+    EVT_BUTTON(wxID_CLOSE, BorderEditorDialog::OnClose)
+    EVT_BUTTON(wxID_FIND, BorderEditorDialog::OnBrowse)
+    EVT_COMBOBOX(wxID_ANY, BorderEditorDialog::OnLoadBorder)
     EVT_NOTEBOOK_PAGE_CHANGED(wxID_ANY, BorderEditorDialog::OnPageChanged)
     EVT_BUTTON(wxID_ADD + 100, BorderEditorDialog::OnAddGroundItem)
     EVT_BUTTON(wxID_REMOVE, BorderEditorDialog::OnRemoveGroundItem)
@@ -187,10 +183,6 @@ BEGIN_EVENT_TABLE(BorderGridPanel, wxPanel)
     EVT_PAINT(BorderGridPanel::OnPaint)
     EVT_LEFT_UP(BorderGridPanel::OnMouseClick)
     EVT_LEFT_DOWN(BorderGridPanel::OnMouseDown)
-    EVT_MOTION(BorderGridPanel::OnMouseMove)
-    EVT_RIGHT_DOWN(BorderGridPanel::OnRightDown)
-    EVT_LEFT_DCLICK(BorderGridPanel::OnLeftDClick)
-    EVT_LEAVE_WINDOW(BorderGridPanel::OnLeaveWindow)
 END_EVENT_TABLE()
 
 // Event table for BorderPreviewPanel
@@ -199,7 +191,7 @@ BEGIN_EVENT_TABLE(BorderPreviewPanel, wxPanel)
 END_EVENT_TABLE()
 
 BorderEditorDialog::BorderEditorDialog(wxWindow* parent, const wxString& title) :
-    wxDialog(parent, wxID_ANY, title, wxDefaultPosition, wxSize(650, 520),
+    wxDialog(parent, wxID_ANY, title, wxDefaultPosition, wxSize(850, 650),
         wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER),
     m_nextBorderId(1),
     m_activeTab(0) {
@@ -207,12 +199,16 @@ BorderEditorDialog::BorderEditorDialog(wxWindow* parent, const wxString& title) 
     CreateGUIControls();
     LoadExistingBorders();
     LoadExistingGroundBrushes();
-    LoadTilesets();  // Load available tilesets
+    LoadExistingWallBrushes();
+    
+    // Default to border tab
+    m_notebook->SetSelection(0);
     
     // Set ID to next available ID
     m_idCtrl->SetValue(m_nextBorderId);
     
     // Center the dialog
+    Fit();
     CenterOnParent();
 }
 
@@ -223,30 +219,29 @@ BorderEditorDialog::~BorderEditorDialog() {
 void BorderEditorDialog::CreateGUIControls() {
     wxBoxSizer* topSizer = new wxBoxSizer(wxVERTICAL);
     
-    // Header Section (Name & ID) - Clean row without StaticBox
-    wxBoxSizer* headerSizer = new wxBoxSizer(wxHORIZONTAL);
+    // Common properties - more compact horizontal layout
+    wxStaticBoxSizer* commonPropertiesSizer = new wxStaticBoxSizer(wxVERTICAL, this, "Common Properties");
     
-    // Name
+    wxBoxSizer* commonPropertiesHorizSizer = new wxBoxSizer(wxHORIZONTAL);
+    
+    // Name field
     wxBoxSizer* nameSizer = new wxBoxSizer(wxVERTICAL);
-    wxStaticText* nameLabel = new wxStaticText(this, wxID_ANY, "Name:");
-    nameLabel->SetFont(nameLabel->GetFont().Bold());
-    nameSizer->Add(nameLabel, 0, wxBOTTOM, 2);
+    nameSizer->Add(new wxStaticText(this, wxID_ANY, "Name:"), 0);
     m_nameCtrl = new wxTextCtrl(this, wxID_ANY);
     m_nameCtrl->SetToolTip("Descriptive name for the border/brush");
-    nameSizer->Add(m_nameCtrl, 0, wxEXPAND);
-    headerSizer->Add(nameSizer, 1, wxEXPAND | wxRIGHT, 15);
+    nameSizer->Add(m_nameCtrl, 0, wxEXPAND | wxTOP, 2);
+    commonPropertiesHorizSizer->Add(nameSizer, 1, wxEXPAND | wxRIGHT, 10);
     
-    // ID
+    // ID field
     wxBoxSizer* idSizer = new wxBoxSizer(wxVERTICAL);
-    wxStaticText* idLabel = new wxStaticText(this, wxID_ANY, "ID:");
-    idLabel->SetFont(idLabel->GetFont().Bold());
-    idSizer->Add(idLabel, 0, wxBOTTOM, 2);
+    idSizer->Add(new wxStaticText(this, wxID_ANY, "ID:"), 0);
     m_idCtrl = new wxSpinCtrl(this, wxID_ANY, "1", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 1000);
     m_idCtrl->SetToolTip("Unique identifier for this border/brush");
-    idSizer->Add(m_idCtrl, 0, wxEXPAND);
-    headerSizer->Add(idSizer, 0, wxEXPAND);
+    idSizer->Add(m_idCtrl, 0, wxEXPAND | wxTOP, 2);
+    commonPropertiesHorizSizer->Add(idSizer, 0, wxEXPAND);
     
-    topSizer->Add(headerSizer, 0, wxEXPAND | wxALL, 10);
+    commonPropertiesSizer->Add(commonPropertiesHorizSizer, 0, wxEXPAND | wxALL, 5);
+    topSizer->Add(commonPropertiesSizer, 0, wxEXPAND | wxALL, 5);
     
     // Create notebook with Border and Ground tabs
     m_notebook = new wxNotebook(this, wxID_ANY);
@@ -255,86 +250,102 @@ void BorderEditorDialog::CreateGUIControls() {
     m_borderPanel = new wxPanel(m_notebook);
     wxBoxSizer* borderSizer = new wxBoxSizer(wxVERTICAL);
     
-    // Top Controls (Group, Type, Load) - Single row
-    wxBoxSizer* borderTopRow = new wxBoxSizer(wxHORIZONTAL);
+    // Border Properties - more compact layout
+    wxStaticBoxSizer* borderPropertiesSizer = new wxStaticBoxSizer(wxVERTICAL, m_borderPanel, "Border Properties");
     
-    // Group
+    // Two-column horizontal layout
+    wxBoxSizer* borderPropsHorizSizer = new wxBoxSizer(wxHORIZONTAL);
+    
+    // Left column - Group and Type
+    wxBoxSizer* leftColSizer = new wxBoxSizer(wxVERTICAL);
+    
+    // Border Group
     wxBoxSizer* groupSizer = new wxBoxSizer(wxVERTICAL);
-    groupSizer->Add(new wxStaticText(m_borderPanel, wxID_ANY, "Group:"), 0, wxBOTTOM, 2);
-    m_groupCtrl = new wxSpinCtrl(m_borderPanel, wxID_ANY, "0", wxDefaultPosition, wxSize(60, -1), wxSP_ARROW_KEYS, 0, 1000);
-    m_groupCtrl->SetToolTip("Optional group identifier");
-    groupSizer->Add(m_groupCtrl, 0, wxEXPAND);
-    borderTopRow->Add(groupSizer, 0, wxRIGHT, 15);
+    groupSizer->Add(new wxStaticText(m_borderPanel, wxID_ANY, "Group:"), 0);
+    m_groupCtrl = new wxSpinCtrl(m_borderPanel, wxID_ANY, "0", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 1000);
+    m_groupCtrl->SetToolTip("Optional group identifier (0 = no group)");
+    groupSizer->Add(m_groupCtrl, 0, wxEXPAND | wxTOP, 2);
+    leftColSizer->Add(groupSizer, 0, wxEXPAND | wxBOTTOM, 5);
     
-    // Type Options
+    // Border Type
     wxBoxSizer* typeSizer = new wxBoxSizer(wxVERTICAL);
-    typeSizer->Add(new wxStaticText(m_borderPanel, wxID_ANY, "Type:"), 0, wxBOTTOM, 4);
-    wxBoxSizer* checkSizer = new wxBoxSizer(wxHORIZONTAL);
+    typeSizer->Add(new wxStaticText(m_borderPanel, wxID_ANY, "Type:"), 0);
+    wxBoxSizer* checkboxSizer = new wxBoxSizer(wxHORIZONTAL);
     m_isOptionalCheck = new wxCheckBox(m_borderPanel, wxID_ANY, "Optional");
+    m_isOptionalCheck->SetToolTip("Marks this border as optional");
     m_isGroundCheck = new wxCheckBox(m_borderPanel, wxID_ANY, "Ground");
-    checkSizer->Add(m_isOptionalCheck, 0, wxRIGHT, 10);
-    checkSizer->Add(m_isGroundCheck, 0);
-    typeSizer->Add(checkSizer, 0);
-    borderTopRow->Add(typeSizer, 0, wxRIGHT, 20);
+    m_isGroundCheck->SetToolTip("Marks this border as a ground border");
+    checkboxSizer->Add(m_isOptionalCheck, 0, wxRIGHT, 10);
+    checkboxSizer->Add(m_isGroundCheck, 0);
+    typeSizer->Add(checkboxSizer, 0, wxEXPAND | wxTOP, 2);
+    leftColSizer->Add(typeSizer, 0, wxEXPAND);
     
-    // Load Existing (Spacer pushes it to right, or just keep left)
-    wxBoxSizer* loadSizer = new wxBoxSizer(wxVERTICAL);
-    loadSizer->Add(new wxStaticText(m_borderPanel, wxID_ANY, "Load Existing:"), 0, wxBOTTOM, 2);
-    m_existingBordersCombo = new wxComboBox(m_borderPanel, ID_EXISTING_BORDERS, "", wxDefaultPosition, wxSize(200, -1), 0, nullptr, wxCB_READONLY | wxCB_DROPDOWN);
-    loadSizer->Add(m_existingBordersCombo, 0, wxEXPAND);
-    borderTopRow->Add(loadSizer, 0);
+    borderPropsHorizSizer->Add(leftColSizer, 1, wxEXPAND | wxRIGHT, 10);
     
-    borderSizer->Add(borderTopRow, 0, wxEXPAND | wxALL, 10);
-    borderSizer->Add(new wxStaticLine(m_borderPanel), 0, wxEXPAND | wxLEFT | wxRIGHT, 10);
+    // Right column - Load Existing
+    wxBoxSizer* rightColSizer = new wxBoxSizer(wxVERTICAL);
+    rightColSizer->Add(new wxStaticText(m_borderPanel, wxID_ANY, "Load Existing:"), 0);
+    m_existingBordersCombo = new wxComboBox(m_borderPanel, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, 0, nullptr, wxCB_READONLY | wxCB_DROPDOWN);
+    m_existingBordersCombo->SetToolTip("Load an existing border as template");
+    rightColSizer->Add(m_existingBordersCombo, 0, wxEXPAND | wxTOP, 2);
     
-    // Main Content (Grid + Preview)
-    wxBoxSizer* contentSizer = new wxBoxSizer(wxHORIZONTAL);
+    borderPropsHorizSizer->Add(rightColSizer, 1, wxEXPAND);
     
-    // Left: Grid
-    wxBoxSizer* gridContainer = new wxBoxSizer(wxVERTICAL);
-    gridContainer->Add(new wxStaticText(m_borderPanel, wxID_ANY, "Border Pattern (Click to Set, Right-Click to Clear)"), 0, wxBOTTOM, 5);
+    borderPropertiesSizer->Add(borderPropsHorizSizer, 0, wxEXPAND | wxALL, 5);
+    borderSizer->Add(borderPropertiesSizer, 0, wxEXPAND | wxALL, 5);
     
+    // Border content area with grid and preview
+    wxBoxSizer* borderContentSizer = new wxBoxSizer(wxHORIZONTAL);
+    
+    // Left side - Grid Editor
+    wxStaticBoxSizer* gridSizer = new wxStaticBoxSizer(wxVERTICAL, m_borderPanel, "Border Grid");
     m_gridPanel = new BorderGridPanel(m_borderPanel);
-    gridContainer->Add(m_gridPanel, 1, wxEXPAND | wxBOTTOM, 10);
+    gridSizer->Add(m_gridPanel, 0, wxALIGN_CENTER_HORIZONTAL | wxALL, 5);
     
-    // Item Selection Controls (Under Grid)
-    wxBoxSizer* itemSelectSizer = new wxBoxSizer(wxHORIZONTAL);
+    // Add instruction label
+    wxStaticText* instructions = new wxStaticText(m_borderPanel, wxID_ANY, 
+        "Click on a grid position to place the currently selected brush.\n"
+        "The item ID will be extracted automatically from the brush.");
+    instructions->SetForegroundColour(*wxBLUE);
+    gridSizer->Add(instructions, 0, wxEXPAND | wxALL, 5);
     
-    // Instructions
-    wxStaticText* instructions = new wxStaticText(m_borderPanel, wxID_ANY, "Left-click a cell to set item. Right-click to clear.");
-    instructions->SetForegroundColour(wxColour(100, 100, 100));
-    itemSelectSizer->Add(instructions, 0, wxALIGN_CENTER_VERTICAL | wxALL, 5);
+    // Current selected item controls
+    wxBoxSizer* itemSizer = new wxBoxSizer(wxHORIZONTAL);
+    itemSizer->Add(new wxStaticText(m_borderPanel, wxID_ANY, "Item ID:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
+    m_itemIdCtrl = new wxSpinCtrl(m_borderPanel, wxID_ANY, "0", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 65535);
+    m_itemIdCtrl->SetToolTip("Enter an item ID manually if you don't want to use the current brush");
+    itemSizer->Add(m_itemIdCtrl, 0, wxRIGHT, 5);
+    wxButton* browseButton = new wxButton(m_borderPanel, wxID_FIND, "Browse...", wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
+    browseButton->SetToolTip("Browse for an item to use instead of the current brush");
+    itemSizer->Add(browseButton, 0, wxRIGHT, 5);
+    wxButton* addButton = new wxButton(m_borderPanel, wxID_ADD, "Add Manually", wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
+    addButton->SetToolTip("Add the item ID manually to the currently selected position");
+    itemSizer->Add(addButton, 0);
     
-    gridContainer->Add(itemSelectSizer, 0, wxEXPAND);
+    gridSizer->Add(itemSizer, 0, wxEXPAND | wxALL, 5);
     
-    contentSizer->Add(gridContainer, 1, wxEXPAND | wxALL, 10);
+    // Add grid editor to content sizer
+    borderContentSizer->Add(gridSizer, 1, wxEXPAND | wxALL, 5);
     
-    // Separator
-    contentSizer->Add(new wxStaticLine(m_borderPanel, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_VERTICAL), 0, wxEXPAND | wxTOP | wxBOTTOM, 10);
-    
-    // Right: Preview
-    wxBoxSizer* previewContainer = new wxBoxSizer(wxVERTICAL);
-    previewContainer->Add(new wxStaticText(m_borderPanel, wxID_ANY, "Preview"), 0, wxBOTTOM, 5);
-    
+    // Right side - Preview Panel
+    wxStaticBoxSizer* previewSizer = new wxStaticBoxSizer(wxVERTICAL, m_borderPanel, "Preview");
     m_previewPanel = new BorderPreviewPanel(m_borderPanel);
-    previewContainer->Add(m_previewPanel, 1, wxEXPAND);
+    previewSizer->Add(m_previewPanel, 1, wxEXPAND | wxALL, 5);
     
-    contentSizer->Add(previewContainer, 0, wxEXPAND | wxALL, 10);
+    // Add preview to content sizer
+    borderContentSizer->Add(previewSizer, 1, wxEXPAND | wxALL, 5);
     
-    borderSizer->Add(contentSizer, 1, wxEXPAND);
+    // Add content sizer to main border sizer
+    borderSizer->Add(borderContentSizer, 1, wxEXPAND | wxALL, 5);
     
-    // Bottom Buttons
-    wxBoxSizer* bottomBtnSizer = new wxBoxSizer(wxHORIZONTAL);
-    bottomBtnSizer->Add(new wxButton(m_borderPanel, wxID_CLEAR, "Clear All"), 0, wxRIGHT, 10);
-    bottomBtnSizer->AddStretchSpacer();
+    // Bottom buttons for border tab
+    wxBoxSizer* borderButtonSizer = new wxBoxSizer(wxHORIZONTAL);
+    borderButtonSizer->Add(new wxButton(m_borderPanel, wxID_CLEAR, "Clear"), 0, wxRIGHT, 5);
+    borderButtonSizer->Add(new wxButton(m_borderPanel, wxID_SAVE, "Save Border"), 0, wxRIGHT, 5);
+    borderButtonSizer->AddStretchSpacer(1);
+    borderButtonSizer->Add(new wxButton(m_borderPanel, wxID_CLOSE, "Close"), 0);
     
-    wxButton* saveBtn = new wxButton(m_borderPanel, wxID_SAVE, "Save Border");
-    saveBtn->SetFont(saveBtn->GetFont().Bold());
-    bottomBtnSizer->Add(saveBtn, 0, wxRIGHT, 10);
-    bottomBtnSizer->Add(new wxButton(m_borderPanel, wxID_CLOSE, "Close"), 0);
-    
-    borderSizer->Add(new wxStaticLine(m_borderPanel), 0, wxEXPAND | wxALL, 0);
-    borderSizer->Add(bottomBtnSizer, 0, wxEXPAND | wxALL, 10);
+    borderSizer->Add(borderButtonSizer, 0, wxEXPAND | wxALL, 5);
     
     m_borderPanel->SetSizer(borderSizer);
     
@@ -342,121 +353,522 @@ void BorderEditorDialog::CreateGUIControls() {
     m_groundPanel = new wxPanel(m_notebook);
     wxBoxSizer* groundSizer = new wxBoxSizer(wxVERTICAL);
     
-    // Top Controls
-    wxBoxSizer* groundTopRow = new wxBoxSizer(wxHORIZONTAL);
+    // Ground Brush Properties - more compact layout
+    wxStaticBoxSizer* groundPropertiesSizer = new wxStaticBoxSizer(wxVERTICAL, m_groundPanel, "Ground Brush Properties");
     
-    // Tileset
-    wxBoxSizer* tilesetBox = new wxBoxSizer(wxVERTICAL);
-    tilesetBox->Add(new wxStaticText(m_groundPanel, wxID_ANY, "Tileset:"), 0, wxBOTTOM, 2);
-    m_tilesetChoice = new wxChoice(m_groundPanel, wxID_ANY, wxDefaultPosition, wxSize(150, -1));
-    tilesetBox->Add(m_tilesetChoice, 0, wxEXPAND);
-    groundTopRow->Add(tilesetBox, 0, wxRIGHT, 15);
+    // Two rows of two columns each
+    wxBoxSizer* topRowSizer = new wxBoxSizer(wxHORIZONTAL);
     
-    // Server ID
-    wxBoxSizer* servIdBox = new wxBoxSizer(wxVERTICAL);
-    servIdBox->Add(new wxStaticText(m_groundPanel, wxID_ANY, "Server ID:"), 0, wxBOTTOM, 2);
-    m_serverLookIdCtrl = new wxSpinCtrl(m_groundPanel, wxID_ANY, "0", wxDefaultPosition, wxSize(80, -1));
-    servIdBox->Add(m_serverLookIdCtrl, 0, wxEXPAND);
-    groundTopRow->Add(servIdBox, 0, wxRIGHT, 15);
+    // Tileset selector
+    wxBoxSizer* tilesetSizer = new wxBoxSizer(wxVERTICAL);
+    tilesetSizer->Add(new wxStaticText(m_groundPanel, wxID_ANY, "Tileset:"), 0);
+    m_tilesetChoice = new wxChoice(m_groundPanel, wxID_ANY);
+    m_tilesetChoice->SetToolTip("Select tileset to add this brush to");
+    tilesetSizer->Add(m_tilesetChoice, 0, wxEXPAND | wxTOP, 2);
+    topRowSizer->Add(tilesetSizer, 1, wxEXPAND | wxRIGHT, 10);
+    
+    // Server Look ID
+    wxBoxSizer* serverIdSizer = new wxBoxSizer(wxVERTICAL);
+    serverIdSizer->Add(new wxStaticText(m_groundPanel, wxID_ANY, "Server Look ID:"), 0);
+    m_serverLookIdCtrl = new wxSpinCtrl(m_groundPanel, wxID_ANY, "0", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 65535);
+    m_serverLookIdCtrl->SetToolTip("Server-side item ID");
+    serverIdSizer->Add(m_serverLookIdCtrl, 0, wxEXPAND | wxTOP, 2);
+    topRowSizer->Add(serverIdSizer, 1, wxEXPAND);
+    
+    groundPropertiesSizer->Add(topRowSizer, 0, wxEXPAND | wxALL, 5);
+    
+    // Second row
+    wxBoxSizer* bottomRowSizer = new wxBoxSizer(wxHORIZONTAL);
     
     // Z-Order
-    wxBoxSizer* zBox = new wxBoxSizer(wxVERTICAL);
-    zBox->Add(new wxStaticText(m_groundPanel, wxID_ANY, "Z-Order:"), 0, wxBOTTOM, 2);
-    m_zOrderCtrl = new wxSpinCtrl(m_groundPanel, wxID_ANY, "0", wxDefaultPosition, wxSize(60, -1));
-    zBox->Add(m_zOrderCtrl, 0, wxEXPAND);
-    groundTopRow->Add(zBox, 0, wxRIGHT, 15);
+    wxBoxSizer* zOrderSizer = new wxBoxSizer(wxVERTICAL);
+    zOrderSizer->Add(new wxStaticText(m_groundPanel, wxID_ANY, "Z-Order:"), 0);
+    m_zOrderCtrl = new wxSpinCtrl(m_groundPanel, wxID_ANY, "0", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 10000);
+    m_zOrderCtrl->SetToolTip("Z-Order for display");
+    zOrderSizer->Add(m_zOrderCtrl, 0, wxEXPAND | wxTOP, 2);
+    bottomRowSizer->Add(zOrderSizer, 1, wxEXPAND | wxRIGHT, 10);
     
-    // Load
-    wxBoxSizer* gLoadBox = new wxBoxSizer(wxVERTICAL);
-    gLoadBox->Add(new wxStaticText(m_groundPanel, wxID_ANY, "Load Existing:"), 0, wxBOTTOM, 2);
-    m_existingGroundBrushesCombo = new wxComboBox(m_groundPanel, wxID_ANY + 100, "", wxDefaultPosition, wxSize(200, -1), 0, nullptr, wxCB_READONLY | wxCB_DROPDOWN);
-    gLoadBox->Add(m_existingGroundBrushesCombo, 0, wxEXPAND);
-    groundTopRow->Add(gLoadBox, 0);
+    // Existing ground brushes dropdown
+    wxBoxSizer* existingSizer = new wxBoxSizer(wxVERTICAL);
+    existingSizer->Add(new wxStaticText(m_groundPanel, wxID_ANY, "Load Existing:"), 0);
+    m_existingGroundBrushesCombo = new wxComboBox(m_groundPanel, wxID_ANY + 100, "", wxDefaultPosition, wxDefaultSize, 0, nullptr, wxCB_READONLY | wxCB_DROPDOWN);
+    m_existingGroundBrushesCombo->SetToolTip("Load an existing ground brush as template");
+    existingSizer->Add(m_existingGroundBrushesCombo, 0, wxEXPAND | wxTOP, 2);
+    bottomRowSizer->Add(existingSizer, 1, wxEXPAND);
     
-    groundSizer->Add(groundTopRow, 0, wxEXPAND | wxALL, 10);
-    groundSizer->Add(new wxStaticLine(m_groundPanel), 0, wxEXPAND | wxLEFT | wxRIGHT, 10);
+    groundPropertiesSizer->Add(bottomRowSizer, 0, wxEXPAND | wxALL, 5);
     
-    // Random Items List
-    wxBoxSizer* listSection = new wxBoxSizer(wxVERTICAL);
-    listSection->Add(new wxStaticText(m_groundPanel, wxID_ANY, "Random Items (Variations)"), 0, wxTOP | wxBOTTOM, 5);
+    groundSizer->Add(groundPropertiesSizer, 0, wxEXPAND | wxALL, 5);
     
-    m_groundItemsList = new wxListBox(m_groundPanel, ID_GROUND_ITEM_LIST, wxDefaultPosition, wxSize(-1, 120));
-    listSection->Add(m_groundItemsList, 1, wxEXPAND | wxBOTTOM, 5);
+    // Ground Items
+    wxStaticBoxSizer* groundItemsSizer = new wxStaticBoxSizer(wxVERTICAL, m_groundPanel, "Ground Items");
     
-    // List Controls
-    wxBoxSizer* listControls = new wxBoxSizer(wxHORIZONTAL);
+    // List of ground items - set a smaller height
+    m_groundItemsList = new wxListBox(m_groundPanel, ID_GROUND_ITEM_LIST, wxDefaultPosition, wxSize(-1, 100), 0, nullptr, wxLB_SINGLE);
+    groundItemsSizer->Add(m_groundItemsList, 0, wxEXPAND | wxALL, 5);
     
-    m_groundItemIdCtrl = new wxSpinCtrl(m_groundPanel, wxID_ANY, "0", wxDefaultPosition, wxSize(80, -1));
-    listControls->Add(new wxStaticText(m_groundPanel, wxID_ANY, "Item:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
-    listControls->Add(m_groundItemIdCtrl, 0, wxRIGHT, 5);
+    // Controls for adding/removing ground items
+    wxBoxSizer* groundItemRowSizer = new wxBoxSizer(wxHORIZONTAL);
     
-    listControls->Add(new wxButton(m_groundPanel, wxID_FIND + 100, "Browse...", wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT), 0, wxRIGHT, 15);
+    // Left side - item ID and chance
+    wxBoxSizer* itemDetailsSizer = new wxBoxSizer(wxHORIZONTAL);
     
-    m_groundItemChanceCtrl = new wxSpinCtrl(m_groundPanel, wxID_ANY, "10", wxDefaultPosition, wxSize(60, -1));
-    listControls->Add(new wxStaticText(m_groundPanel, wxID_ANY, "Chance:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
-    listControls->Add(m_groundItemChanceCtrl, 0, wxRIGHT, 15);
+    // Item ID input
+    wxBoxSizer* itemIdSizer = new wxBoxSizer(wxVERTICAL);
+    itemIdSizer->Add(new wxStaticText(m_groundPanel, wxID_ANY, "Item ID:"), 0);
+    m_groundItemIdCtrl = new wxSpinCtrl(m_groundPanel, wxID_ANY, "0", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 65535);
+    m_groundItemIdCtrl->SetToolTip("ID of the item to add");
+    itemIdSizer->Add(m_groundItemIdCtrl, 0, wxEXPAND | wxTOP, 2);
+    itemDetailsSizer->Add(itemIdSizer, 0, wxEXPAND | wxRIGHT, 5);
     
-    listControls->Add(new wxButton(m_groundPanel, wxID_ADD + 100, "Add"), 0, wxRIGHT, 5);
-    listControls->Add(new wxButton(m_groundPanel, wxID_REMOVE, "Remove"), 0);
+    // Chance input
+    wxBoxSizer* chanceSizer = new wxBoxSizer(wxVERTICAL);
+    chanceSizer->Add(new wxStaticText(m_groundPanel, wxID_ANY, "Chance:"), 0);
+    m_groundItemChanceCtrl = new wxSpinCtrl(m_groundPanel, wxID_ANY, "10", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 10000);
+    m_groundItemChanceCtrl->SetToolTip("Chance of this item appearing");
+    chanceSizer->Add(m_groundItemChanceCtrl, 0, wxEXPAND | wxTOP, 2);
+    itemDetailsSizer->Add(chanceSizer, 0, wxEXPAND);
     
-    listSection->Add(listControls, 0, wxEXPAND);
+    groundItemRowSizer->Add(itemDetailsSizer, 1, wxEXPAND | wxRIGHT, 10);
     
-    groundSizer->Add(listSection, 0, wxEXPAND | wxALL, 10);
-    groundSizer->Add(new wxStaticLine(m_groundPanel), 0, wxEXPAND | wxLEFT | wxRIGHT, 10);
+    // Right side - buttons
+    wxBoxSizer* itemButtonsSizer = new wxBoxSizer(wxVERTICAL);
+    itemButtonsSizer->AddStretchSpacer();
     
-    // Border Settings for Ground
-    wxBoxSizer* borderSettings = new wxBoxSizer(wxVERTICAL);
-    borderSettings->Add(new wxStaticText(m_groundPanel, wxID_ANY, "Border Integration"), 0, wxTOP | wxBOTTOM, 5);
+    wxBoxSizer* buttonsSizer = new wxBoxSizer(wxHORIZONTAL);
+    wxButton* groundBrowseButton = new wxButton(m_groundPanel, wxID_FIND + 100, "Browse...", wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
+    groundBrowseButton->SetToolTip("Browse for an item");
+    buttonsSizer->Add(groundBrowseButton, 0, wxRIGHT, 5);
     
-    wxBoxSizer* bsRow = new wxBoxSizer(wxHORIZONTAL);
+    wxButton* addGroundItemButton = new wxButton(m_groundPanel, wxID_ADD + 100, "Add", wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
+    addGroundItemButton->SetToolTip("Add this item to the list");
+    buttonsSizer->Add(addGroundItemButton, 0, wxRIGHT, 5);
     
+    wxButton* removeGroundItemButton = new wxButton(m_groundPanel, wxID_REMOVE, "Remove", wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
+    removeGroundItemButton->SetToolTip("Remove the selected item");
+    buttonsSizer->Add(removeGroundItemButton, 0);
+    
+    itemButtonsSizer->Add(buttonsSizer, 0, wxEXPAND);
+    groundItemRowSizer->Add(itemButtonsSizer, 0, wxEXPAND);
+    
+    groundItemsSizer->Add(groundItemRowSizer, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 5);
+    groundSizer->Add(groundItemsSizer, 0, wxEXPAND | wxALL, 5); // Changed from 1 to 0 to not expand
+    
+    // Grid and border selection for ground tab
+    wxStaticBoxSizer* groundBorderSizer = new wxStaticBoxSizer(wxVERTICAL, m_groundPanel, "Border for Ground Brush");
+    
+    // First row - Border alignment and 'to none' option
+    wxBoxSizer* borderRow1 = new wxBoxSizer(wxHORIZONTAL);
+    
+    // Border alignment
+    wxBoxSizer* alignSizer = new wxBoxSizer(wxVERTICAL);
+    alignSizer->Add(new wxStaticText(m_groundPanel, wxID_ANY, "Border Alignment:"), 0);
     wxArrayString alignOptions;
-    alignOptions.Add("Outer");
-    alignOptions.Add("Inner");
-    m_borderAlignmentChoice = new wxChoice(m_groundPanel, wxID_ANY, wxDefaultPosition, wxSize(100, -1), alignOptions);
-    m_borderAlignmentChoice->SetSelection(0);
-    bsRow->Add(new wxStaticText(m_groundPanel, wxID_ANY, "Alignment:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
-    bsRow->Add(m_borderAlignmentChoice, 0, wxRIGHT, 20);
+    alignOptions.Add("outer");
+    alignOptions.Add("inner");
+    m_borderAlignmentChoice = new wxChoice(m_groundPanel, wxID_ANY, wxDefaultPosition, wxDefaultSize, alignOptions);
+    m_borderAlignmentChoice->SetSelection(0); // Default to "outer"
+    m_borderAlignmentChoice->SetToolTip("Alignment type for the border");
+    alignSizer->Add(m_borderAlignmentChoice, 0, wxEXPAND | wxTOP, 2);
+    borderRow1->Add(alignSizer, 1, wxEXPAND | wxRIGHT, 10);
     
+    // Border options (checkboxes)
+    wxBoxSizer* optionsSizer = new wxBoxSizer(wxVERTICAL);
+    optionsSizer->Add(new wxStaticText(m_groundPanel, wxID_ANY, "Border Options:"), 0);
+    wxBoxSizer* checksSizer = new wxBoxSizer(wxHORIZONTAL);
     m_includeToNoneCheck = new wxCheckBox(m_groundPanel, wxID_ANY, "To None");
-    m_includeToNoneCheck->SetValue(true);
-    bsRow->Add(m_includeToNoneCheck, 0, wxRIGHT, 10);
-    
+    m_includeToNoneCheck->SetValue(true); // Default to checked
+    m_includeToNoneCheck->SetToolTip("Adds additional border with 'to none' attribute");
     m_includeInnerCheck = new wxCheckBox(m_groundPanel, wxID_ANY, "Inner Border");
-    bsRow->Add(m_includeInnerCheck, 0);
+    m_includeInnerCheck->SetToolTip("Adds additional inner border with same ID");
+    checksSizer->Add(m_includeToNoneCheck, 0, wxRIGHT, 10);
+    checksSizer->Add(m_includeInnerCheck, 0);
+    optionsSizer->Add(checksSizer, 0, wxEXPAND | wxTOP, 2);
+    borderRow1->Add(optionsSizer, 1, wxEXPAND);
     
-    borderSettings->Add(bsRow, 0, wxEXPAND | wxBOTTOM, 5);
+    groundBorderSizer->Add(borderRow1, 0, wxEXPAND | wxALL, 5);
     
-    wxStaticText* hint = new wxStaticText(m_groundPanel, wxID_ANY, "Note: Configure the border pattern in the 'Border' tab.");
-    hint->SetForegroundColour(wxColour(100, 100, 100));
-    borderSettings->Add(hint, 0);
+    // Border ID notice (red text)
+    wxBoxSizer* borderIdSizer = new wxBoxSizer(wxHORIZONTAL);
+    wxStaticText* borderIdLabel = new wxStaticText(m_groundPanel, wxID_ANY, "Border ID:");
+    borderIdSizer->Add(borderIdLabel, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
+    wxStaticText* borderId = new wxStaticText(m_groundPanel, wxID_ANY, "Uses the ID specified in 'Common Properties' section");
+    borderId->SetForegroundColour(*wxRED);
+    borderIdSizer->Add(borderId, 1, wxALIGN_CENTER_VERTICAL);
     
-    groundSizer->Add(borderSettings, 0, wxEXPAND | wxALL, 10);
+    groundBorderSizer->Add(borderIdSizer, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 5);
     
-    groundSizer->AddStretchSpacer();
+    // Grid use instruction - shorter text
+    wxStaticText* gridInstructions = new wxStaticText(m_groundPanel, wxID_ANY, 
+        "Use the grid in the Border tab to define borders for this ground brush.");
+    gridInstructions->SetForegroundColour(*wxBLUE);
+    groundBorderSizer->Add(gridInstructions, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 5);
     
-    // Bottom Buttons (Copy from Border Tab style)
-    wxBoxSizer* gBottomBtn = new wxBoxSizer(wxHORIZONTAL);
-    gBottomBtn->Add(new wxButton(m_groundPanel, wxID_CLEAR, "Clear All"), 0, wxRIGHT, 10);
-    gBottomBtn->AddStretchSpacer();
+    groundSizer->Add(groundBorderSizer, 0, wxEXPAND | wxALL, 5);
     
-    wxButton* gSaveBtn = new wxButton(m_groundPanel, wxID_SAVE, "Save Brush");
-    gSaveBtn->SetFont(gSaveBtn->GetFont().Bold());
-    gBottomBtn->Add(gSaveBtn, 0, wxRIGHT, 10);
-    gBottomBtn->Add(new wxButton(m_groundPanel, wxID_CLOSE, "Close"), 0);
+    // Bottom buttons for ground tab
+    wxBoxSizer* groundButtonSizer = new wxBoxSizer(wxHORIZONTAL);
+    groundButtonSizer->Add(new wxButton(m_groundPanel, wxID_CLEAR, "Clear"), 0, wxRIGHT, 5);
+    groundButtonSizer->Add(new wxButton(m_groundPanel, wxID_SAVE, "Save Ground"), 0, wxRIGHT, 5);
+    groundButtonSizer->AddStretchSpacer(1);
+    groundButtonSizer->Add(new wxButton(m_groundPanel, wxID_CLOSE, "Close"), 0);
     
-    groundSizer->Add(new wxStaticLine(m_groundPanel), 0, wxEXPAND | wxALL, 0);
-    groundSizer->Add(gBottomBtn, 0, wxEXPAND | wxALL, 10);
+    groundSizer->Add(groundButtonSizer, 0, wxEXPAND | wxALL, 5);
     
     m_groundPanel->SetSizer(groundSizer);
     
+    // Add tabs to notebook
+    m_notebook->AddPage(m_borderPanel, "Border");
+    m_notebook->AddPage(m_groundPanel, "Ground");
+    
+    // Add tabs to notebook
     m_notebook->AddPage(m_borderPanel, "Border Loop");
     m_notebook->AddPage(m_groundPanel, "Ground Brush");
+
+    // ========== WALL TAB ==========
+    m_wallPanel = new wxPanel(m_notebook);
+    wxBoxSizer* wallSizer = new wxBoxSizer(wxVERTICAL);
+
+    // Top: Existing Brushes + Common Wall Props
+    wxBoxSizer* wallTopSizer = new wxBoxSizer(wxHORIZONTAL);
+
+    // Left: Existing Brushes
+    wxBoxSizer* existingWallSizer = new wxBoxSizer(wxVERTICAL);
+    existingWallSizer->Add(new wxStaticText(m_wallPanel, wxID_ANY, "Load Existing:"), 0);
+    m_existingWallBrushesCombo = new wxComboBox(m_wallPanel, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, 0, nullptr, wxCB_READONLY | wxCB_DROPDOWN);
+    m_existingWallBrushesCombo->Bind(wxEVT_COMBOBOX, &BorderEditorDialog::OnLoadWallBrush, this);
+    existingWallSizer->Add(m_existingWallBrushesCombo, 1, wxEXPAND | wxTOP, 2);
+    wallTopSizer->Add(existingWallSizer, 1, wxEXPAND | wxRIGHT, 10);
+
+    // Right: Server Look ID
+    wxBoxSizer* wallServerIdSizer = new wxBoxSizer(wxVERTICAL);
+    wallServerIdSizer->Add(new wxStaticText(m_wallPanel, wxID_ANY, "Server Look ID:"), 0);
+    m_wallServerLookIdCtrl = new wxSpinCtrl(m_wallPanel, wxID_ANY, "0", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 65535);
+    wallServerIdSizer->Add(m_wallServerLookIdCtrl, 0, wxEXPAND | wxTOP, 2);
+    wallTopSizer->Add(wallServerIdSizer, 0, wxEXPAND);
+
+    wallSizer->Add(wallTopSizer, 0, wxEXPAND | wxALL, 5);
+
+    // Middle: Content Area (Structure Editor + Preview)
+    wxBoxSizer* wallContentSizer = new wxBoxSizer(wxHORIZONTAL);
+
+    // Left: Structure Editor
+    wxStaticBoxSizer* structureSizer = new wxStaticBoxSizer(wxVERTICAL, m_wallPanel, "Wall Structure");
+    
+    // Type Selector
+    wxBoxSizer* wallTypeSizer = new wxBoxSizer(wxHORIZONTAL);
+    wallTypeSizer->Add(new wxStaticText(m_wallPanel, wxID_ANY, "Logic Type:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
+    
+    wxArrayString wallTypes;
+    wallTypes.Add("vertical");
+    wallTypes.Add("horizontal");
+    wallTypes.Add("corner");
+    wallTypes.Add("pole");
+    m_wallTypeChoice = new wxChoice(m_wallPanel, wxID_ANY, wxDefaultPosition, wxDefaultSize, wallTypes);
+    m_wallTypeChoice->SetSelection(0);
+    m_wallTypeChoice->Bind(wxEVT_CHOICE, [this](wxCommandEvent& ev) { UpdateWallItemsList(); });
+    wallTypeSizer->Add(m_wallTypeChoice, 1, wxEXPAND);
+    
+    structureSizer->Add(wallTypeSizer, 0, wxEXPAND | wxALL, 5);
+
+    // List of items for this type
+    m_wallItemsList = new wxListBox(m_wallPanel, wxID_ANY, wxDefaultPosition, wxSize(-1, 100));
+    structureSizer->Add(m_wallItemsList, 1, wxEXPAND | wxLEFT | wxRIGHT, 5);
+
+    // Add Item Controls
+    wxBoxSizer* wallItemInputSizer = new wxBoxSizer(wxHORIZONTAL);
+    
+    m_wallItemIdCtrl = new wxSpinCtrl(m_wallPanel, wxID_ANY, "0", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 65535);
+    wallItemInputSizer->Add(m_wallItemIdCtrl, 0, wxRIGHT, 2);
+    
+    wxButton* wallBrowseBtn = new wxButton(m_wallPanel, wxID_ANY, "...", wxDefaultPosition, wxSize(30, -1));
+    wallBrowseBtn->Bind(wxEVT_BUTTON, &BorderEditorDialog::OnWallBrowse, this);
+    wallItemInputSizer->Add(wallBrowseBtn, 0, wxRIGHT, 5);
+
+    wxButton* addWallItemBtn = new wxButton(m_wallPanel, wxID_ANY, "Add", wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
+    addWallItemBtn->Bind(wxEVT_BUTTON, &BorderEditorDialog::OnAddWallItem, this);
+    wallItemInputSizer->Add(addWallItemBtn, 0);
+
+    structureSizer->Add(wallItemInputSizer, 0, wxEXPAND | wxALL, 5);
+    
+    wxButton* remWallItemBtn = new wxButton(m_wallPanel, wxID_ANY, "Remove Selected");
+    remWallItemBtn->Bind(wxEVT_BUTTON, &BorderEditorDialog::OnRemoveWallItem, this);
+    structureSizer->Add(remWallItemBtn, 0, wxALIGN_RIGHT | wxALL, 5);
+
+    wallContentSizer->Add(structureSizer, 1, wxEXPAND | wxRIGHT, 5);
+
+    // Right: Preview
+    wxStaticBoxSizer* wallVisualSizer = new wxStaticBoxSizer(wxVERTICAL, m_wallPanel, "Preview");
+    m_wallVisualPanel = new WallVisualPanel(m_wallPanel);
+    wallVisualSizer->Add(m_wallVisualPanel, 1, wxEXPAND | wxALL, 5);
+    wallContentSizer->Add(wallVisualSizer, 1, wxEXPAND);
+
+    wallSizer->Add(wallContentSizer, 1, wxEXPAND | wxALL, 5);
+
+    // Bottom buttons
+    wxBoxSizer* wallButtonSizer = new wxBoxSizer(wxHORIZONTAL);
+    wallButtonSizer->Add(new wxButton(m_wallPanel, wxID_ANY, "Clear All"), 0, wxRIGHT, 5);
+    wallButtonSizer->AddStretchSpacer(1);
+    wxButton* saveWallButton = new wxButton(m_wallPanel, wxID_ANY, "Save Wall");
+    saveWallButton->Bind(wxEVT_BUTTON, [this](wxCommandEvent& ev) { SaveWallBrush(); });
+    wallButtonSizer->Add(saveWallButton, 0, wxRIGHT, 5);
+    wallButtonSizer->Add(new wxButton(m_wallPanel, wxID_CLOSE, "Close"), 0);
+    
+    wallSizer->Add(wallButtonSizer, 0, wxEXPAND | wxALL, 5);
+    
+    m_wallPanel->SetSizer(wallSizer);
+    m_notebook->AddPage(m_wallPanel, "Wall");
     
     topSizer->Add(m_notebook, 1, wxEXPAND | wxALL, 5);
     
     SetSizer(topSizer);
     Layout();
+}
+
+void BorderEditorDialog::OnLoadWallBrush(wxCommandEvent& event) {
+    int selection = m_existingWallBrushesCombo->GetSelection();
+    if (selection == wxNOT_FOUND || selection == 0) { // 0 is <Create New>
+        // Clear all fields for new brush
+        if (m_wallServerLookIdCtrl) m_wallServerLookIdCtrl->SetValue(0);
+        if (m_wallIsOptionalCheck) m_wallIsOptionalCheck->SetValue(false);
+        if (m_wallIsGroundCheck) m_wallIsGroundCheck->SetValue(false);
+        ClearWallItems();
+        return;
+    }
+    
+    // Get the name of the selected brush
+    wxString name = m_existingWallBrushesCombo->GetString(selection);
+    
+    // Find the walls.xml file
+    wxString dataDir = g_gui.GetDataDirectory();
+    
+    wxString wallsFile = dataDir + wxFileName::GetPathSeparator() + 
+                        "materials" + wxFileName::GetPathSeparator() + "brushs" + wxFileName::GetPathSeparator() + "walls.xml";
+    
+    // Load XML
+    pugi::xml_document doc;
+    if (!doc.load_file(nstr(wallsFile).c_str())) return;
+    
+    pugi::xml_node materials = doc.child("materials");
+    if (!materials) return;
+    
+    // Find the brush
+    for (pugi::xml_node brushNode = materials.child("brush"); brushNode; brushNode = brushNode.next_sibling("brush")) {
+        pugi::xml_attribute nameAttr = brushNode.attribute("name");
+        if (nameAttr && wxString(nameAttr.as_string()) == name) {
+            // Found it! Load properties
+            
+            // Server look ID
+            pugi::xml_attribute lookIdAttr = brushNode.attribute("server_lookid");
+            if (lookIdAttr && m_wallServerLookIdCtrl) {
+                m_wallServerLookIdCtrl->SetValue(lookIdAttr.as_int());
+            }
+            
+            // Clear existing items
+            ClearWallItems();
+            m_wallTypes.clear();
+            
+            // Iterate over children to find <wall> nodes
+            for (pugi::xml_node wallNode = brushNode.child("wall"); wallNode; wallNode = wallNode.next_sibling("wall")) {
+                pugi::xml_attribute typeAttr = wallNode.attribute("type");
+                if (typeAttr) {
+                    std::string typeName = typeAttr.as_string();
+                    WallTypeData typeData;
+                    typeData.typeName = typeName;
+                    
+                    // Parse items within this wall node
+                    for (pugi::xml_node itemNode = wallNode.child("item"); itemNode; itemNode = itemNode.next_sibling("item")) {
+                        pugi::xml_attribute idAttr = itemNode.attribute("id");
+                        pugi::xml_attribute chanceAttr = itemNode.attribute("chance");
+                        
+                        if (idAttr) {
+                            uint16_t itemId = idAttr.as_uint();
+                            int chance = chanceAttr ? chanceAttr.as_int() : 10;
+                            typeData.items.push_back(GroundItem(itemId, chance));
+                        }
+                    }
+                    
+                    m_wallTypes[typeName] = typeData;
+                }
+            }
+            
+            // Update UI to reflect loaded data
+            m_wallTypeChoice->SetSelection(0);
+            UpdateWallItemsList();
+            m_wallVisualPanel->SetWallItems(m_wallTypes);
+            
+            break;
+        }
+    }
+}
+
+void BorderEditorDialog::SaveWallBrush() {
+    wxString name = m_existingWallBrushesCombo->GetValue();
+    if (name.IsEmpty() || name == "<Create New>") {
+        wxMessageBox("Please enter a name for the wall brush.", "Error", wxICON_ERROR);
+        return;
+    }
+    
+    int serverLookId = m_wallServerLookIdCtrl->GetValue();
+    
+    // Find walls.xml
+    wxString dataDir = g_gui.GetDataDirectory();
+    
+    wxString wallsFile = dataDir + wxFileName::GetPathSeparator() + 
+                        "materials" + wxFileName::GetPathSeparator() + "brushs" + wxFileName::GetPathSeparator() + "walls.xml";
+                        
+    pugi::xml_document doc;
+    bool loaded = doc.load_file(nstr(wallsFile).c_str());
+    if (!loaded) {
+        // Create new if not exists?
+        // Usually we expect it to exist.
+        // If not, maybe create simple structure
+        pugi::xml_node root = doc.append_child("materials");
+    }
+    
+    pugi::xml_node materials = doc.child("materials");
+    if (!materials) materials = doc.append_child("materials");
+    
+    // Check if exists and remove OLD entry to replace it completely
+    pugi::xml_node existingNode;
+    for (pugi::xml_node node = materials.child("brush"); node; node = node.next_sibling("brush")) {
+        if (wxString(node.attribute("name").as_string()) == name) {
+            existingNode = node;
+            break;
+        }
+    }
+    
+    if (existingNode) {
+        if (wxMessageBox("Wall brush '" + name + "' already exists. Overwrite?", "Confirm Overwrite", wxYES_NO | wxICON_QUESTION) != wxYES) {
+            return;
+        }
+        materials.remove_child(existingNode);
+    }
+    
+    // Create NEW brush node
+    pugi::xml_node brushNode = materials.append_child("brush");
+    brushNode.append_attribute("name").set_value(nstr(name).c_str());
+    brushNode.append_attribute("type").set_value("wall");
+    brushNode.append_attribute("server_lookid").set_value(serverLookId);
+    
+    // Iterate over our map and save <wall> nodes
+    for (const auto& pair : m_wallTypes) {
+        const WallTypeData& typeData = pair.second;
+        if (typeData.items.empty()) continue; // Skip empty types
+        
+        pugi::xml_node wallNode = brushNode.append_child("wall");
+        wallNode.append_attribute("type").set_value(typeData.typeName.c_str());
+        
+        for (const GroundItem& item : typeData.items) {
+            pugi::xml_node itemNode = wallNode.append_child("item");
+            itemNode.append_attribute("id").set_value(item.itemId);
+            itemNode.append_attribute("chance").set_value(item.chance);
+        }
+    }
+    
+    // Save
+    if (doc.save_file(nstr(wallsFile).c_str())) {
+        wxMessageBox("Wall brush saved successfully.", "Success", wxICON_INFORMATION);
+        LoadExistingWallBrushes(); // Reload list
+        m_existingWallBrushesCombo->SetValue(name); // Restore selection
+    } else {
+        wxMessageBox("Failed to save walls.xml", "Error", wxICON_ERROR);
+    }
+}
+
+void BorderEditorDialog::LoadExistingWallBrushes() {
+    m_existingWallBrushesCombo->Clear();
+    m_existingWallBrushesCombo->Append("<Create New>");
+    m_existingWallBrushesCombo->SetSelection(0);
+    
+    wxString dataDir = g_gui.GetDataDirectory();
+    
+    wxString wallsFile = dataDir + wxFileName::GetPathSeparator() + 
+                        "materials" + wxFileName::GetPathSeparator() + "brushs" + wxFileName::GetPathSeparator() + "walls.xml";
+                        
+    if (!wxFileExists(wallsFile)) return;
+    
+    pugi::xml_document doc;
+    if (!doc.load_file(nstr(wallsFile).c_str())) return;
+    
+    pugi::xml_node materials = doc.child("materials");
+    if (!materials) return;
+    
+    wxArrayString names;
+    for (pugi::xml_node node = materials.child("brush"); node; node = node.next_sibling("brush")) {
+        names.Add(wxString(node.attribute("name").as_string()));
+    }
+    names.Sort();
+    m_existingWallBrushesCombo->Append(names);
+}
+
+bool BorderEditorDialog::ValidateWallBrush() {
+    return true;
+}
+
+// Helper to get current selected type string
+wxString GetCurrentWallType(wxChoice* choice) {
+    if (!choice) return "vertical";
+    int sel = choice->GetSelection();
+    if (sel == wxNOT_FOUND) return "vertical";
+    return choice->GetString(sel);
+}
+
+void BorderEditorDialog::ClearWallItems() {
+    if (m_wallVisualPanel)
+        m_wallVisualPanel->Clear();
+    m_wallTypes.clear();
+    if (m_wallItemsList)
+        m_wallItemsList->Clear();
+}
+
+void BorderEditorDialog::UpdateWallItemsList() {
+    if (!m_wallItemsList || !m_wallTypeChoice) return;
+    
+    m_wallItemsList->Clear();
+    std::string type = GetCurrentWallType(m_wallTypeChoice).ToStdString();
+    
+    if (m_wallTypes.find(type) != m_wallTypes.end()) {
+        const WallTypeData& data = m_wallTypes[type];
+        for (const GroundItem& item : data.items) {
+            m_wallItemsList->Append(wxString::Format("Item ID: %d", item.itemId));
+        }
+    }
+}
+
+void BorderEditorDialog::OnWallBrowse(wxCommandEvent& event) {
+    // Reuse Ground Browse Logic or create new dialog
+    // implementation pending... using manual ID for now
+}
+
+void BorderEditorDialog::OnAddWallItem(wxCommandEvent& event) {
+    if (!m_wallItemIdCtrl) return;
+    int id = m_wallItemIdCtrl->GetValue();
+    if (id <= 0) return;
+    
+    std::string type = GetCurrentWallType(m_wallTypeChoice).ToStdString();
+    
+    WallTypeData& data = m_wallTypes[type];
+    data.typeName = type;
+    data.items.push_back(GroundItem(id, 10)); // Default chance 10
+    
+    UpdateWallItemsList();
+    m_wallVisualPanel->SetWallItems(m_wallTypes);
+}
+
+void BorderEditorDialog::OnRemoveWallItem(wxCommandEvent& event) {
+    if (!m_wallItemsList) return;
+    int sel = m_wallItemsList->GetSelection();
+    if (sel == wxNOT_FOUND) return;
+    
+    std::string type = GetCurrentWallType(m_wallTypeChoice).ToStdString();
+    WallTypeData& data = m_wallTypes[type];
+    
+    if (sel < (int)data.items.size()) {
+        data.items.erase(data.items.begin() + sel);
+        UpdateWallItemsList();
+        m_wallVisualPanel->SetWallItems(m_wallTypes);
+    }
 }
 
 void BorderEditorDialog::LoadExistingBorders() {
@@ -467,10 +879,13 @@ void BorderEditorDialog::LoadExistingBorders() {
     m_existingBordersCombo->Append("<Create New>");
     m_existingBordersCombo->SetSelection(0);
     
-    // Find the borders.xml file in the data/materials/borders directory
+    // Find the borders.xml file using the same version path conversion as in map_display.cpp
     wxString dataDir = g_gui.GetDataDirectory();
-    wxString bordersFile = dataDir + "materials" + wxFileName::GetPathSeparator() +
-                          "borders" + wxFileName::GetPathSeparator() + "borders.xml";
+    
+    // Get version string and convert to proper directory format
+    // Construct borders.xml path
+    wxString bordersFile = dataDir + wxFileName::GetPathSeparator() + 
+                          "materials" + wxFileName::GetPathSeparator() + "borders.xml";
     
     if (!wxFileExists(bordersFile)) {
         wxMessageBox("Cannot find borders.xml file in the data directory.", "Error", wxICON_ERROR);
@@ -558,16 +973,18 @@ void BorderEditorDialog::OnLoadBorder(wxCommandEvent& event) {
     
     int borderId = wxAtoi(data->GetData());
     
-    // Find the borders.xml file in the data/materials/borders directory
+    // Find the borders.xml file using the same version path conversion as in LoadExistingBorders
     wxString dataDir = g_gui.GetDataDirectory();
-    wxString bordersFile = dataDir + "materials" + wxFileName::GetPathSeparator() +
-                          "borders" + wxFileName::GetPathSeparator() + "borders.xml";
-
+    
+    // Get version string and convert to proper directory format
+    wxString bordersFile = dataDir + wxFileName::GetPathSeparator() + 
+                          "materials" + wxFileName::GetPathSeparator() + "borders.xml";
+    
     if (!wxFileExists(bordersFile)) {
         wxMessageBox("Cannot find borders.xml file in the data directory.", "Error", wxICON_ERROR);
         return;
     }
-
+    
     // Load the XML file
     pugi::xml_document doc;
     pugi::xml_parse_result result = doc.load_file(nstr(bordersFile).c_str());
@@ -657,10 +1074,202 @@ void BorderEditorDialog::OnLoadBorder(wxCommandEvent& event) {
     
     // Update the preview
     UpdatePreview();
+    
     // Keep selection
     m_existingBordersCombo->SetSelection(selection);
 }
 
+void BorderEditorDialog::OnItemIdChanged(wxCommandEvent& event) {
+    // This event handler would update the display when an item ID is entered manually
+    // but we're handling this directly in OnAddItem instead
+}
+
+void BorderEditorDialog::OnBrowse(wxCommandEvent& event) {
+    // Open the Find Item dialog instead
+    FindItemDialog dialog(this, "Select Border Item");
+    
+    if (dialog.ShowModal() == wxID_OK) {
+        // Get the selected item ID
+        uint16_t itemId = dialog.getResultID();
+        
+        // Find the item ID spin control
+        wxSpinCtrl* itemIdCtrl = nullptr;
+        wxWindowList& children = GetChildren();
+        for (wxWindowList::iterator it = children.begin(); it != children.end(); ++it) {
+            wxSpinCtrl* spinCtrl = dynamic_cast<wxSpinCtrl*>(*it);
+            if (spinCtrl && spinCtrl != m_idCtrl) {
+                itemIdCtrl = spinCtrl;
+                break;
+            }
+        }
+        
+        if (itemIdCtrl && itemId > 0) {
+            itemIdCtrl->SetValue(itemId);
+        }
+    }
+}
+
+void BorderEditorDialog::OnPositionSelected(wxCommandEvent& event) {
+    // Get the position from the event
+    BorderEdgePosition pos = static_cast<BorderEdgePosition>(event.GetInt());
+    wxLogDebug("OnPositionSelected: Position %s selected", wxstr(edgePositionToString(pos)).c_str());
+
+    
+    // Get the item ID from the current brush
+    Brush* currentBrush = g_gui.GetCurrentBrush();
+    uint16_t itemId = 0;
+    
+    if (currentBrush) {
+        wxLogDebug("OnPositionSelected: Using brush: %s", wxString(currentBrush->getName()).c_str());
+        
+        // Try to get the item ID directly - check if it's a RAW brush first
+        if (currentBrush->isRaw()) {
+            RAWBrush* rawBrush = currentBrush->asRaw();
+            if (rawBrush) {
+                itemId = rawBrush->getItemID();
+                wxLogDebug("OnPositionSelected: Got item ID %d directly from RAW brush", itemId);
+            }
+        } 
+        
+        // If we didn't get an ID from the RAW brush method, try the generic method
+        if (itemId == 0) {
+            itemId = GetItemIDFromBrush(currentBrush);
+            wxLogDebug("OnPositionSelected: Got item ID %d from GetItemIDFromBrush", itemId);
+        }
+    } else {
+        wxLogDebug("OnPositionSelected: No current brush selected");
+    }
+    
+    // If no valid ID from brush, check the manual input control
+    if (itemId == 0 && m_itemIdCtrl) {
+        itemId = m_itemIdCtrl->GetValue();
+        if (itemId > 0) {
+            wxLogDebug("OnPositionSelected: Using item ID %d from manual control", itemId);
+        }
+    }
+
+    if (itemId > 0) {
+        // Update the item ID control - keeps the UI in sync with our selection
+        if (m_itemIdCtrl) {
+            m_itemIdCtrl->SetValue(itemId);
+        }
+        
+        // Add or update the border item
+        bool updated = false;
+        for (size_t i = 0; i < m_borderItems.size(); i++) {
+            if (m_borderItems[i].position == pos) {
+                m_borderItems[i].itemId = itemId;
+                updated = true;
+                wxLogDebug("OnPositionSelected: Updated existing border item at position %s", wxstr(edgePositionToString(pos)).c_str());
+
+                break;
+            }
+        }
+        
+        if (!updated) {
+            m_borderItems.push_back(BorderItem(pos, itemId));
+            wxLogDebug("OnPositionSelected: Added new border item at position %s", wxstr(edgePositionToString(pos)).c_str());
+
+        }
+        
+        // Update the grid panel
+        m_gridPanel->SetItemId(pos, itemId);
+        wxLogDebug("OnPositionSelected: Set grid panel item ID for position %s to %d", wxstr(edgePositionToString(pos)).c_str(), itemId);
+
+        
+        // Update the preview
+        UpdatePreview();
+        
+        // Log the addition
+        wxLogDebug("Added border item at position %s with item ID %d", 
+                  wxstr(edgePositionToString(pos)).c_str(), itemId);
+
+    } else {
+        // If we couldn't get an item ID from the brush, check if there's a value in the item ID control
+        itemId = m_itemIdCtrl->GetValue();
+        
+        if (itemId > 0) {
+            // Use the value from the control to update/add the border item
+            bool updated = false;
+            for (size_t i = 0; i < m_borderItems.size(); i++) {
+                if (m_borderItems[i].position == pos) {
+                    m_borderItems[i].itemId = itemId;
+                    updated = true;
+                    break;
+                }
+            }
+            
+            if (!updated) {
+                m_borderItems.push_back(BorderItem(pos, itemId));
+            }
+            
+            // Update the grid panel
+            m_gridPanel->SetItemId(pos, itemId);
+            
+            // Update the preview
+            UpdatePreview();
+            
+            wxLogDebug("Used item ID %d from control for position %s", 
+                       itemId, wxstr(edgePositionToString(pos)).c_str());
+
+        } else {
+            wxLogDebug("No valid item ID found from current brush: %s", wxString(currentBrush->getName()).c_str());
+
+            wxMessageBox("Could not get a valid item ID from the current brush. Please select an item brush or use the Browse button to select an item manually.", "Invalid Brush", wxICON_INFORMATION);
+        }
+    }
+}
+
+void BorderEditorDialog::OnAddItem(wxCommandEvent& event) {
+    // Get the currently selected position in the grid panel
+    static BorderEdgePosition lastSelectedPos = EDGE_NONE;
+    BorderEdgePosition selectedPos = m_gridPanel->GetSelectedPosition();
+    
+    // If no position is currently selected, use the last selected position
+    if (selectedPos == EDGE_NONE) {
+        selectedPos = lastSelectedPos;
+    }
+    
+    if (selectedPos == EDGE_NONE) {
+        wxMessageBox("Please select a position on the grid first by clicking on it.", "Error", wxICON_ERROR);
+        return;
+    }
+    
+    // Save this position for future use
+    lastSelectedPos = selectedPos;
+    
+    // Get the item ID from the control (now using the class member)
+    uint16_t itemId = m_itemIdCtrl->GetValue();
+    
+    if (itemId == 0) {
+        wxMessageBox("Please enter a valid item ID or use the Browse button.", "Error", wxICON_ERROR);
+        return;
+    }
+    
+    // Add or update the border item
+    bool updated = false;
+    for (size_t i = 0; i < m_borderItems.size(); i++) {
+        if (m_borderItems[i].position == selectedPos) {
+            m_borderItems[i].itemId = itemId;
+            updated = true;
+            break;
+        }
+    }
+    
+    if (!updated) {
+        m_borderItems.push_back(BorderItem(selectedPos, itemId));
+    }
+    
+    // Update the grid panel
+    m_gridPanel->SetItemId(selectedPos, itemId);
+    
+    // Update the preview
+    UpdatePreview();
+    
+    // Log the addition for debugging
+    wxLogDebug("Added item ID %d at position %s via Add button", 
+               itemId, wxstr(edgePositionToString(selectedPos)).c_str());
+}
 
 void BorderEditorDialog::OnClear(wxCommandEvent& event) {
     if (m_activeTab == 0) {
@@ -744,14 +1353,18 @@ void BorderEditorDialog::SaveBorder() {
     bool isGround = m_isGroundCheck->GetValue();
     int group = m_groupCtrl->GetValue();
     
-    // Find the borders.xml file
-    wxString bordersFile = GetBordersFilePath();
-
+    // Find the borders.xml file using the same version path conversion
+    wxString dataDir = g_gui.GetDataDirectory();
+    
+    // Get version string and convert to proper directory format
+    wxString bordersFile = dataDir + wxFileName::GetPathSeparator() + 
+                          "materials" + wxFileName::GetPathSeparator() + "borders.xml";
+    
     if (!wxFileExists(bordersFile)) {
         wxMessageBox("Cannot find borders.xml file in the data directory.", "Error", wxICON_ERROR);
         return;
     }
-
+    
     // Load the XML file
     pugi::xml_document doc;
     pugi::xml_parse_result result = doc.load_file(nstr(bordersFile).c_str());
@@ -856,51 +1469,6 @@ void BorderEditorDialog::OnGridCellClicked(wxMouseEvent& event) {
     event.Skip();
 }
 
-void BorderEditorDialog::SetBorderItem(BorderEdgePosition pos, uint16_t itemId) {
-    if (pos == EDGE_NONE) return;
-    
-    // Update or add the item
-    bool updated = false;
-    for (auto& item : m_borderItems) {
-        if (item.position == pos) {
-            item.itemId = itemId;
-            updated = true;
-            break;
-        }
-    }
-    
-    if (!updated) {
-        m_borderItems.push_back(BorderItem(pos, itemId));
-    }
-    
-    // Update visual components
-    m_gridPanel->SetItemId(pos, itemId);
-    
-    // Update preview
-    UpdatePreview();
-}
-
-void BorderEditorDialog::RemoveBorderItem(BorderEdgePosition pos) {
-    if (pos == EDGE_NONE) return;
-    
-    // Remove from vector
-    for (auto it = m_borderItems.begin(); it != m_borderItems.end(); ++it) {
-        if (it->position == pos) {
-            m_borderItems.erase(it);
-            break;
-        }
-    }
-    
-    // Update visual components
-    m_gridPanel->SetItemId(pos, 0); // 0 clears it in grid panel
-    
-    // Update preview
-    UpdatePreview();
-    
-    // Clear item ID control if it currently matches the removed item?
-    // Maybe unnecessary.
-}
-
 // ============================================================================
 // BorderItemButton
 
@@ -952,18 +1520,12 @@ void BorderItemButton::OnPaint(wxPaintEvent& event) {
 // ============================================================================
 // BorderGridPanel
 
-// ============================================================================
-// BorderGridPanel
-
 BorderGridPanel::BorderGridPanel(wxWindow* parent, wxWindowID id) :
     wxPanel(parent, id, wxDefaultPosition, wxDefaultSize, wxBORDER_SUNKEN)
 {
     m_items.clear();
     m_selectedPosition = EDGE_NONE;
-    m_hoveredPosition = EDGE_NONE;
     SetBackgroundStyle(wxBG_STYLE_PAINT);
-    // Ensure we have enough space for 3 sections of 128px + padding
-    SetMinSize(wxSize(450, 160));
 }
 
 BorderGridPanel::~BorderGridPanel() {
@@ -1002,103 +1564,91 @@ void BorderGridPanel::OnPaint(wxPaintEvent& event) {
     
     // Draw the panel background
     wxRect rect = GetClientRect();
-    // Use system background for a cleaner, minimalist look (or white)
-    dc.SetBackground(wxBrush(wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE)));
+    dc.SetBackground(wxBrush(wxColour(200, 200, 200)));
     dc.Clear();
     
-    // Calculate sizes for the three grid sections
-    const int total_width = rect.GetWidth();
-    const int total_height = rect.GetHeight();
+    // Draw the grid layout
+    // Draw the grid layout
+    dc.SetPen(wxPen(wxColour(100, 100, 100)));
+    dc.SetBrush(*wxTRANSPARENT_BRUSH);
     
-    // Reduced cell size for tighter 32x32 fit (48px provides 8px padding)
-    const int grid_cell_size = 48;
-    
-    // Ensure we have positive offsets
+    // Fixed layout constants
+    const int grid_cell_size = 64;
+    const int CELL_PADDING = 4;
+    const int SECTION_SPACING = 20; // Space between 2x2 blocks
     
     // Section 1: Normal directions (N, E, S, W) - 2x2 grid
     const int normal_grid_size = 2;
-    const int normal_grid_width = normal_grid_size * grid_cell_size;
-    const int normal_grid_height = normal_grid_size * grid_cell_size;
-    
-    // Center vertically
-    const int start_y = (total_height - normal_grid_height) / 2;
-    // Distribute horizontally
-    const int spacing = (total_width - (3 * normal_grid_width)) / 4;
-    const int safe_spacing = std::max(10, spacing);
-    
-    const int normal_offset_x = safe_spacing;
-    const int normal_offset_y = start_y;
+    const int normal_offset_x = 10; // Left margin
+    const int normal_offset_y = 10; // Top margin
     
     // Section 2: Corner positions
     const int corner_grid_size = 2;
-    const int corner_grid_width = corner_grid_size * grid_cell_size;
-    const int corner_offset_x = normal_offset_x + normal_grid_width + safe_spacing;
-    const int corner_offset_y = start_y;
+    const int corner_offset_x = normal_offset_x + (normal_grid_size * grid_cell_size) + SECTION_SPACING;
+    const int corner_offset_y = 10;
     
     // Section 3: Diagonal positions
     const int diag_grid_size = 2;
-    const int diag_grid_width = diag_grid_size * grid_cell_size;
-    const int diag_offset_x = corner_offset_x + corner_grid_width + safe_spacing;
-    const int diag_offset_y = start_y;
+    const int diag_offset_x = corner_offset_x + (corner_grid_size * grid_cell_size) + SECTION_SPACING;
+    const int diag_offset_y = 10;
     
-    // Section labels
-    dc.SetTextForeground(wxColour(60, 60, 60));
-    dc.SetFont(wxFont(9, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD));
+    // Section labels - REMOVED to prevent overlap with grid
+    // dc.SetTextForeground(wxColour(0, 0, 0));
+    // dc.SetFont(wxFont(10, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD));
     
-    // Draw text with safety check for Y
-    int text_y = normal_offset_y - 20;
-    if (text_y < 2) text_y = 2;
-
-    dc.DrawText("Sides", normal_offset_x + (normal_grid_width - dc.GetTextExtent("Sides").GetWidth()) / 2, text_y);
-    dc.DrawText("Corners", corner_offset_x + (corner_grid_width - dc.GetTextExtent("Corners").GetWidth()) / 2, text_y);
-    dc.DrawText("Diagonals", diag_offset_x + (diag_grid_width - dc.GetTextExtent("Diagonals").GetWidth()) / 2, text_y);
+    // dc.DrawText("Normal", normal_offset_x, 10);
+    // dc.DrawText("Corner", corner_offset_x, 10);
+    // dc.DrawText("Diagonal", diag_offset_x, 10);
     
-    // Helper function to draw a grid background
-    auto drawGridBg = [&](int offsetX, int offsetY, int gridSize, int cellSize) {
-        dc.SetPen(wxPen(wxColour(180, 180, 180)));
-        dc.SetBrush(*wxWHITE_BRUSH); // Keep cells white for contrast
-        dc.DrawRectangle(offsetX, offsetY, gridSize * cellSize, gridSize * cellSize);
-        
-        // Inner lines
-        for (int i = 1; i < gridSize; i++) {
-             dc.DrawLine(offsetX + i * cellSize, offsetY, offsetX + i * cellSize, offsetY + gridSize * cellSize);
-             dc.DrawLine(offsetX, offsetY + i * cellSize, offsetX + gridSize * cellSize, offsetY + i * cellSize);
+    // Helper function to draw a grid
+    auto drawGrid = [&](int offsetX, int offsetY, int gridSize, int cellSize) {
+        for (int i = 0; i <= gridSize; i++) {
+            // Vertical lines
+            dc.DrawLine(
+                offsetX + i * cellSize, 
+                offsetY, 
+                offsetX + i * cellSize, 
+                offsetY + gridSize * cellSize
+            );
+            
+            // Horizontal lines
+            dc.DrawLine(
+                offsetX, 
+                offsetY + i * cellSize, 
+                offsetX + gridSize * cellSize, 
+                offsetY + i * cellSize
+            );
         }
     };
     
-    drawGridBg(normal_offset_x, normal_offset_y, normal_grid_size, grid_cell_size);
-    drawGridBg(corner_offset_x, corner_offset_y, corner_grid_size, grid_cell_size);
-    drawGridBg(diag_offset_x, diag_offset_y, diag_grid_size, grid_cell_size);
+    // Draw the three grid sections
+    drawGrid(normal_offset_x, normal_offset_y, normal_grid_size, grid_cell_size);
+    drawGrid(corner_offset_x, corner_offset_y, corner_grid_size, grid_cell_size);
+    drawGrid(diag_offset_x, diag_offset_y, diag_grid_size, grid_cell_size);
     
     // Set font for position labels
-    dc.SetTextForeground(wxColour(100, 100, 100));
+    dc.SetTextForeground(wxColour(50, 50, 50));
     dc.SetFont(wxFont(8, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL));
     
     // Function to draw an item at a position
     auto drawItemAtPos = [&](BorderEdgePosition pos, int gridX, int gridY, int offsetX, int offsetY) {
-        int x = offsetX + gridX * grid_cell_size;
-        int y = offsetY + gridY * grid_cell_size;
+        int x = offsetX + gridX * grid_cell_size + CELL_PADDING;
+        int y = offsetY + gridY * grid_cell_size + CELL_PADDING;
         
-        // Draw hover effect
-        if (pos == m_hoveredPosition && pos != m_selectedPosition) {
-             wxRect cellRect(x + 1, y + 1, grid_cell_size - 1, grid_cell_size - 1);
-             dc.SetBrush(wxBrush(wxColour(240, 240, 255)));
-             dc.SetPen(*wxTRANSPARENT_PEN);
-             dc.DrawRectangle(cellRect);
-        }
-
-        // Highlight selected position -- more minimalist selection
+        // Highlight selected position
         if (pos == m_selectedPosition) {
-            dc.SetPen(wxPen(wxColour(0, 120, 215), 2));
-            dc.SetBrush(wxBrush(wxColour(0, 120, 215, 30)));
-            dc.DrawRectangle(x + 1, y + 1, grid_cell_size - 2, grid_cell_size - 2);
+            dc.SetPen(*wxRED_PEN);
+            dc.SetBrush(wxBrush(wxColour(255, 200, 200)));
+            dc.DrawRectangle(x - CELL_PADDING, y - CELL_PADDING, 
+                         grid_cell_size, grid_cell_size);
+            dc.SetPen(wxPen(wxColour(100, 100, 100)));
         }
         
-        // Draw position label (centered small)
-        // wxString label = wxstr(edgePositionToString(pos));
-        // wxSize textSize = dc.GetTextExtent(label);
-        // dc.DrawText(label, x + (grid_cell_size - textSize.GetWidth()) / 2, 
-        //           y + grid_cell_size - textSize.GetHeight() - 2);
+        // Draw position label
+        wxString label = wxstr(edgePositionToString(pos));
+        wxSize textSize = dc.GetTextExtent(label);
+        dc.DrawText(label, x + (grid_cell_size - 2 * CELL_PADDING - textSize.GetWidth()) / 2, 
+                  y + grid_cell_size - 2 * CELL_PADDING - textSize.GetHeight());
         
         // Draw sprite if available
         uint16_t itemId = GetItemId(pos);
@@ -1107,25 +1657,12 @@ void BorderGridPanel::OnPaint(wxPaintEvent& event) {
             if (type.id != 0) {
                 Sprite* sprite = g_gui.gfx.getSprite(type.clientID);
                 if (sprite) {
-                    // Draw centered 32x32
-                    int spriteSize = 32;
-                    int drawX = x + (grid_cell_size - spriteSize) / 2;
-                    int drawY = y + (grid_cell_size - spriteSize) / 2;
                     sprite->DrawTo(&dc, SPRITE_SIZE_32x32, 
-                                 drawX, drawY, 
-                                 spriteSize, 
-                                 spriteSize);
+                                 x, y, 
+                                 grid_cell_size - 2 * CELL_PADDING, 
+                                 grid_cell_size - 2 * CELL_PADDING);
                 }
             }
-        } else {
-             // Only draw label if no item, or draw it faintly over?
-             // User requested "minimalist", maybe hide label if item is there?
-             // Let's keep it for now as it aids navigation
-             wxString label = wxstr(edgePositionToString(pos));
-             wxSize textSize = dc.GetTextExtent(label);
-             // Draw label at bottom right
-             dc.DrawText(label, x + (grid_cell_size - textSize.GetWidth()) / 2, 
-                        y + grid_cell_size - textSize.GetHeight() - 2);
         }
     };
     
@@ -1146,6 +1683,8 @@ void BorderGridPanel::OnPaint(wxPaintEvent& event) {
     drawItemAtPos(EDGE_DNE, 1, 0, diag_offset_x, diag_offset_y);
     drawItemAtPos(EDGE_DSW, 0, 1, diag_offset_x, diag_offset_y);
     drawItemAtPos(EDGE_DSE, 1, 1, diag_offset_x, diag_offset_y);
+    
+    // Remove the second row of information since we've added better instructions to the panel
 }
 
 wxPoint BorderGridPanel::GetPositionCoordinates(BorderEdgePosition pos) const {
@@ -1168,43 +1707,30 @@ wxPoint BorderGridPanel::GetPositionCoordinates(BorderEdgePosition pos) const {
 
 BorderEdgePosition BorderGridPanel::GetPositionFromCoordinates(int x, int y) const
 {
-    // Re-calculate offsets logic must match OnPaint exactly to be clickable
-    wxSize size = GetClientSize();
-    const int total_width = size.GetWidth();
-    const int total_height = size.GetHeight();
-    
-    // MATCHING CONSTANTS WITH ONPAINT
-    const int grid_cell_size = 48; // Updated to 48
+    // Fixed layout constants (must match OnPaint)
+    const int grid_cell_size = 64;
+    const int SECTION_SPACING = 20;
     
     const int normal_grid_size = 2;
-    const int normal_grid_width = normal_grid_size * grid_cell_size;
-    const int normal_grid_height = normal_grid_size * grid_cell_size;
-
+    const int normal_offset_x = 10;
+    const int normal_offset_y = 10;
+    
     const int corner_grid_size = 2;
-    const int corner_grid_width = corner_grid_size * grid_cell_size;
+    const int corner_offset_x = normal_offset_x + (normal_grid_size * grid_cell_size) + SECTION_SPACING;
+    const int corner_offset_y = 10;
     
     const int diag_grid_size = 2;
-    const int diag_grid_width = diag_grid_size * grid_cell_size;
+    const int diag_offset_x = corner_offset_x + (corner_grid_size * grid_cell_size) + SECTION_SPACING;
+    const int diag_offset_y = 10;
     
-    // Dynamic spacing logic from OnPaint
-    const int start_y = (total_height - normal_grid_height) / 2;
-    const int spacing = (total_width - (3 * normal_grid_width)) / 4;
-    const int safe_spacing = std::max(10, spacing);
+    const int block_width = 2 * grid_cell_size;
+    const int block_height = 2 * grid_cell_size;
     
-    const int normal_offset_x = safe_spacing;
-    const int normal_offset_y = start_y;
-    
-    const int corner_offset_x = normal_offset_x + normal_grid_width + safe_spacing;
-    const int corner_offset_y = start_y;
-    
-    const int diag_offset_x = corner_offset_x + corner_grid_width + safe_spacing;
-    const int diag_offset_y = start_y;
-    
-    // Check which grid section the click is in
+    // Check which grid section the click is in and calculate the grid cell
     
     // Normal grid
-    if (x >= normal_offset_x && x < normal_offset_x + normal_grid_width &&
-        y >= normal_offset_y && y < normal_offset_y + normal_grid_height) {
+    if (x >= normal_offset_x && x < normal_offset_x + block_width &&
+        y >= normal_offset_y && y < normal_offset_y + block_height) {
         
         int gridX = (x - normal_offset_x) / grid_cell_size;
         int gridY = (y - normal_offset_y) / grid_cell_size;
@@ -1216,8 +1742,8 @@ BorderEdgePosition BorderGridPanel::GetPositionFromCoordinates(int x, int y) con
     }
     
     // Corner grid
-    if (x >= corner_offset_x && x < corner_offset_x + corner_grid_width &&
-        y >= corner_offset_y && y < corner_offset_y + normal_grid_height) { // Use normal height as they are same
+    if (x >= corner_offset_x && x < corner_offset_x + block_width &&
+        y >= corner_offset_y && y < corner_offset_y + block_height) {
         
         int gridX = (x - corner_offset_x) / grid_cell_size;
         int gridY = (y - corner_offset_y) / grid_cell_size;
@@ -1229,8 +1755,8 @@ BorderEdgePosition BorderGridPanel::GetPositionFromCoordinates(int x, int y) con
     }
     
     // Diagonal grid
-    if (x >= diag_offset_x && x < diag_offset_x + diag_grid_width &&
-        y >= diag_offset_y && y < diag_offset_y + normal_grid_height) {
+    if (x >= diag_offset_x && x < diag_offset_x + block_width &&
+        y >= diag_offset_y && y < diag_offset_y + block_height) {
         
         int gridX = (x - diag_offset_x) / grid_cell_size;
         int gridY = (y - diag_offset_y) / grid_cell_size;
@@ -1244,6 +1770,22 @@ BorderEdgePosition BorderGridPanel::GetPositionFromCoordinates(int x, int y) con
     return EDGE_NONE;
 }
 
+wxSize BorderGridPanel::DoGetBestSize() const {
+    const int grid_cell_size = 64;
+    const int SECTION_SPACING = 20;
+    const int MARGIN = 10;
+    
+    // 3 blocks of 2 cells each, plus 2 spacings, plus side margins
+    int width = MARGIN + (2 * grid_cell_size) + SECTION_SPACING + 
+                (2 * grid_cell_size) + SECTION_SPACING + 
+                (2 * grid_cell_size) + MARGIN;
+                
+    // 1 block height plus margins
+    int height = MARGIN + (2 * grid_cell_size) + MARGIN;
+    
+    return wxSize(width, height);
+}
+
 void BorderGridPanel::OnMouseClick(wxMouseEvent& event) {
     int x = event.GetX();
     int y = event.GetY();
@@ -1253,82 +1795,38 @@ void BorderGridPanel::OnMouseClick(wxMouseEvent& event) {
         // Set the position as selected in the grid
         SetSelectedPosition(pos);
         
-        // Direct interaction: Open FindItemDialog immediately
-        FindItemDialog browseDialog(this, "Select Border Item");
-        if (browseDialog.ShowModal() == wxID_OK) {
-             uint16_t itemId = browseDialog.getResultID();
-             
-             if (itemId > 0) {
-                 // Find parent and set item
-                 wxWindow* parent = GetParent();
-                 while (parent && !dynamic_cast<BorderEditorDialog*>(parent)) {
-                    parent = parent->GetParent();
-                 }
-                 BorderEditorDialog* dialog = dynamic_cast<BorderEditorDialog*>(parent);
-                 if (dialog) {
-                     dialog->SetBorderItem(pos, itemId);
-                 }
-             }
-         }
-    }
-}
-
-void BorderGridPanel::OnMouseDown(wxMouseEvent& event) {
-    BorderEdgePosition pos = GetPositionFromCoordinates(event.GetX(), event.GetY());
-    SetSelectedPosition(pos);
-    event.Skip();
-}
-
-void BorderGridPanel::OnRightDown(wxMouseEvent& event) {
-    BorderEdgePosition pos = GetPositionFromCoordinates(event.GetX(), event.GetY());
-    if (pos != EDGE_NONE) {
+        // Notify the parent dialog that a position was selected
+        wxCommandEvent selEvent(wxEVT_COMMAND_BUTTON_CLICKED, ID_BORDER_GRID_SELECT);
+        selEvent.SetInt(static_cast<int>(pos));
+        
+        // Find the parent BorderEditorDialog
         wxWindow* parent = GetParent();
         while (parent && !dynamic_cast<BorderEditorDialog*>(parent)) {
             parent = parent->GetParent();
         }
         
+        // Send the event to the parent dialog
         BorderEditorDialog* dialog = dynamic_cast<BorderEditorDialog*>(parent);
         if (dialog) {
-             dialog->RemoveBorderItem(pos);
-             SetSelectedPosition(pos);
+            // Call the event handler directly
+            wxLogDebug("BorderGridPanel::OnMouseClick: Calling OnPositionSelected directly for position %s", wxstr(edgePositionToString(pos)));
+            dialog->OnPositionSelected(selEvent);
+        } else {
+            // If we couldn't find the parent dialog, post the event to the parent
+            wxLogDebug("BorderGridPanel::OnMouseClick: Could not find BorderEditorDialog parent, posting event");
+            wxPostEvent(GetParent(), selEvent);
         }
     }
 }
 
-void BorderGridPanel::OnLeftDClick(wxMouseEvent& event) {
-     BorderEdgePosition pos = GetPositionFromCoordinates(event.GetX(), event.GetY());
-     if (pos != EDGE_NONE) {
-         SetSelectedPosition(pos);
-         FindItemDialog browseDialog(this, "Select Border Item");
-         if (browseDialog.ShowModal() == wxID_OK) {
-             uint16_t itemId = browseDialog.getResultID();
-             if (itemId > 0) {
-                 wxWindow* parent = GetParent();
-                 while (parent && !dynamic_cast<BorderEditorDialog*>(parent)) {
-                    parent = parent->GetParent();
-                 }
-                 BorderEditorDialog* dialog = dynamic_cast<BorderEditorDialog*>(parent);
-                 if (dialog) {
-                     dialog->SetBorderItem(pos, itemId);
-                 }
-             }
-         }
-     }
-}
-
-void BorderGridPanel::OnMouseMove(wxMouseEvent& event) {
+void BorderGridPanel::OnMouseDown(wxMouseEvent& event) {
+    // Get the position from the coordinates
     BorderEdgePosition pos = GetPositionFromCoordinates(event.GetX(), event.GetY());
-    if (pos != m_hoveredPosition) {
-        m_hoveredPosition = pos;
-        Refresh();
-    }
-}
-
-void BorderGridPanel::OnLeaveWindow(wxMouseEvent& event) {
-    if (m_hoveredPosition != EDGE_NONE) {
-        m_hoveredPosition = EDGE_NONE;
-        Refresh();
-    }
+    
+    // Set the selected position
+    SetSelectedPosition(pos);
+    
+    event.Skip();
 }
 
 // ============================================================================
@@ -1336,11 +1834,12 @@ void BorderGridPanel::OnLeaveWindow(wxMouseEvent& event) {
 
 BorderPreviewPanel::BorderPreviewPanel(wxWindow* parent, wxWindowID id) :
     wxPanel(parent, id, wxDefaultPosition, wxSize(BORDER_PREVIEW_SIZE, BORDER_PREVIEW_SIZE)) {
+    // Set up the panel to handle painting
     SetBackgroundStyle(wxBG_STYLE_PAINT);
-    SetMinSize(wxSize(BORDER_PREVIEW_SIZE, BORDER_PREVIEW_SIZE));
 }
 
 BorderPreviewPanel::~BorderPreviewPanel() {
+    // Nothing to destroy manually
 }
 
 void BorderPreviewPanel::SetBorderItems(const std::vector<BorderItem>& items) {
@@ -1356,37 +1855,34 @@ void BorderPreviewPanel::Clear() {
 void BorderPreviewPanel::OnPaint(wxPaintEvent& event) {
     wxAutoBufferedPaintDC dc(this);
     
+    // Draw the panel background
     wxRect rect = GetClientRect();
     dc.SetBackground(wxBrush(wxColour(240, 240, 240)));
     dc.Clear();
     
+    // Draw a grid to simulate a map
     const int GRID_SIZE = 5;
     const int preview_cell_size = BORDER_PREVIEW_SIZE / GRID_SIZE;
     
-    // Center the grid in the panel
-    int grid_total_size = GRID_SIZE * preview_cell_size;
-    int offset_x = (rect.GetWidth() - grid_total_size) / 2;
-    int offset_y = (rect.GetHeight() - grid_total_size) / 2;
-    
-    wxPen gridPen(wxColour(200, 200, 200));
-    dc.SetPen(gridPen);
+    // Draw grid lines
+    dc.SetPen(wxPen(wxColour(200, 200, 200)));
     for (int i = 0; i <= GRID_SIZE; i++) {
-        dc.DrawLine(offset_x + i * preview_cell_size, offset_y, 
-                    offset_x + i * preview_cell_size, offset_y + grid_total_size);
-        dc.DrawLine(offset_x, offset_y + i * preview_cell_size, 
-                    offset_x + grid_total_size, offset_y + i * preview_cell_size);
+        // Vertical lines
+        dc.DrawLine(i * preview_cell_size, 0, i * preview_cell_size, BORDER_PREVIEW_SIZE);
+        // Horizontal lines
+        dc.DrawLine(0, i * preview_cell_size, BORDER_PREVIEW_SIZE, i * preview_cell_size);
     }
     
-    // Draw sample ground center
+    // Draw a sample ground tile in the center
     dc.SetBrush(wxBrush(wxColour(120, 180, 100)));
     dc.SetPen(*wxTRANSPARENT_PEN);
-    dc.DrawRectangle(offset_x + (GRID_SIZE / 2) * preview_cell_size, 
-                     offset_y + (GRID_SIZE / 2) * preview_cell_size, 
-                     preview_cell_size, preview_cell_size);
+    dc.DrawRectangle((GRID_SIZE / 2) * preview_cell_size, (GRID_SIZE / 2) * preview_cell_size, preview_cell_size, preview_cell_size);
     
-    // Draw border items
+    // Draw border items around the center
     for (const BorderItem& item : m_borderItems) {
         wxPoint offset(0, 0);
+        
+        // Calculate position based on the edge type
         switch (item.position) {
             case EDGE_N:   offset = wxPoint(0, -1); break;
             case EDGE_E:   offset = wxPoint(1, 0); break;
@@ -1396,40 +1892,43 @@ void BorderPreviewPanel::OnPaint(wxPaintEvent& event) {
             case EDGE_CNE: offset = wxPoint(1, -1); break;
             case EDGE_CSE: offset = wxPoint(1, 1); break;
             case EDGE_CSW: offset = wxPoint(-1, 1); break;
-            case EDGE_DNW: offset = wxPoint(-1, -1); break; 
+            case EDGE_DNW: offset = wxPoint(-1, -1); break; // Diagonal positions use same offsets as corners
             case EDGE_DNE: offset = wxPoint(1, -1); break;
             case EDGE_DSE: offset = wxPoint(1, 1); break;
             case EDGE_DSW: offset = wxPoint(-1, 1); break;
             default: continue;
         }
         
-        int x = offset_x + (GRID_SIZE / 2 + offset.x) * preview_cell_size;
-        int y = offset_y + (GRID_SIZE / 2 + offset.y) * preview_cell_size;
+        // Calculate the position on the grid
+        int x = (GRID_SIZE / 2 + offset.x) * preview_cell_size;
+        int y = (GRID_SIZE / 2 + offset.y) * preview_cell_size;
         
+        // Draw the item sprite
         const ItemType& type = g_items.getItemType(item.itemId);
         if (type.id != 0) {
             Sprite* sprite = g_gui.gfx.getSprite(type.clientID);
             if (sprite) {
-                // Draw centered 32x32
-                int drawX = x + (preview_cell_size - 32) / 2;
-                int drawY = y + (preview_cell_size - 32) / 2;
-                
-                sprite->DrawTo(&dc, SPRITE_SIZE_32x32, drawX, drawY, 32, 32);
+                sprite->DrawTo(&dc, SPRITE_SIZE_32x32, x, y, preview_cell_size, preview_cell_size);
             }
         }
     }
 }
 
 void BorderEditorDialog::LoadExistingGroundBrushes() {
+    // Clear the combo box
     m_existingGroundBrushesCombo->Clear();
     
     // Add "Create New" as the first option
     m_existingGroundBrushesCombo->Append("<Create New>");
     m_existingGroundBrushesCombo->SetSelection(0);
     
-    // Find the grounds.xml file
-    wxString groundsFile = GetGroundsFilePath();
-
+    // Find the grounds.xml file based on the current version
+    wxString dataDir = g_gui.GetDataDirectory();
+    
+    // Get version string and convert to proper directory format
+    wxString groundsFile = dataDir + wxFileName::GetPathSeparator() + 
+                          "materials" + wxFileName::GetPathSeparator() + "brushs" + wxFileName::GetPathSeparator() + "grounds.xml";
+    
     if (!wxFileExists(groundsFile)) {
         wxMessageBox("Cannot find grounds.xml file in the data directory.", "Error", wxICON_ERROR);
         return;
@@ -1568,23 +2067,27 @@ void BorderEditorDialog::OnLoadGroundBrush(wxCommandEvent& event) {
     
     int serverLookId = wxAtoi(data->GetData());
     
-    // Find the grounds.xml file
-    wxString groundsFile = GetGroundsFilePath();
-
+    // Find the grounds.xml file using the same version path conversion
+    wxString dataDir = g_gui.GetDataDirectory();
+    
+    // Get version string and convert to proper directory format
+    wxString groundsFile = dataDir + wxFileName::GetPathSeparator() + 
+                          "materials" + wxFileName::GetPathSeparator() + "brushs" + wxFileName::GetPathSeparator() + "grounds.xml";
+    
     if (!wxFileExists(groundsFile)) {
         wxMessageBox("Cannot find grounds.xml file in the data directory.", "Error", wxICON_ERROR);
         return;
     }
-
+    
     // Load the XML file
     pugi::xml_document doc;
     pugi::xml_parse_result result = doc.load_file(nstr(groundsFile).c_str());
-
+    
     if (!result) {
         wxMessageBox("Failed to load grounds.xml: " + wxString(result.description()), "Error", wxICON_ERROR);
         return;
     }
-
+    
     // Clear existing items
     ClearGroundItems();
     
@@ -1671,8 +2174,9 @@ void BorderEditorDialog::OnLoadGroundBrush(wxCommandEvent& event) {
                     }
                     
                     // Load the border details from borders.xml
-                    wxString bordersFile = GetBordersFilePath();
-
+                    wxString bordersFile = dataDir + wxFileName::GetPathSeparator() + 
+                                         "materials" + wxFileName::GetPathSeparator() + "borders.xml";
+                    
                     if (!wxFileExists(bordersFile)) {
                         // Just skip if we can't find borders.xml
                         continue;
@@ -1796,14 +2300,18 @@ void BorderEditorDialog::SaveGroundBrush() {
     }
     wxString tilesetName = m_tilesetChoice->GetString(tilesetSelection);
     
-    // Find the grounds.xml file
-    wxString groundsFile = GetGroundsFilePath();
-
+    // Find the grounds.xml file using the same version path conversion
+    wxString dataDir = g_gui.GetDataDirectory();
+    
+    // Get version string and convert to proper directory format
+    wxString groundsFile = dataDir + wxFileName::GetPathSeparator() + 
+                          "materials" + wxFileName::GetPathSeparator() + "brushs" + wxFileName::GetPathSeparator() + "grounds.xml";
+    
     if (!wxFileExists(groundsFile)) {
         wxMessageBox("Cannot find grounds.xml file in the data directory.", "Error", wxICON_ERROR);
         return;
     }
-
+    
     // Make sure the border is saved first if we have border items
     if (!m_borderItems.empty()) {
         SaveBorder();
@@ -1904,8 +2412,9 @@ void BorderEditorDialog::SaveGroundBrush() {
     }
     
     // Now also add this brush to the selected tileset
-    wxString tilesetsFile = GetTilesetsFilePath();
-
+    wxString tilesetsFile = dataDir + wxFileName::GetPathSeparator() + 
+                           "materials" + wxFileName::GetPathSeparator() + "tilesets.xml";
+    
     if (!wxFileExists(tilesetsFile)) {
         wxMessageBox("Cannot find tilesets.xml file in the data directory.", "Error", wxICON_ERROR);
         return;
@@ -1985,8 +2494,12 @@ void BorderEditorDialog::LoadTilesets() {
     m_tilesets.clear();
     
     // Find the tilesets.xml file
-    wxString tilesetsFile = GetTilesetsFilePath();
-
+    wxString dataDir = g_gui.GetDataDirectory();
+    
+    // Get version string and convert to proper directory format
+    wxString tilesetsFile = dataDir + wxFileName::GetPathSeparator() + 
+                           "materials" + wxFileName::GetPathSeparator() + "tilesets.xml";
+    
     if (!wxFileExists(tilesetsFile)) {
         wxMessageBox("Cannot find tilesets.xml file in the data directory.", "Error", wxICON_ERROR);
         return;
@@ -2035,4 +2548,83 @@ void BorderEditorDialog::LoadTilesets() {
     if (m_tilesetChoice->GetCount() > 0) {
         m_tilesetChoice->SetSelection(0);
     }
+} 
+
+// ============================================================================
+// WallVisualPanel
+
+BEGIN_EVENT_TABLE(WallVisualPanel, wxPanel)
+    EVT_PAINT(WallVisualPanel::OnPaint)
+END_EVENT_TABLE()
+
+WallVisualPanel::WallVisualPanel(wxWindow* parent, wxWindowID id) :
+    wxPanel(parent, id, wxDefaultPosition, wxSize(128, 128))    // 2x 64px tiles
+{
+    SetBackgroundStyle(wxBG_STYLE_PAINT);
+}
+
+WallVisualPanel::~WallVisualPanel() {
+}
+
+void WallVisualPanel::SetWallItems(const std::map<std::string, WallTypeData>& items) {
+    m_items = items;
+    Refresh();
+}
+
+void WallVisualPanel::Clear() {
+    m_items.clear();
+    Refresh();
+}
+
+void WallVisualPanel::OnPaint(wxPaintEvent& event) {
+    wxAutoBufferedPaintDC dc(this);
+    
+    // Draw background
+    dc.SetBackground(wxBrush(wxColour(240, 240, 240)));
+    dc.Clear();
+    
+    // Draw grid (2x2)
+    int width = GetClientSize().GetWidth();
+    int height = GetClientSize().GetHeight();
+    int cellWidth = width / 2;
+    int cellHeight = height / 2;
+    
+    dc.SetPen(wxPen(wxColour(200, 200, 200)));
+    
+    // Vertical line
+    dc.DrawLine(cellWidth, 0, cellWidth, height);
+    
+    // Horizontal line
+    dc.DrawLine(0, cellHeight, width, cellHeight);
+    
+    // Helper to draw the FIRST item of a type at a specific grid position (2x2)
+    auto drawTypeAt = [&](const std::string& type, int gridX, int gridY) {
+        if (m_items.find(type) != m_items.end() && !m_items[type].items.empty()) {
+            uint16_t itemId = m_items[type].items[0].itemId; // Draw first item as preview
+            if (itemId > 0) {
+                int x = gridX * cellWidth;
+                int y = gridY * cellHeight;
+                
+                const ItemType& itemType = g_items.getItemType(itemId);
+                if (itemType.id != 0) {
+                    Sprite* sprite = g_gui.gfx.getSprite(itemType.clientID);
+                    if (sprite) {
+                        sprite->DrawTo(&dc, SPRITE_SIZE_32x32, x, y, cellWidth, cellHeight);
+                    }
+                }
+                
+                // Draw label
+                wxString label = wxString(type);
+                wxSize textSize = dc.GetTextExtent(label);
+                dc.SetTextForeground(*wxBLACK);
+                dc.DrawText(label, x + 2, y + 2);
+            }
+        }
+    };
+    
+    // Draw types in representative positions
+    drawTypeAt("vertical", 0, 0);   // Top Left
+    drawTypeAt("horizontal", 1, 0); // Top Right
+    drawTypeAt("corner", 0, 1);     // Bottom Left
+    drawTypeAt("pole", 1, 1);       // Bottom Right
 } 

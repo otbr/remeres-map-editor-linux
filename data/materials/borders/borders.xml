@@ -1,5 +1,5 @@
 <materials>
-	<border id="58"> -- mountain edge border (old) --	
+	<border id="58" name="mountain edge border (old)">	
 		<borderitem edge="n"   item="1100"/>
 		<borderitem edge="w"   item="1103"/>
 		<borderitem edge="e"   item="1101"/>
@@ -14,7 +14,7 @@
 		<borderitem edge="dsw" item="1111"/>
 	</border>
 	
-	<border id="1"> -- mountain edge border (new) --	
+	<border id="1" name="mountain edge border (new)">	
 		<borderitem edge="n"   item="4445"/>
 		<borderitem edge="w"   item="4448"/>
 		<borderitem edge="e"   item="4446"/>
@@ -44,13 +44,13 @@
 		<borderitem edge="dse" item="4542"/>
 	</border>
 	
-	<border id="3"> -- mountain inner border --
+	<border id="3" name="mountain inner border">
 		<borderitem edge="e"   item="4815"/>
 		<borderitem edge="s"   item="4816"/>
 		<borderitem edge="dse" item="1085"/>
 	</border>
 	
-	<border id="4"> -- Flat roof border --
+	<border id="4" name="Flat roof border">
 		<borderitem edge="n"   item="5052"/>
 		<borderitem edge="w"   item="5049"/>
 		<borderitem edge="s"   item="1153"/>
@@ -65,7 +65,7 @@
 		<borderitem edge="dse" item="5045"/>
 	</border>
 	
-	<border id="5"> -- Sea border --
+	<border id="5" name="Sea border">
 		<borderitem edge="n"   item="4633"/>
 		<borderitem edge="e"   item="4634"/>
 		<borderitem edge="s"   item="4635"/>
@@ -80,7 +80,7 @@
 		<borderitem edge="dse" item="4640"/>
 	</border>
 	
-	<border id="6"> -- snow border --
+	<border id="6" name="snow border">
 		<borderitem edge="n"   item="4726"/>
 		<borderitem edge="e"   item="4727"/>
 		<borderitem edge="s"   item="4728"/>
@@ -95,7 +95,7 @@
 		<borderitem edge="dse" item="4737"/>
 	</border>
 	
-	<border id="7"> -- cave border --
+	<border id="7" name="cave border">
 		<borderitem edge="n"   item="4785"/>
 		<borderitem edge="e"   item="4786"/>
 		<borderitem edge="s"   item="4787"/>
@@ -230,7 +230,7 @@
 		<borderitem edge="dse" item="4713"/>
 	</border>
 
-	<border id="16"> -- desert sand border --
+	<border id="16" name="desert sand border">
 		<borderitem edge="n"   item="4761"/>
 		<borderitem edge="e"   item="4764"/>
 		<borderitem edge="s"   item="4762"/>
@@ -245,7 +245,7 @@
 		<borderitem edge="dse" item="4772"/>
 	</border>
 	
-	<border id="17"> -- beach sand border --
+	<border id="17" name="beach sand border">
 		<borderitem edge="n"   item="4749"/>
 		<borderitem edge="e"   item="4750"/>
 		<borderitem edge="s"   item="4751"/>
@@ -260,7 +260,7 @@
 		<borderitem edge="dse" item="4760"/>
 	</border>
 	
-	<border id="18"> -- lava border --
+	<border id="18" name="lava border">
 		<borderitem edge="n"   item="4797"/>
 		<borderitem edge="e"   item="4798"/>
 		<borderitem edge="s"   item="4799"/>
@@ -305,7 +305,7 @@
 		<borderitem edge="dse" item="4514"/>
 	</border>
 	
-	<border id="21"> -- cave wall border --
+	<border id="21" name="cave wall border">
 		<borderitem edge="n"   item="5631"/>
 		<borderitem edge="e"   item="5636"/>
 		<borderitem edge="s"   item="5637"/>
@@ -320,7 +320,7 @@
 		<borderitem edge="dse" item="5648"/>
 	</border>
 	
-	<border id="22"> -- stone cave wall border --
+	<border id="22" name="stone cave wall border">
 		<borderitem edge="n"   item="5639"/>
 		<borderitem edge="e"   item="5640"/>
 		<borderitem edge="s"   item="5641"/>
@@ -335,7 +335,7 @@
 		<borderitem edge="dse" item="5652"/>
 	</border>
 	
-	<border id="23"> -- brick roof, vertical--
+	<border id="23" name="brick roof, vertical">
 		<borderitem edge="s" item="1166"/>
 		<borderitem edge="cse" item="1162"/>
 		<borderitem edge="csw" item="1165"/>
@@ -343,7 +343,7 @@
 		<borderitem edge="e" item="1157"/>
 	</border>
 	
-	<border id="24"> -- brick roof, left--
+	<border id="24" name="brick roof, left">
 		<borderitem edge="s" item="1163"/>
 		<borderitem edge="cse" item="1162"/>
 		<borderitem edge="csw" item="1165"/>
@@ -351,7 +351,7 @@
 		<borderitem edge="e" item="1157"/>
 	</border>
 	
-	<border id="25"> -- brick roof, right --
+	<border id="25" name="brick roof, right">
 		<borderitem edge="s" item="1164"/>
 		<borderitem edge="cse" item="1162"/>
 		<borderitem edge="csw" item="1165"/>
@@ -359,7 +359,7 @@
 		<borderitem edge="e" item="1157"/>
 	</border>
 	
-	<border id="26"> -- brick roof, up --
+	<border id="26" name="brick roof, up">
 		<borderitem edge="e" item="1173"/>
 		<borderitem edge="cse" item="1172"/>
 		<borderitem edge="cne" item="1175"/>
@@ -367,7 +367,7 @@
 		<borderitem edge="s" item="1167"/>
 	</border>
 	
-	<border id="27"> -- brick roof, horizontal --
+	<border id="27" name="brick roof, horizontal">
 		<borderitem edge="e" item="1176"/>
 		<borderitem edge="cse" item="1172"/>
 		<borderitem edge="cne" item="1175"/>
@@ -375,7 +375,7 @@
 		<borderitem edge="s" item="1167"/>
 	</border>
 	
-	<border id="28"> -- brick roof, down --
+	<border id="28" name="brick roof, down">
 		<borderitem edge="e" item="1174"/>
 		<borderitem edge="cse" item="1172"/>
 		<borderitem edge="cne" item="1175"/>
@@ -606,7 +606,7 @@
 		<borderitem edge="dse"    item="14864"/>
 	</border>
 	
-	<border id="30"> -- lava rock border --
+	<border id="30" name="lava rock border">
 		<borderitem edge="n"   item="5828"/>
 		<borderitem edge="e"   item="5829"/>
 		<borderitem edge="s"   item="5830"/>
@@ -621,7 +621,7 @@
 		<borderitem edge="dse" item="5839"/>
 	</border>
 	
-	<border id="31"> -- Flat brown bomboo roof border --
+	<border id="31" name="Flat brown bomboo roof border">
 		<borderitem edge="n"   item="1202"/>
 		<borderitem edge="w"   item="1205"/>
 		<borderitem edge="s"   item="1199"/>
@@ -636,7 +636,7 @@
 		<borderitem edge="dse" item="1206"/>
 	</border>
 	
-	<border id="32"> -- Flat green bamboo roof border --
+	<border id="32" name="Flat green bamboo roof border">
 		<borderitem edge="n"   item="6163"/>
 		<borderitem edge="w"   item="6166"/>
 		<borderitem edge="s"   item="6160"/>
@@ -651,7 +651,7 @@
 		<borderitem edge="dse" item="6167"/>
 	</border>
 		
-	<border id="33"> -- snowY sea border (NOT SNOW BORDER TO SEA, JUST A SNOWY SEA BORDER (Confusing yes... ) --
+	<border id="33" name="snowY sea border (NOT SNOW BORDER TO SEA, JUST A SNOWY SEA BORDER (Confusing yes... )">
 		<borderitem edge="n"   item="6627"/>
 		<borderitem edge="e"   item="6628"/>
 		<borderitem edge="s"   item="6629"/>
@@ -666,7 +666,7 @@
 		<borderitem edge="dse" item="6631"/>
 	</border>
 	
-	<border id="34"> -- wooden roof, up --
+	<border id="34" name="wooden roof, up">
 		<borderitem edge="e" item="1183"/>
 		<borderitem edge="cse" item="1182"/>
 		<borderitem edge="cne" item="1186"/>
@@ -674,7 +674,7 @@
 		<borderitem edge="s" item="1177"/>
 	</border>
 	
-	<border id="35"> -- wooden roof, horizontal --
+	<border id="35" name="wooden roof, horizontal">
 		<borderitem edge="e" item="1184"/>
 		<borderitem edge="cse" item="1182"/>
 		<borderitem edge="cne" item="1186"/>
@@ -682,7 +682,7 @@
 		<borderitem edge="s" item="1177"/>
 	</border>
 	
-	<border id="36"> -- wooden roof, down --
+	<border id="36" name="wooden roof, down">
 		<borderitem edge="e" item="1185"/>
 		<borderitem edge="cse" item="1182"/>
 		<borderitem edge="cne" item="1186"/>
@@ -690,7 +690,7 @@
 		<borderitem edge="s" item="1177"/>
 	</border>
 	
-	<border id="37"> -- wooden roof, left --
+	<border id="37" name="wooden roof, left">
 		<borderitem edge="s" item="1195"/>
 		<borderitem edge="cse" item="1192"/>
 		<borderitem edge="csw" item="1196"/>
@@ -698,7 +698,7 @@
 		<borderitem edge="e" item="1187"/>
 	</border>
 	
-	<border id="38"> -- wooden roof, vertical --
+	<border id="38" name="wooden roof, vertical">
 		<borderitem edge="s" item="1194"/>
 		<borderitem edge="cse" item="1192"/>
 		<borderitem edge="csw" item="1196"/>
@@ -706,7 +706,7 @@
 		<borderitem edge="e" item="1187"/>
 	</border>
 	
-	<border id="39"> -- wooden roof, right --
+	<border id="39" name="wooden roof, right">
 		<borderitem edge="s" item="1193"/>
 		<borderitem edge="cse" item="1192"/>
 		<borderitem edge="csw" item="1196"/>
@@ -714,7 +714,7 @@
 		<borderitem edge="e" item="1187"/>
 	</border>
 	
-	<border id="40"> -- dark wooden floor border --
+	<border id="40" name="dark wooden floor border">
 		<borderitem edge="n"   item="492"/>
 		<borderitem edge="w"   item="494"/>
 		<borderitem edge="s"   item="491"/>
@@ -744,7 +744,7 @@
 		<borderitem edge="dse" item="443"/>
 	</border>
 	
-	<border id="42"> -- melting ground border --
+	<border id="42" name="melting ground border">
 		<borderitem edge="n"   item="5816"/>
 		<borderitem edge="w"   item="5819"/>
 		<borderitem edge="s"   item="5818"/>
@@ -759,7 +759,7 @@
 		<borderitem edge="dse" item="5824"/>
 	</border>
 	
-	<border id="43"> -- ice border--
+	<border id="43" name="ice border">
 		<borderitem edge="n"   item="6695"/>
 		<borderitem edge="w"   item="6698"/>
 		<borderitem edge="s"   item="6697"/>
@@ -774,7 +774,7 @@
 		<borderitem edge="dse" item="6706"/>
 	</border>
 	
-	<border id="44"> -- frozen mud slim border--
+	<border id="44" name="frozen mud slim border">
 		<borderitem edge="n"   item="7067"/>
 		<borderitem edge="w"   item="7070"/>
 		<borderitem edge="s"   item="7069"/>
@@ -789,7 +789,7 @@
 		<borderitem edge="dse" item="7078"/>
 	</border>
 	
-	<border id="45"> -- wooden raft border--
+	<border id="45" name="wooden raft border">
 		<borderitem edge="n"   item="7205"/>
 		<borderitem edge="w"   item="7207"/>
 		<borderitem edge="s"   item="7204"/>
@@ -804,7 +804,7 @@
 		<borderitem edge="dse" item="7209"/>
 	</border>
 	
-	<border id="46"> -- frozen mud thick border--
+	<border id="46" name="frozen mud thick border">
 		<borderitem edge="n"   item="7079"/>
 		<borderitem edge="w"   item="7082"/>
 		<borderitem edge="s"   item="7081"/>
@@ -819,7 +819,7 @@
 		<borderitem edge="dse" item="7090"/>
 	</border>
 		
-	<border id="47"> -- frozen mud sea border --
+	<border id="47" name="frozen mud sea border">
 		<borderitem edge="n"   item="6639"/>
 		<borderitem edge="e"   item="6640"/>
 		<borderitem edge="s"   item="6641"/>
@@ -834,7 +834,7 @@
 		<borderitem edge="dse" item="6646"/>
 	</border>
 	
-	<border id="48"> -- snow sea border --
+	<border id="48" name="snow sea border">
 		<borderitem edge="n"   item="6675"/>
 		<borderitem edge="e"   item="4727"/>
 		<borderitem edge="s"   item="4728"/>
@@ -849,7 +849,7 @@
 		<borderitem edge="dse" item="4737"/>
 	</border>
 	
-	<border id="50"> -- invisible border --
+	<border id="50" name="invisible border">
 	<!--
 		<borderitem edge="n"   item="4531"/>
 		<borderitem edge="e"   item="4532"/>
@@ -870,7 +870,7 @@
 		<borderitem edge="cse" item="87"/>
 	</border>
 	
-	<border id="51"> -- partial mountain gravel border --
+	<border id="51" name="partial mountain gravel border">
 		<borderitem edge="e"   item="4457"/>
 		<borderitem edge="s"   item="4458"/>
 		<borderitem edge="cse" item="4459"/>
@@ -892,7 +892,7 @@
 		<borderitem edge="dse" item="6727"/>
 	</border>
 	
-	<border id="53"> -- "lofty" (Thanks MMB :P) snow border--
+	<border id="53" name="'lofty' (Thanks MMB :P) snow border">
 		<borderitem edge="n"   item="6939"/>
 		<borderitem edge="w"   item="6940"/>
 		<borderitem edge="s"   item="6941"/>
@@ -907,7 +907,7 @@
 		<borderitem edge="dse" item="6947"/>
 	</border>
 	
-	<border id="54"> -- partial snowy mountain gravel border --
+	<border id="54" name="partial snowy mountain gravel border">
 		<borderitem edge="e"   item="6762"/>
 		<borderitem edge="s"   item="6761"/>
 		<borderitem edge="cse" item="6768"/>
@@ -916,14 +916,14 @@
 		<borderitem edge="dse" item="6727"/>
 	</border>
 	
-	<border id="55"> -- inner icy mountain border--
+	<border id="55" name="inner icy mountain border">
 		<borderitem edge="s"   item="6729"/>
 		<borderitem edge="e"   item="6728"/>
 		<borderitem edge="cse" item="6730"/>
 		<borderitem edge="dse" item="6732"/>
 	</border>
 	
-	<border id="56"> -- Fur roof border --
+	<border id="56" name="Fur roof border">
 		<borderitem edge="n"      item="6814"/>
 		<borderitem edge="e"      item="6816"/>
 		<borderitem edge="s"      item="6811"/>
@@ -968,7 +968,7 @@
 		<borderitem edge="dse" item="315"/>
 	</border>
 	
-	<border id="121"> -- thick cave border --
+	<border id="121" name="thick cave border">
 		<borderitem edge="n"   item="305"/>
 		<borderitem edge="e"   item="757"/>
 		<borderitem edge="s"   item="756"/>
@@ -983,7 +983,7 @@
 		<borderitem edge="dse" item="760"/>
 	</border>
 	
-	<border id="122"> -- icy cave wall border --
+	<border id="122" name="icy cave wall border">
 		<borderitem edge="n"   item="6823"/>
 		<borderitem edge="e"   item="6824"/>
 		<borderitem edge="s"   item="6825"/>
@@ -998,17 +998,17 @@
 		<borderitem edge="dse" item="6832"/>
 	</border>
 	
-	<border id="123"> -- icy cave wall border --
+	<border id="123" name="icy cave wall border">
 		<borderitem edge="e"   item="6213"/>
 		<borderitem edge="w"   item="6214"/>
 	</border>
 	
-	<border id="124"> -- icy cave wall border --
+	<border id="124" name="icy cave wall border">
 		<borderitem edge="n"   item="6211"/>
 		<borderitem edge="s"   item="6210"/>
 	</border>
 	
-	<border id="125"> -- dirt mountain ground border --
+	<border id="125" name="dirt mountain ground border">
 		<borderitem edge="n"   item="7630"/>
 		<borderitem edge="e"   item="7633"/>
 		<borderitem edge="s"   item="7632"/>
@@ -1023,7 +1023,7 @@
 		<borderitem edge="dse" item="7640"/>
 	</border>
 	
-	<border id="126"> -- ugly cobblestone border --
+	<border id="126" name="ugly cobblestone border">
 		<borderitem edge="n"   item="7617"/>
 		<borderitem edge="e"   item="7619"/>
 		<borderitem edge="s"   item="7620"/>
@@ -1038,7 +1038,7 @@
 		<borderitem edge="dse" item="7622"/>
 	</border>
 	
-	<border id="127"> -- dark cobblestone border --
+	<border id="127" name="dark cobblestone border">
 		<borderitem edge="n"   item="7605"/>
 		<borderitem edge="e"   item="7607"/>
 		<borderitem edge="s"   item="7608"/>
@@ -1053,7 +1053,7 @@
 		<borderitem edge="dse" item="7610"/>
 	</border>
 	
-	<border id="128"> -- dried grass border --
+	<border id="128" name="dried grass border">
 		<borderitem edge="n"   item="994"/>
 		<borderitem edge="e"   item="1005"/>
 		<borderitem edge="s"   item="1004"/>
@@ -1068,7 +1068,7 @@
 		<borderitem edge="dse" item="1003"/>
 	</border>
 	
-	<border id="129"> -- thick sand border --
+	<border id="129" name="thick sand border">
 		<borderitem edge="n"   item="979"/>
 		<borderitem edge="e"   item="983"/>
 		<borderitem edge="s"   item="980"/>
@@ -1098,7 +1098,7 @@
 		<borderitem edge="dse" item="4432"/>
 	</border>
 	
-	<border id="131"> -- dirt mountain inner border --
+	<border id="131" name="dirt mountain inner border">
 		<borderitem edge="e"   item="1037"/>
 		<borderitem edge="s"   item="1038"/>
 		<borderitem edge="dne" item="1037"/>
@@ -1106,7 +1106,7 @@
 		<borderitem edge="dse" item="1040"/>
 	</border>
 	
-	<border id="132"> -- thick sand border --
+	<border id="132" name="thick sand border">
 		<borderitem edge="n"   item="1091"/>
 		<borderitem edge="e"   item="1094"/>
 		<borderitem edge="s"   item="1093"/>
@@ -1121,7 +1121,7 @@
 		<borderitem edge="dse" item="1702"/>
 	</border>
 	
-	<border id="133"> -- "lofty" (Thanks MMB :P) ice border--
+	<border id="133" name="lofty (Thanks MMB :P) ice border">
 		<borderitem edge="n"   item="6870"/>
 		<borderitem edge="w"   item="6871"/>
 		<borderitem edge="s"   item="6872"/>
@@ -1136,7 +1136,7 @@
 		<borderitem edge="dse" item="6881"/>
 	</border>
 	
-	<border id="134"> -- dark sand dirt border --
+	<border id="134" name="dark sand dirt border">
 		<borderitem edge="n"   item="10248"/>
 		<borderitem edge="e"   item="10250"/>
 		<borderitem edge="s"   item="10249"/>
@@ -1151,7 +1151,7 @@
 		<borderitem edge="dse" item="10256"/>
 	</border>
 	
-	<border id="135"> -- lush grass border --
+	<border id="135" name="lush grass border">
 		<borderitem edge="n"   item="11720"/>
 		<borderitem edge="e"   item="11721"/>
 		<borderitem edge="s"   item="11719"/>
@@ -1166,7 +1166,7 @@
 		<borderitem edge="dse" item="11723"/>
 	</border>
 	
-	<border id="136"> -- mossy floor border --
+	<border id="136" name="mossy floor border">
 		<borderitem edge="n"   item="15049"/>
 		<borderitem edge="e"   item="15050"/>
 		<borderitem edge="s"   item="15048"/>
@@ -1181,7 +1181,7 @@
 		<borderitem edge="dse" item="15052"/>
 	</border>
 	
-	<border id="137"> -- forest floor border --
+	<border id="137" name="forest floor border">
 		<borderitem edge="n"   item="18796"/>
 		<borderitem edge="e"   item="18807"/>
 		<borderitem edge="s"   item="18806"/>
@@ -1196,7 +1196,7 @@
 		<borderitem edge="dse" item="18805"/>
 	</border>
 
-	<border id="138"> -- brown sand border --
+	<border id="138" name="brown sand border">
 		<borderitem edge="n"   item="9539"/>
 		<borderitem edge="e"   item="9542"/>
 		<borderitem edge="s"   item="9540"/>
@@ -1211,7 +1211,7 @@
 		<borderitem edge="dse" item="9549"/>
 	</border>
 	
-	<border id="139"> -- dirt mud border --
+	<border id="139" name="dirt mud border">
 		<borderitem edge="n"   item="9708"/>
 		<borderitem edge="e"   item="9711"/>
 		<borderitem edge="s"   item="9709"/>
@@ -1226,7 +1226,7 @@
 		<borderitem edge="dse" item="9718"/>
 	</border>
 	
-	<border id="140"> -- dark dirt mud border --
+	<border id="140" name="dark dirt mud border">
 		<borderitem edge="n"   item="19279"/>
 		<borderitem edge="e"   item="19282"/>
 		<borderitem edge="s"   item="19280"/>
@@ -1241,7 +1241,7 @@
 		<borderitem edge="dse" item="19289"/>
 	</border>
 	
-	<border id="141"> -- unknown brown dirt border --
+	<border id="141" name="unknown brown dirt border">
 		<borderitem edge="n"   item="19578"/>
 		<borderitem edge="e"   item="19581"/>
 		<borderitem edge="s"   item="19579"/>
@@ -1256,7 +1256,7 @@
 		<borderitem edge="dse" item="19588"/>
 	</border>
 	
-	<border id="142"> -- pink sand border --
+	<border id="142" name="pink sand border">
 		<borderitem edge="n"   item="9721"/>
 		<borderitem edge="e"   item="9722"/>
 		<borderitem edge="s"   item="9723"/>
@@ -1271,7 +1271,7 @@
 		<borderitem edge="dse" item="9732"/>
 	</border>
 	
-	<border id="143"> -- dark sand border --
+	<border id="143" name="dark sand border">
 		<borderitem edge="n"   item="12214"/>
 		<borderitem edge="e"   item="12225"/>
 		<borderitem edge="s"   item="12224"/>
@@ -1286,7 +1286,7 @@
 		<borderitem edge="dse" item="12223"/>
 	</border>
 	
-	<border id="144"> -- mud sand border --
+	<border id="144" name="mud sand border">
 		<borderitem edge="n"   item="10099"/>
 		<borderitem edge="e"   item="10100"/>
 		<borderitem edge="s"   item="10101"/>
@@ -1300,7 +1300,7 @@
 		<borderitem edge="dsw" item="10109"/>
 		<borderitem edge="dse" item="10110"/>
 	</border>
-	<border id="145"> -- mud sand brown border (unused) --
+	<border id="145" name="mud sand brown border (unused)">
 		<borderitem edge="n"   item="10236"/>
 		<borderitem edge="e"   item="10161"/>
 		<borderitem edge="s"   item="10162"/>
@@ -1315,7 +1315,7 @@
 		<borderitem edge="dse" item="10169"/>
 	</border>
 	
-	<border id="146"> -- light dirt border --
+	<border id="146" name="light dirt border">
 		<borderitem edge="n"   item="10260"/>
 		<borderitem edge="e"   item="10262"/>
 		<borderitem edge="s"   item="10261"/>
@@ -1330,7 +1330,7 @@
 		<borderitem edge="dse" item="10268"/>
 	</border>
 	
-	<border id="147"> -- cake tile border --
+	<border id="147" name="cake tile border">
 		<borderitem edge="n"   item="12097"/>
 		<borderitem edge="e"   item="12098"/>
 		<borderitem edge="s"   item="12096"/>
@@ -1345,7 +1345,7 @@
 		<borderitem edge="dse" item="12100"/>
 	</border>
 	
-	<border id="148"> -- venore swamp border --
+	<border id="148" name="venore swamp border">
 		<borderitem edge="n"   item="16314"/>
 		<borderitem edge="e"   item="16315"/>
 		<borderitem edge="s"   item="16313"/>
@@ -1360,7 +1360,7 @@
 		<borderitem edge="dse" item="16317"/>
 	</border>
 	
-	<border id="149"> -- muddy floor border --
+	<border id="149" name="muddy floor border">
 		<borderitem edge="n"   item="10819"/>
 		<borderitem edge="e"   item="10822"/>
 		<borderitem edge="s"   item="10821"/>
@@ -1375,7 +1375,7 @@
 		<borderitem edge="dse" item="10835"/>
 	</border>
 	
-	<border id="150"> -- venore muddy floor border --
+	<border id="150" name="venore muddy floor border">
 		<borderitem edge="n"   item="16288"/>
 		<borderitem edge="e"   item="16291"/>
 		<borderitem edge="s"   item="16290"/>
@@ -1390,7 +1390,7 @@
 		<borderitem edge="dse" item="16298"/>
 	</border>
 	
-	<border id="151"> -- darkest mud border --
+	<border id="151" name="darkest mud border">
 		<borderitem edge="n"   item="10566"/>
 		<borderitem edge="e"   item="10567"/>
 		<borderitem edge="s"   item="10568"/>
@@ -1405,7 +1405,7 @@
 		<borderitem edge="dse" item="10577"/>
 	</border>
 	
-	<border id="152"> -- purple mud border --
+	<border id="152" name="purple mud border">
 		<borderitem edge="n"   item="10785"/>
 		<borderitem edge="e"   item="10786"/>
 		<borderitem edge="s"   item="10787"/>
@@ -1420,7 +1420,7 @@
 		<borderitem edge="dse" item="10796"/>
 	</border>
 	
-	<border id="154"> -- mysterious border --
+	<border id="154" name="mysterious border">
 		<borderitem edge="n"   item="10522"/>
 		<borderitem edge="e"   item="10523"/>
 		<borderitem edge="s"   item="10524"/>
@@ -1435,7 +1435,7 @@
 		<borderitem edge="dse" item="10533"/>
 	</border>
 	
-	<border id="155"> -- dark spikes border --
+	<border id="155" name="dark spikes border">
 		<borderitem edge="n"   item="11299"/>
 		<borderitem edge="e"   item="11300"/>
 		<borderitem edge="s"   item="11298"/>
@@ -1450,7 +1450,7 @@
 		<borderitem edge="dse" item="11302"/>
 	</border>
 	
-	<border id="156"> -- red spikes border --
+	<border id="156" name="red spikes border">
 		<borderitem edge="n"   item="11287"/>
 		<borderitem edge="e"   item="11288"/>
 		<borderitem edge="s"   item="11286"/>
@@ -1465,7 +1465,7 @@
 		<borderitem edge="dse" item="11290"/>
 	</border>
 	
-	<border id="157"> -- slime fungus border --
+	<border id="157" name="slime fungus border">
 		<borderitem edge="n"   item="12345"/>
 		<borderitem edge="e"   item="12084"/>
 		<borderitem edge="s"   item="12083"/>
@@ -1480,7 +1480,7 @@
 		<borderitem edge="dse" item="12349"/>
 	</border>
 	
-	<border id="158"> -- rocky floor border --
+	<border id="158" name="rocky floor border">
 		<borderitem edge="n"   item="12357"/>
 		<borderitem edge="e"   item="12358"/>
 		<borderitem edge="s"   item="12356"/>
@@ -1495,7 +1495,7 @@
 		<borderitem edge="dse" item="12360"/>
 	</border>
 	
-	<border id="159"> -- blue sea floor border --
+	<border id="159" name="blue sea floor border">
 		<borderitem edge="n"   item="13540"/>
 		<borderitem edge="e"   item="13541"/>
 		<borderitem edge="s"   item="13539"/>
@@ -1510,7 +1510,7 @@
 		<borderitem edge="dse" item="13543"/>
 	</border>
 	
-	<border id="160"> -- brown/green sea floor border --
+	<border id="160" name="brown/green sea floor border">
 		<borderitem edge="n"   item="13812"/>
 		<borderitem edge="e"   item="13813"/>
 		<borderitem edge="s"   item="13811"/>
@@ -1525,7 +1525,7 @@
 		<borderitem edge="dse" item="13815"/>
 	</border>
 	
-	<border id="161"> -- crystal floor border --
+	<border id="161" name="crystal floor border">
 		<borderitem edge="n"   item="14779"/>
 		<borderitem edge="e"   item="14780"/>
 		<borderitem edge="s"   item="14778"/>
@@ -1539,7 +1539,7 @@
 		<borderitem edge="dsw" item="14783"/>
 		<borderitem edge="dse" item="14782"/>
 	</border>
-	<border id="162"> -- crystal floor depth border --
+	<border id="162" name="crystal floor depth border">
 		<borderitem edge="n"   item="14791"/>
 		<borderitem edge="e"   item="14792"/>
 		<borderitem edge="s"   item="14790"/>
@@ -1554,7 +1554,7 @@
 		<borderitem edge="dse" item="14794"/>
 	</border>
 	
-	<border id="163"> -- basalt border --
+	<border id="163" name="basalt border">
 		<borderitem edge="n"   item="15005"/>
 		<borderitem edge="e"   item="15006"/>
 		<borderitem edge="s"   item="15004"/>
@@ -1569,7 +1569,7 @@
 		<borderitem edge="dse" item="15008"/>
 	</border>
 	
-	<border id="164"> -- mold border --
+	<border id="164" name="mold border">
 		<borderitem edge="n"   item="15029"/>
 		<borderitem edge="e"   item="15030"/>
 		<borderitem edge="s"   item="15028"/>
@@ -1584,7 +1584,7 @@
 		<borderitem edge="dse" item="15032"/>
 	</border>
 	
-	<border id="165"> -- mushroom sponge border --
+	<border id="165" name="mushroom sponge border">
 		<borderitem edge="n"   item="15585"/>
 		<borderitem edge="e"   item="15586"/>
 		<borderitem edge="s"   item="15584"/>
@@ -1599,7 +1599,7 @@
 		<borderitem edge="dse" item="15588"/>
 	</border>
 	
-	<border id="166"> -- salt floor border --
+	<border id="166" name="salt floor border">
 		<borderitem edge="n"   item="15651"/>
 		<borderitem edge="e"   item="15653"/>
 		<borderitem edge="s"   item="15652"/>
@@ -1614,7 +1614,7 @@
 		<borderitem edge="dse" item="15659"/>
 	</border>
 	
-	<border id="167"> -- cookie border --
+	<border id="167" name="cookie border">
 		<borderitem edge="n"   item="15663"/>
 		<borderitem edge="e"   item="15665"/>
 		<borderitem edge="s"   item="15664"/>
@@ -1629,7 +1629,7 @@
 		<borderitem edge="dse" item="15671"/>
 	</border>
 	
-	<border id="168"> -- branches border --
+	<border id="168" name="branches border">
 		<borderitem edge="n"   item="18470"/>
 		<borderitem edge="e"   item="18814"/>
 		<borderitem edge="s"   item="18480"/>
@@ -1644,7 +1644,7 @@
 		<borderitem edge="dse" item="18479"/>
 	</border>
 	
-	<border id="169"> -- grey floor (unknown4) border --
+	<border id="169" name="grey floor (unknown4) border">
 		<borderitem edge="n"   item="19861"/>
 		<borderitem edge="e"   item="19864"/>
 		<borderitem edge="s"   item="19862"/>
@@ -1659,7 +1659,7 @@
 		<borderitem edge="dse" item="19871"/>
 	</border>
 	
-	<border id="170"> -- serpent seacrest ground border --
+	<border id="170" name="serpent seacrest ground border">
 		<borderitem edge="n"   item="21586"/>
 		<borderitem edge="e"   item="21588"/>
 		<borderitem edge="s"   item="21587"/>
@@ -1674,7 +1674,7 @@
 		<borderitem edge="dse" item="21590"/>
 	</border>
 	
-	<border id="171"> -- muddy water border --
+	<border id="171" name="muddy water border">
 		<borderitem edge="n"   item="10495"/>
 		<borderitem edge="e"   item="10498"/>
 		<borderitem edge="s"   item="10496"/>
@@ -1689,7 +1689,7 @@
 		<borderitem edge="dse" item="10504"/>
 	</border>
 	
-	<border id="172"> -- acid border --
+	<border id="172" name="acid border">
 		<borderitem edge="n"   item="10595"/>
 		<borderitem edge="e"   item="10594"/>
 		<borderitem edge="s"   item="10593"/>
@@ -1704,7 +1704,7 @@
 		<borderitem edge="dse" item="10599"/>
 	</border>
 	
-	<border id="173"> -- dirty water border --
+	<border id="173" name="dirty water border">
 		<borderitem edge="n"   item="12583"/>
 		<borderitem edge="e"   item="12584"/>
 		<borderitem edge="s"   item="12585"/>
@@ -1719,7 +1719,7 @@
 		<borderitem edge="dse" item="12590"/>
 	</border>
 	
-	<border id="174"> -- shallow water border --
+	<border id="174" name="shallow water border">
 		<borderitem edge="n"   item="10114"/>
 		<borderitem edge="e"   item="10117"/>
 		<borderitem edge="s"   item="10115"/>
@@ -1734,7 +1734,7 @@
 		<borderitem edge="dse" item="10123"/>
 	</border>
 	
-	<border id="175"> -- small brook water border --
+	<border id="175" name="small brook water border">
 		<borderitem edge="n"   item="18842"/>
 		<borderitem edge="e"   item="18845"/>
 		<borderitem edge="s"   item="18843"/>
@@ -1749,7 +1749,7 @@
 		<borderitem edge="dse" item="18851"/>
 	</border>
 	
-	<border id="176"> -- crystal dirt border --
+	<border id="176" name="crystal dirt border">
 		<borderitem edge="n"   item="19616"/>
 		<borderitem edge="e"   item="19619"/>
 		<borderitem edge="s"   item="19617"/>
@@ -1764,7 +1764,7 @@
 		<borderitem edge="dse" item="19626"/>
 	</border>
 	
-	<border id="177"> -- coubblestone border --
+	<border id="177" name="coubblestone border">
 		<borderitem edge="n"   item="17470"/>
 		<borderitem edge="e"   item="17471"/>
 		<borderitem edge="s"   item="17469"/>
@@ -1779,7 +1779,7 @@
 		<borderitem edge="dse" item="17473"/>
 	</border>
 	
-	<border id="178"> -- oramond pavement border --
+	<border id="178" name="oramond pavement border">
 		<borderitem edge="n"   item="20381"/>
 		<borderitem edge="e"   item="20382"/>
 		<borderitem edge="s"   item="20380"/>
@@ -1793,7 +1793,7 @@
 		<borderitem edge="dsw" item="20385"/>
 		<borderitem edge="dse" item="20384"/>
 	</border>
-	<border id="179"> -- oramond border --
+	<border id="179" name="oramond border">
 		<borderitem edge="n"   item="20761"/>
 		<borderitem edge="e"   item="20762"/>
 		<borderitem edge="s"   item="20760"/>
@@ -1808,7 +1808,7 @@
 		<borderitem edge="dse" item="20764"/>
 	</border>
 	
-	<border id="180"> -- oramond other pavement border --
+	<border id="180" name="oramond other pavement border">
 		<borderitem edge="n"   item="20547"/>
 		<borderitem edge="e"   item="20548"/>
 		<borderitem edge="s"   item="20546"/>
@@ -1823,7 +1823,7 @@
 		<borderitem edge="dse" item="20550"/>
 	</border>
 	
-	<border id="181"> -- venore cobblestone border --
+	<border id="181" name="venore cobblestone border">
 		<borderitem edge="n"   item="17482"/>
 		<borderitem edge="e"   item="17483"/>
 		<borderitem edge="s"   item="17481"/>
@@ -1838,7 +1838,7 @@
 		<borderitem edge="dse" item="17485"/>
 	</border>
 	
-	<border id="182"> -- venore plaster border --
+	<border id="182" name="venore plaster border">
 		<borderitem edge="n"   item="17494"/>
 		<borderitem edge="e"   item="17495"/>
 		<borderitem edge="s"   item="17493"/>
@@ -1853,7 +1853,7 @@
 		<borderitem edge="dse" item="17497"/>
 	</border>
 	
-	<border id="183"> -- terracotta border --
+	<border id="183" name="terracotta border">
 		<borderitem edge="n"   item="17549"/>
 		<borderitem edge="e"   item="17550"/>
 		<borderitem edge="s"   item="17548"/>
@@ -1868,7 +1868,7 @@
 		<borderitem edge="dse" item="17552"/>
 	</border>
 	
-	<border id="184"> -- roshamuul border --
+	<border id="184" name="roshamuul border">
 		<borderitem edge="n"   item="19849"/>
 		<borderitem edge="e"   item="19852"/>
 		<borderitem edge="s"   item="19850"/>
@@ -1883,7 +1883,7 @@
 		<borderitem edge="dse" item="19859"/>
 	</border>
 	
-	<border id="185"> -- unknown1 border --
+	<border id="185" name="unknown1 border">
 		<borderitem edge="n"   item="19873"/>
 		<borderitem edge="e"   item="19876"/>
 		<borderitem edge="s"   item="19874"/>
@@ -1898,12 +1898,12 @@
 		<borderitem edge="dse" item="19883"/>
 	</border>
 	
-	<border id="186"> -- darkest wooden floor border --
+	<border id="186" name="darkest wooden floor border">
 		<borderitem edge="n"   item="8654"/>
 		<borderitem edge="s"   item="8653"/>
 	</border>
 	
-	<border id="187"> -- light wooden floor border --
+	<border id="187" name="light wooden floor border">
 		<borderitem edge="n"   item="15598"/>
 		<borderitem edge="e"   item="15599"/>
 		<borderitem edge="s"   item="15597"/>
@@ -1918,7 +1918,7 @@
 		<borderitem edge="dse" item="15614"/>
 	</border>
 	
-	<border id="188"> -- timber floor border --
+	<border id="188" name="timber floor border">
 		<borderitem edge="n"   item="11753"/>
 		<borderitem edge="e"   item="11754"/>
 		<borderitem edge="s"   item="11752"/>
@@ -1933,7 +1933,7 @@
 		<borderitem edge="dse" item="11756"/>
 	</border>
 	
-	<border id="189"> -- grimy wooden plank horizontal border --
+	<border id="189" name="grimy wooden plank horizontal border">
 		<borderitem edge="n"   item="16628"/>
 		<borderitem edge="e"   item="16622"/>
 		<borderitem edge="s"   item="16624"/>
@@ -1943,7 +1943,7 @@
 		<borderitem edge="csw" item="16625"/>
 		<borderitem edge="cse" item="16623"/>
 	</border>
-	<border id="190"> -- grimy wooden plank vertical border --
+	<border id="190" name="grimy wooden plank vertical border">
 		<borderitem edge="n"   item="16636"/>
 		<borderitem edge="e"   item="16630"/>
 		<borderitem edge="s"   item="16632"/>
@@ -1954,7 +1954,7 @@
 		<borderitem edge="cse" item="16631"/>
 	</border>
 	
-	<border id="191"> -- pink wooden plank border --
+	<border id="191" name="pink wooden plank border">
 		<borderitem edge="n"   item="16597"/>
 		<borderitem edge="e"   item="16600"/>
 		<borderitem edge="s"   item="16579"/>
@@ -1965,7 +1965,7 @@
 		<borderitem edge="cse" item="16580"/>
 	</border>
 	
-	<border id="192"> -- yellow pavement border --
+	<border id="192" name="yellow pavement border">
 		<borderitem edge="n"   item="9501"/>
 		<borderitem edge="e"   item="9502"/>
 		<borderitem edge="s"   item="9500"/>
@@ -1980,7 +1980,7 @@
 		<borderitem edge="dse" item="9504"/>
 	</border>
 	
-	<border id="193"> -- dark pavement border --
+	<border id="193" name="dark pavement border">
 		<borderitem edge="n"   item="10509"/>
 		<borderitem edge="e"   item="10510"/>
 		<borderitem edge="s"   item="10508"/>
@@ -1995,7 +1995,7 @@
 		<borderitem edge="dse" item="10512"/>
 	</border>
 	
-	<border id="194"> -- serpent ground border --
+	<border id="194" name="serpent ground border">
 		<borderitem edge="n"   item="9941"/>
 		<borderitem edge="e"   item="9942"/>
 		<borderitem edge="s"   item="9940"/>
@@ -2010,7 +2010,7 @@
 		<borderitem edge="dse" item="9944"/>
 	</border>
 	
-	<border id="195"> -- ice stone floor border --
+	<border id="195" name="ice stone floor border">
 		<borderitem edge="n"   item="15834"/>
 		<borderitem edge="e"   item="15836"/>
 		<borderitem edge="s"   item="15835"/>
@@ -2025,7 +2025,7 @@
 		<borderitem edge="dse" item="15842"/>
 	</border>
 	
-	<border id="196"> -- hive strucutre --
+	<border id="196" name="hive strucutre">
 		<borderitem edge="n"   item="13039"/>
 		<borderitem edge="e"   item="13042"/>
 		<borderitem edge="s"   item="13041"/>
@@ -2040,7 +2040,7 @@
 		<borderitem edge="dse" item="13049"/>
 	</border>
 	
-	<border id="197"> -- red hive structure --
+	<border id="197" name="red hive structure">
 		<borderitem edge="n"   item="13055"/>
 		<borderitem edge="e"   item="13060"/>
 		<borderitem edge="s"   item="13059"/>
@@ -2055,7 +2055,7 @@
 		<borderitem edge="dse" item="13067"/>
 	</border>
 	
-	<border id="198"> -- dark hive structure --
+	<border id="198" name="dark hive structure">
 		<borderitem edge="n"   item="13237"/>
 		<borderitem edge="e"   item="13240"/>
 		<borderitem edge="s"   item="13239"/>
@@ -2070,7 +2070,7 @@
 		<borderitem edge="dse" item="13247"/>
 	</border>
 	
-	<border id="199"> -- colourful honeycomb --
+	<border id="199" name="colourful honeycomb">
 		<borderitem edge="n"   item="13950"/>
 		<borderitem edge="e"   item="13953"/>
 		<borderitem edge="s"   item="13944"/>
@@ -2085,7 +2085,7 @@
 		<borderitem edge="dse" item="13955"/>
 	</border>
 	
-	<border id="200"> -- bland honeycomb --
+	<border id="200" name="bland honeycomb">
 		<borderitem edge="n"   item="13963"/>
 		<borderitem edge="e"   item="13966"/>
 		<borderitem edge="s"   item="13957"/>
@@ -2100,7 +2100,7 @@
 		<borderitem edge="dse" item="13967"/>
 	</border>
 	
-	<border id="201"> -- ocean floor --
+	<border id="201" name="ocean floor">
 		<borderitem edge="n"   item="5426"/>
 		<borderitem edge="e"   item="5428"/>
 		<borderitem edge="s"   item="5427"/>
@@ -2115,7 +2115,7 @@
 		<borderitem edge="dse" item="5430"/>
 	</border>
 	
-	<border id="202"> -- krailos grass --
+	<border id="202" name="krailos grass">
 		<borderitem edge="n"   item="22362"/>
 		<borderitem edge="e"   item="22373"/>
 		<borderitem edge="s"   item="22372"/>
@@ -2130,7 +2130,7 @@
 		<borderitem edge="dse" item="22371"/>
 	</border>
 	
-	<border id="203"> -- krailos dirt --
+	<border id="203" name="krailos dirt">
 		<borderitem edge="n"   item="22386"/>
 		<borderitem edge="e"   item="22397"/>
 		<borderitem edge="s"   item="22396"/>
@@ -2145,7 +2145,7 @@
 		<borderitem edge="dse" item="22395"/>
 	</border>
 	
-	<border id="204"> -- dark scaled ground --
+	<border id="204" name="dark scaled ground">
 		<borderitem edge="n"   item="23060"/>
 		<borderitem edge="e"   item="23063"/>
 		<borderitem edge="s"   item="23057"/>
@@ -2160,7 +2160,7 @@
 		<borderitem edge="dse" item="23081"/>
 	</border>
 	
-	<border id="205"> -- unknown7 --
+	<border id="205" name="unknown7">
 		<borderitem edge="n"   item="23100"/>
 		<borderitem edge="e"   item="23101"/>
 		<borderitem edge="s"   item="23099"/>
@@ -2175,7 +2175,7 @@
 		<borderitem edge="dse" item="23107"/>
 	</border>
 	
-	<border id="206"> -- krailos orange --
+	<border id="206" name="krailos orange">
 		<borderitem edge="n"   item="22422"/>
 		<borderitem edge="e"   item="22423"/>
 		<borderitem edge="s"   item="22424"/>
@@ -2190,7 +2190,7 @@
 		<borderitem edge="dse" item="22433"/>
 	</border>
 	
-	<border id="207"> -- krailos yellow --
+	<border id="207" name="krailos yellow">
 		<borderitem edge="n"   item="22446"/>
 		<borderitem edge="e"   item="22447"/>
 		<borderitem edge="s"   item="22448"/>
@@ -2205,7 +2205,7 @@
 		<borderitem edge="dse" item="22457"/>
 	</border>
 	
-	<border id="208"> -- krailos purple --
+	<border id="208" name="krailos purple">
 		<borderitem edge="n"   item="22434"/>
 		<borderitem edge="e"   item="22435"/>
 		<borderitem edge="s"   item="22436"/>
@@ -2220,7 +2220,7 @@
 		<borderitem edge="dse" item="22445"/>
 	</border>
 	
-	<border id="209"> -- unknown5 --
+	<border id="209" name="unknown5">
 		<borderitem edge="n"   item="20963"/>
 		<borderitem edge="e"   item="20960"/>
 		<borderitem edge="s"   item="20962"/>
@@ -2235,7 +2235,7 @@
 		<borderitem edge="cse" item="20968"/>
 	</border>
 	
-	<border id="210"> -- unknown6 pink acid --
+	<border id="210" name="unknown6 pink acid">
 		<borderitem edge="n"   item="21781"/>
 		<borderitem edge="e"   item="21778"/>
 		<borderitem edge="s"   item="21780"/>
@@ -2250,7 +2250,7 @@
 		<borderitem edge="dse" item="21785"/>
 	</border>
 	
-	<border id="211"> -- lava new border --
+	<border id="211" name="lava new border">
 		<borderitem edge="n"   item="14100"/>
 		<borderitem edge="e"   item="14101"/>
 		<borderitem edge="s"   item="14102"/>
@@ -2265,7 +2265,7 @@
 		<borderitem edge="dse" item="14108"/>
 	</border>
 	
-	<border id="212"> -- scale roof --
+	<border id="212" name="scale roof">
 		<borderitem edge="n"   item="9972"/>
 		<borderitem edge="e"   item="9974"/>
 		<borderitem edge="s"   item="9969"/>
@@ -2280,14 +2280,14 @@
 		<borderitem edge="dse" item="9976"/>
 	</border>
 	
-	<border id="213"> -- rocky wall bottoms --
+	<border id="213" name="rocky wall bottoms">
 		<borderitem edge="n"      item="12417"/>
 		<borderitem edge="w"      item="12484"/>
 		<borderitem edge="cne"    item="12427"/>
 		<borderitem edge="dnw"    item="12422"/>
 	</border>
 	
-	<border id="214"> -- striped marquee red white (vertical) --
+	<border id="214" name="striped marquee red white (vertical)">
 		<borderitem edge="n"   item="5191"/>
 		<borderitem edge="e"   item="5187"/>
 		<borderitem edge="s"   item="5182"/>
@@ -2298,7 +2298,7 @@
 		<borderitem edge="cse" item="5181"/>
 	</border>
 	
-	<border id="215"> -- striped marquee red white (horizontal) --
+	<border id="215" name="striped marquee red white (horizontal)">
 		<borderitem edge="n"   item="5165"/>
 		<borderitem edge="e"   item="5157"/>
 		<borderitem edge="s"   item="5164"/>
@@ -2309,7 +2309,7 @@
 		<borderitem edge="cse" item="5160"/>
 	</border>
 	
-	<border id="216"> -- striped marquee blue yellow (vertical) --
+	<border id="216" name="striped marquee blue yellow (vertical)">
 		<borderitem edge="n"   item="5200"/>
 		<borderitem edge="e"   item="5195"/>
 		<borderitem edge="s"   item="5197"/>
@@ -2320,7 +2320,7 @@
 		<borderitem edge="cse" item="5193"/>
 	</border>
 	
-	<border id="217"> -- striped marquee blue yellow (horizontal) --
+	<border id="217" name="striped marquee blue yellow (horizontal)">
 		<borderitem edge="n"   item="5174"/>
 		<borderitem edge="e"   item="5170"/>
 		<borderitem edge="s"   item="5172"/>
@@ -2331,7 +2331,7 @@
 		<borderitem edge="cse" item="5169"/>
 	</border>
 	
-	<border id="218"> -- marquee green (vertical) --
+	<border id="218" name="marquee green (vertical)">
 		<borderitem edge="n"   item="5224"/>
 		<borderitem edge="e"   item="5219"/>
 		<borderitem edge="s"   item="5221"/>
@@ -2342,7 +2342,7 @@
 		<borderitem edge="cse" item="5217"/>
 	</border>
 	
-	<border id="219"> -- marquee green (horizontal) --
+	<border id="219" name="marquee green (horizontal)">
 		<borderitem edge="n"   item="5213"/>
 		<borderitem edge="e"   item="5206"/>
 		<borderitem edge="s"   item="5211"/>
@@ -2353,7 +2353,7 @@
 		<borderitem edge="cse" item="5205"/>
 	</border>
 	
-	<border id="220"> -- marquee blue (vertical) --
+	<border id="220" name="marquee blue (vertical)">
 		<borderitem edge="n"   item="5248"/>
 		<borderitem edge="e"   item="5243"/>
 		<borderitem edge="s"   item="5245"/>
@@ -2364,7 +2364,7 @@
 		<borderitem edge="cse" item="5241"/>
 	</border>
 	
-	<border id="221"> -- marquee blue (horizontal) --
+	<border id="221" name="marquee blue (horizontal)">
 		<borderitem edge="n"   item="5237"/>
 		<borderitem edge="e"   item="5230"/>
 		<borderitem edge="s"   item="5235"/>
@@ -2375,7 +2375,7 @@
 		<borderitem edge="cse" item="5229"/>
 	</border>
 	
-	<border id="222"> -- broken blue marble floor --
+	<border id="222" name="broken blue marble floor">
 		<borderitem edge="n"   item="11406"/>
 		<borderitem edge="e"   item="11407"/>
 		<borderitem edge="s"   item="11405"/>
@@ -2390,7 +2390,7 @@
 		<borderitem edge="dse" item="11409"/>
 	</border>
 	
-	<border id="223"> -- broken deepling marble floor --
+	<border id="223" name="broken deepling marble floor">
 		<borderitem edge="n"   item="13467"/>
 		<borderitem edge="e"   item="13468"/>
 		<borderitem edge="s"   item="13466"/>
@@ -2405,7 +2405,7 @@
 		<borderitem edge="dse" item="13470"/>
 	</border>
 	
-	<border id="224"> -- orange zao carpet --
+	<border id="224" name="orange zao carpet">
 		<borderitem edge="n"   item="11170"/>
 		<borderitem edge="e"   item="11171"/>
 		<borderitem edge="s"   item="11169"/>
@@ -2420,7 +2420,7 @@
 		<borderitem edge="dse" item="11173"/>
 	</border>
 	
-	<border id="225"> -- brown zao carpet --
+	<border id="225" name="brown zao carpet">
 		<borderitem edge="n"   item="11221"/>
 		<borderitem edge="e"   item="11222"/>
 		<borderitem edge="s"   item="11181"/>
@@ -2435,7 +2435,7 @@
 		<borderitem edge="dse" item="11224"/>
 	</border>	
 	  
-	<border id="226"> -- ancient paving --
+	<border id="226" name="ancient paving">
 		<borderitem edge="n"   item="30725"/>
 		<borderitem edge="e"   item="30726"/>
 		<borderitem edge="s"   item="30724"/>
@@ -2450,7 +2450,7 @@
 		<borderitem edge="dse" item="30732"/>
 	</border>
 	
-	<border id="227"> -- reed --
+	<border id="227" name="reed">
 		<borderitem edge="n"   item="30707"/>
 		<borderitem edge="e"   item="30708"/>
 		<borderitem edge="s"   item="30706"/>
@@ -2465,7 +2465,7 @@
 		<borderitem edge="dse" item="30714"/>
 	</border>
 	
-	<border id="228"> -- new icy floor --
+	<border id="228" name="new icy floor">
 		<borderitem edge="n"   item="29011"/>
 		<borderitem edge="e"   item="29012"/>
 		<borderitem edge="s"   item="29010"/>
@@ -2480,7 +2480,7 @@
 		<borderitem edge="dse" item="29018"/>
 	</border>
 	
-	<border id="229"> -- new icy city floor --
+	<border id="229" name="new icy city floor">
 		<borderitem edge="n"   item="29033"/>
 		<borderitem edge="e"   item="29034"/>
 		<borderitem edge="s"   item="29032"/>
@@ -2495,7 +2495,7 @@
 		<borderitem edge="dse" item="29040"/>
 	</border>
 	
-	<border id="230"> -- new grass pavement --
+	<border id="230" name="new grass pavement">
 		<borderitem edge="n"   item="29055"/>
 		<borderitem edge="e"   item="29056"/>
 		<borderitem edge="s"   item="29054"/>
@@ -2510,7 +2510,7 @@
 		<borderitem edge="dse" item="29062"/>
 	</border>
 	
-	<border id="231"> -- new ornamented pavement --
+	<border id="231" name="new ornamented pavement">
 		<borderitem edge="n"   item="29077"/>
 		<borderitem edge="e"   item="29078"/>
 		<borderitem edge="s"   item="29076"/>
@@ -2525,7 +2525,7 @@
 		<borderitem edge="dse" item="29084"/>
 	</border>
 	
-	<border id="232"> -- new stone mountain edge border --
+	<border id="232" name="new stone mountain edge border">
 		<borderitem edge="n"   item="26996"/>
 		<borderitem edge="e"   item="26988"/>
 		<borderitem edge="s"   item="26981"/>
@@ -2540,7 +2540,7 @@
 		<borderitem edge="dse" item="27002"/>
 	</border>
 	
-	<border id="233"> -- new stone mountain edge border --
+	<border id="233" name="new stone mountain edge border">
 		<borderitem edge="n"   item="26967"/>
 		<borderitem edge="e"   item="26983"/>
 		<borderitem edge="s"   item="26954"/>
@@ -2555,7 +2555,7 @@
 		<borderitem edge="dse" item="26973"/>
 	</border>
 	
-	<border id="234"> -- grass mountain edge border --
+	<border id="234" name="grass mountain edge border">
 		<borderitem edge="n"   item="27052"/>
 		<borderitem edge="e"   item="27043"/>
 		<borderitem edge="s"   item="26982"/>
@@ -2570,7 +2570,7 @@
 		<borderitem edge="dse" item="27058"/>
 	</border>
 	
-	<border id="235"> -- grass mountain edge border 2 --
+	<border id="235" name="grass mountain edge border 2">
 		<borderitem edge="n"   item="27024"/>
 		<borderitem edge="e"   item="27017"/>
 		<borderitem edge="s"   item="27011"/>
@@ -2585,7 +2585,7 @@
 		<borderitem edge="dse" item="27030"/>
 	</border>
 	
-	<border id="236"> -- lava mountain edge border 2 --
+	<border id="236" name="lava mountain edge border 2">
 		<borderitem edge="n"   item="27249"/>
 		<borderitem edge="e"   item="27239"/>
 		<borderitem edge="s"   item="27233"/>
@@ -2600,7 +2600,7 @@
 		<borderitem edge="dse" item="27255"/>
 	</border>
 	
-	<border id="237"> -- slate floor --
+	<border id="237" name="slate floor">
 		<borderitem edge="n"   item="28294"/>
 		<borderitem edge="e"   item="28295"/>
 		<borderitem edge="s"   item="28292"/>
@@ -2615,7 +2615,7 @@
 		<borderitem edge="dse" item="28301"/>
 	</border>
 	
-	<border id="238"> -- slate floor 2 --
+	<border id="238" name="slate floor 2">
 		<borderitem edge="n"   item="28307"/>
 		<borderitem edge="e"   item="28308"/>
 		<borderitem edge="s"   item="28306"/>
@@ -2630,7 +2630,7 @@
 		<borderitem edge="dse" item="28314"/>
 	</border>
 	
-	<border id="239"> -- tessellated floor --
+	<border id="239" name="tessellated floor">
 		<borderitem edge="n"   item="28327"/>
 		<borderitem edge="e"   item="28328"/>
 		<borderitem edge="s"   item="28326"/>
@@ -2645,7 +2645,7 @@
 		<borderitem edge="dse" item="28334"/>
 	</border>
 	
-	<border id="240"> -- ornamented floor 1 --
+	<border id="240" name="ornamented floor 1">
 		<borderitem edge="n"   item="23918"/>
 		<borderitem edge="e"   item="23919"/>
 		<borderitem edge="s"   item="23917"/>
@@ -2660,7 +2660,7 @@
 		<borderitem edge="dse" item="23925"/>
 	</border>
 	
-	<border id="241"> -- ornamented floor 2 --
+	<border id="241" name="ornamented floor 2">
 		<borderitem edge="n"   item="23970"/>
 		<borderitem edge="e"   item="23971"/>
 		<borderitem edge="s"   item="23969"/>
@@ -2675,7 +2675,7 @@
 		<borderitem edge="dse" item="23977"/>
 	</border>
 	
-	<border id="242"> -- ornamented floor 3 --
+	<border id="242" name="ornamented floor 3">
 		<borderitem edge="n"   item="24286"/>
 		<borderitem edge="e"   item="24289"/>
 		<borderitem edge="s"   item="24288"/>
@@ -2690,7 +2690,7 @@
 		<borderitem edge="dse" item="24292"/>
 	</border>
 	
-	<border id="243"> -- ornamented floor 4 --
+	<border id="243" name="ornamented floor 4">
 		<borderitem edge="n"   item="24298"/>
 		<borderitem edge="e"   item="24301"/>
 		<borderitem edge="s"   item="24300"/>
@@ -2705,7 +2705,7 @@
 		<borderitem edge="dse" item="24304"/>
 	</border>
 	
-	<border id="244"> -- new dark sand --
+	<border id="244" name="new dark sand">
 		<borderitem edge="n"   item="24982"/>
 		<borderitem edge="e"   item="24983"/>
 		<borderitem edge="s"   item="24981"/>
@@ -2720,7 +2720,7 @@
 		<borderitem edge="dse" item="24989"/>
 	</border>
 	
-	<border id="245"> -- grass stone path --
+	<border id="245" name="grass stone path">
 		<borderitem edge="n"   item="25258"/>
 		<borderitem edge="e"   item="25259"/>
 		<borderitem edge="s"   item="25257"/>
@@ -2735,7 +2735,7 @@
 		<borderitem edge="dse" item="25265"/>
 	</border>
 	
-	<border id="246"> -- grass stone path 2 --
+	<border id="246" name="grass stone path 2">
 		<borderitem edge="n"   item="25284"/>
 		<borderitem edge="e"   item="25285"/>
 		<borderitem edge="s"   item="25283"/>
@@ -2750,7 +2750,7 @@
 		<borderitem edge="dse" item="25291"/>
 	</border>
 	
-	<border id="247"> -- green tree floor --
+	<border id="247" name="green tree floor">
 		<borderitem edge="n"   item="24093"/>
 		<borderitem edge="e"   item="24094"/>
 		<borderitem edge="s"   item="24092"/>
@@ -2765,7 +2765,7 @@
 		<borderitem edge="dse" item="24104"/>
 	</border>
 	
-	<border id="248"> -- glistening stone floor --
+	<border id="248" name="glistening stone floor">
 		<borderitem edge="n"   item="25429"/>
 		<borderitem edge="e"   item="25430"/>
 		<borderitem edge="s"   item="25428"/>

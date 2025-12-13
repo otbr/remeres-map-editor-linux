@@ -261,78 +261,79 @@ else()
 endif()
 
 # === Linux Icon Embedding ===
-if(UNIX AND NOT APPLE)
-	# Find ImageMagick convert for icon conversion
-	find_program(CONVERT convert)
-	
-	# Use rmelinux_original.png (high quality) as primary, fallback to rmelinux.ico, then rme_icon.ico
-	if(CONVERT)
-		if(EXISTS "${CMAKE_SOURCE_DIR}/rmelinux_original.png")
-			set(ICON_SOURCE "${CMAKE_SOURCE_DIR}/rmelinux_original.png")
-			set(ICON_SOURCE_TYPE "PNG")
-		elseif(EXISTS "${CMAKE_SOURCE_DIR}/rmelinux.ico")
-			set(ICON_SOURCE "${CMAKE_SOURCE_DIR}/rmelinux.ico")
-			set(ICON_SOURCE_TYPE "ICO")
-		elseif(EXISTS "${CMAKE_SOURCE_DIR}/rme_icon.ico")
-			set(ICON_SOURCE "${CMAKE_SOURCE_DIR}/rme_icon.ico")
-			set(ICON_SOURCE_TYPE "ICO")
-		endif()
-		
-		if(ICON_SOURCE)
-			# Update the XPM icon used by the application code
-			set(XPM_ICON "${CMAKE_SOURCE_DIR}/brushes/icon/rme_icon.xpm")
-			add_custom_command(TARGET ${PROJECT_NAME} PRE_BUILD
-				COMMAND ${CONVERT} "${ICON_SOURCE}" -resize 48x48 -colors 256 -quality 100 "${XPM_ICON}"
-				COMMENT "Atualizando ícone XPM da imagem original (alta qualidade)..."
-			)
-			
-			# Create PNG icon files in multiple sizes for desktop integration
-			set(ICON_DIR "${CMAKE_BINARY_DIR}/icons")
-			set(ICON_SIZES "16;32;48;64;128;256")
-			
-			# Create icon directory
-			file(MAKE_DIRECTORY "${ICON_DIR}")
-			
-			# Convert to PNG in multiple sizes with high quality and transparency preservation
-			foreach(SIZE ${ICON_SIZES})
-				set(ICON_PNG "${ICON_DIR}/rme_icon_${SIZE}.png")
-				# Create high-quality PNG with alpha channel (transparency) preserved
-				add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-					COMMAND ${CONVERT} "${ICON_SOURCE}" -resize ${SIZE}x${SIZE} -quality 100 -alpha on -define png:compression-level=9 "${ICON_PNG}"
-					COMMENT "Convertendo ícone para PNG ${SIZE}x${SIZE} (alta qualidade com transparência)..."
-				)
-			endforeach()
-			
-			# Create a .desktop file for proper Linux desktop integration
-			set(DESKTOP_FILE "${CMAKE_BINARY_DIR}/${PROJECT_NAME}.desktop")
-			add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-				COMMAND ${CMAKE_COMMAND} -E echo "[Desktop Entry]" > "${DESKTOP_FILE}"
-				COMMAND ${CMAKE_COMMAND} -E echo "Version=1.0" >> "${DESKTOP_FILE}"
-				COMMAND ${CMAKE_COMMAND} -E echo "Type=Application" >> "${DESKTOP_FILE}"
-				COMMAND ${CMAKE_COMMAND} -E echo "Name=Canary Map Editor" >> "${DESKTOP_FILE}"
-				COMMAND ${CMAKE_COMMAND} -E echo "Comment=Map Editor for Canary Server" >> "${DESKTOP_FILE}"
-				COMMAND ${CMAKE_COMMAND} -E echo "Exec=$<TARGET_FILE:${PROJECT_NAME}>" >> "${DESKTOP_FILE}"
-				COMMAND ${CMAKE_COMMAND} -E echo "Icon=${ICON_DIR}/rme_icon_256.png" >> "${DESKTOP_FILE}"
-				COMMAND ${CMAKE_COMMAND} -E echo "Terminal=false" >> "${DESKTOP_FILE}"
-				COMMAND ${CMAKE_COMMAND} -E echo "Categories=Utility\\;Development\\;" >> "${DESKTOP_FILE}"
-				COMMAND ${CMAKE_COMMAND} -E echo "StartupNotify=true" >> "${DESKTOP_FILE}"
-				COMMENT "Criando arquivo .desktop para integração com desktop Linux..."
-			)
-			
-			# Also try to embed icon using objcopy (experimental - may not work with all desktop environments)
-			find_program(OBJCOPY objcopy)
-			if(OBJCOPY)
-				set(ICON_PNG_EMBED "${ICON_DIR}/rme_icon_256.png")
-				add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-					COMMAND ${OBJCOPY} --add-section .icon="${ICON_PNG_EMBED}" --set-section-flags .icon=readonly "$<TARGET_FILE:${PROJECT_NAME}>" "$<TARGET_FILE:${PROJECT_NAME}>.tmp" 2>/dev/null || true
-					COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:${PROJECT_NAME}>.tmp" "$<TARGET_FILE:${PROJECT_NAME}>" || ${CMAKE_COMMAND} -E remove "$<TARGET_FILE:${PROJECT_NAME}>.tmp"
-					COMMENT "Tentando incorporar ícone no executável..."
-					DEPENDS "${ICON_PNG_EMBED}"
-				)
-			endif()
-		endif()
-	endif()
-endif()
+# TEMPORARILY DISABLED FOR FASTER BUILDS - Re-enable for production
+# if(UNIX AND NOT APPLE)
+# 	# Find ImageMagick convert for icon conversion
+# 	find_program(CONVERT convert)
+# 	
+# 	# Use rmelinux_original.png (high quality) as primary, fallback to rmelinux.ico, then rme_icon.ico
+# 	if(CONVERT)
+# 		if(EXISTS "${CMAKE_SOURCE_DIR}/rmelinux_original.png")
+# 			set(ICON_SOURCE "${CMAKE_SOURCE_DIR}/rmelinux_original.png")
+# 			set(ICON_SOURCE_TYPE "PNG")
+# 		elseif(EXISTS "${CMAKE_SOURCE_DIR}/rmelinux.ico")
+# 			set(ICON_SOURCE "${CMAKE_SOURCE_DIR}/rmelinux.ico")
+# 			set(ICON_SOURCE_TYPE "ICO")
+# 		elseif(EXISTS "${CMAKE_SOURCE_DIR}/rme_icon.ico")
+# 			set(ICON_SOURCE "${CMAKE_SOURCE_DIR}/rme_icon.ico")
+# 			set(ICON_SOURCE_TYPE "ICO")
+# 		endif()
+# 		
+# 		if(ICON_SOURCE)
+# 			# Update the XPM icon used by the application code
+# 			set(XPM_ICON "${CMAKE_SOURCE_DIR}/brushes/icon/rme_icon.xpm")
+# 			add_custom_command(TARGET ${PROJECT_NAME} PRE_BUILD
+# 				COMMAND ${CONVERT} "${ICON_SOURCE}" -resize 48x48 -colors 256 -quality 100 "${XPM_ICON}"
+# 				COMMENT "Atualizando ícone XPM da imagem original (alta qualidade)..."
+# 			)
+# 			
+# 			# Create PNG icon files in multiple sizes for desktop integration
+# 			set(ICON_DIR "${CMAKE_BINARY_DIR}/icons")
+# 			set(ICON_SIZES "16;32;48;64;128;256")
+# 			
+# 			# Create icon directory
+# 			file(MAKE_DIRECTORY "${ICON_DIR}")
+# 			
+# 			# Convert to PNG in multiple sizes with high quality and transparency preservation
+# 			foreach(SIZE ${ICON_SIZES})
+# 				set(ICON_PNG "${ICON_DIR}/rme_icon_${SIZE}.png")
+# 				# Create high-quality PNG with alpha channel (transparency) preserved
+# 				add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+# 					COMMAND ${CONVERT} "${ICON_SOURCE}" -resize ${SIZE}x${SIZE} -quality 100 -alpha on -define png:compression-level=9 "${ICON_PNG}"
+# 					COMMENT "Convertendo ícone para PNG ${SIZE}x${SIZE} (alta qualidade com transparência)..."
+# 				)
+# 			endforeach()
+# 			
+# 			# Create a .desktop file for proper Linux desktop integration
+# 			set(DESKTOP_FILE "${CMAKE_BINARY_DIR}/${PROJECT_NAME}.desktop")
+# 			add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+# 				COMMAND ${CMAKE_COMMAND} -E echo "[Desktop Entry]" > "${DESKTOP_FILE}"
+# 				COMMAND ${CMAKE_COMMAND} -E echo "Version=1.0" >> "${DESKTOP_FILE}"
+# 				COMMAND ${CMAKE_COMMAND} -E echo "Type=Application" >> "${DESKTOP_FILE}"
+# 				COMMAND ${CMAKE_COMMAND} -E echo "Name=Canary Map Editor" >> "${DESKTOP_FILE}"
+# 				COMMAND ${CMAKE_COMMAND} -E echo "Comment=Map Editor for Canary Server" >> "${DESKTOP_FILE}"
+# 				COMMAND ${CMAKE_COMMAND} -E echo "Exec=$<TARGET_FILE:${PROJECT_NAME}>" >> "${DESKTOP_FILE}"
+# 				COMMAND ${CMAKE_COMMAND} -E echo "Icon=${ICON_DIR}/rme_icon_256.png" >> "${DESKTOP_FILE}"
+# 				COMMAND ${CMAKE_COMMAND} -E echo "Terminal=false" >> "${DESKTOP_FILE}"
+# 				COMMAND ${CMAKE_COMMAND} -E echo "Categories=Utility\\;Development\\;" >> "${DESKTOP_FILE}"
+# 				COMMAND ${CMAKE_COMMAND} -E echo "StartupNotify=true" >> "${DESKTOP_FILE}"
+# 				COMMENT "Criando arquivo .desktop para integração com desktop Linux..."
+# 			)
+# 			
+# 			# Also try to embed icon using objcopy (experimental - may not work with all desktop environments)
+# 			find_program(OBJCOPY objcopy)
+# 			if(OBJCOPY)
+# 				set(ICON_PNG_EMBED "${ICON_DIR}/rme_icon_256.png")
+# 				add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+# 					COMMAND ${OBJCOPY} --add-section .icon="${ICON_PNG_EMBED}" --set-section-flags .icon=readonly "$<TARGET_FILE:${PROJECT_NAME}>" "$<TARGET_FILE:${PROJECT_NAME}>.tmp" 2>/dev/null || true
+# 					COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:${PROJECT_NAME}>.tmp" "$<TARGET_FILE:${PROJECT_NAME}>" || ${CMAKE_COMMAND} -E remove "$<TARGET_FILE:${PROJECT_NAME}>.tmp"
+# 					COMMENT "Tentando incorporar ícone no executável..."
+# 					DEPENDS "${ICON_PNG_EMBED}"
+# 				)
+# 			endif()
+# 		endif()
+# 	endif()
+# endif()
 
 # ============================================================================
 # LINUX DESKTOP INTEGRATION - INSTALLATION
