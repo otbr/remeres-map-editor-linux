@@ -171,7 +171,6 @@ BEGIN_EVENT_TABLE(BorderEditorDialog, wxDialog)
     EVT_BUTTON(wxID_ADD + 100, BorderEditorDialog::OnAddGroundItem)
     EVT_BUTTON(wxID_REMOVE, BorderEditorDialog::OnRemoveGroundItem)
     EVT_BUTTON(wxID_FIND + 100, BorderEditorDialog::OnGroundBrowse)
-    EVT_COMBOBOX(wxID_ANY + 100, BorderEditorDialog::OnLoadGroundBrush)
 END_EVENT_TABLE()
 
 // Event table for BorderItemButton
@@ -198,12 +197,14 @@ BorderEditorDialog::BorderEditorDialog(wxWindow* parent, const wxString& title) 
     m_activeTab(0) {
     
     CreateGUIControls();
-    LoadExistingBorders();
-    LoadExistingGroundBrushes();
-    LoadExistingWallBrushes();
     
     // Default to border tab
     m_notebook->SetSelection(0);
+    
+    // Explicitly populate the sidebar for the initial tab
+    // (OnPageChanged may not fire for the initial selection on all platforms)
+    PopulateBorderList();
+    UpdateBrowserLabel();
     
     // Set ID to next available ID
     m_idCtrl->SetValue(m_nextBorderId);
@@ -283,16 +284,7 @@ void BorderEditorDialog::CreateGUIControls() {
     typeSizer->Add(checkboxSizer, 0, wxEXPAND | wxTOP, 2);
     leftColSizer->Add(typeSizer, 0, wxEXPAND);
     
-    borderPropsHorizSizer->Add(leftColSizer, 1, wxEXPAND | wxRIGHT, 10);
-    
-    // Right column - Load Existing
-    wxBoxSizer* rightColSizer = new wxBoxSizer(wxVERTICAL);
-    rightColSizer->Add(new wxStaticText(m_borderPanel, wxID_ANY, "Load Existing:"), 0);
-    m_existingBordersCombo = new wxComboBox(m_borderPanel, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, 0, nullptr, wxCB_READONLY | wxCB_DROPDOWN);
-    m_existingBordersCombo->SetToolTip("Load an existing border as template");
-    rightColSizer->Add(m_existingBordersCombo, 0, wxEXPAND | wxTOP, 2);
-    
-    borderPropsHorizSizer->Add(rightColSizer, 1, wxEXPAND);
+    borderPropsHorizSizer->Add(leftColSizer, 1, wxEXPAND);
     
     borderPropertiesSizer->Add(borderPropsHorizSizer, 0, wxEXPAND | wxALL, 5);
     borderSizer->Add(borderPropertiesSizer, 0, wxEXPAND | wxALL, 5);
@@ -389,15 +381,7 @@ void BorderEditorDialog::CreateGUIControls() {
     m_zOrderCtrl = new wxSpinCtrl(m_groundPanel, wxID_ANY, "0", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 10000);
     m_zOrderCtrl->SetToolTip("Z-Order for display");
     zOrderSizer->Add(m_zOrderCtrl, 0, wxEXPAND | wxTOP, 2);
-    bottomRowSizer->Add(zOrderSizer, 1, wxEXPAND | wxRIGHT, 10);
-    
-    // Existing ground brushes dropdown
-    wxBoxSizer* existingSizer = new wxBoxSizer(wxVERTICAL);
-    existingSizer->Add(new wxStaticText(m_groundPanel, wxID_ANY, "Load Existing:"), 0);
-    m_existingGroundBrushesCombo = new wxComboBox(m_groundPanel, wxID_ANY + 100, "", wxDefaultPosition, wxDefaultSize, 0, nullptr, wxCB_READONLY | wxCB_DROPDOWN);
-    m_existingGroundBrushesCombo->SetToolTip("Load an existing ground brush as template");
-    existingSizer->Add(m_existingGroundBrushesCombo, 0, wxEXPAND | wxTOP, 2);
-    bottomRowSizer->Add(existingSizer, 1, wxEXPAND);
+    bottomRowSizer->Add(zOrderSizer, 1, wxEXPAND);
     
     groundPropertiesSizer->Add(bottomRowSizer, 0, wxEXPAND | wxALL, 5);
     
@@ -530,23 +514,15 @@ void BorderEditorDialog::CreateGUIControls() {
     m_wallPanel = new wxPanel(m_notebook);
     wxBoxSizer* wallSizer = new wxBoxSizer(wxVERTICAL);
 
-    // Top: Existing Brushes + Common Wall Props
+    // Top: Wall Properties
     wxBoxSizer* wallTopSizer = new wxBoxSizer(wxHORIZONTAL);
 
-    // Left: Existing Brushes
-    wxBoxSizer* existingWallSizer = new wxBoxSizer(wxVERTICAL);
-    existingWallSizer->Add(new wxStaticText(m_wallPanel, wxID_ANY, "Load Existing:"), 0);
-    m_existingWallBrushesCombo = new wxComboBox(m_wallPanel, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, 0, nullptr, wxCB_READONLY | wxCB_DROPDOWN);
-    m_existingWallBrushesCombo->Bind(wxEVT_COMBOBOX, &BorderEditorDialog::OnLoadWallBrush, this);
-    existingWallSizer->Add(m_existingWallBrushesCombo, 1, wxEXPAND | wxTOP, 2);
-    wallTopSizer->Add(existingWallSizer, 1, wxEXPAND | wxRIGHT, 10);
-
-    // Right: Server Look ID
+    // Server Look ID
     wxBoxSizer* wallServerIdSizer = new wxBoxSizer(wxVERTICAL);
     wallServerIdSizer->Add(new wxStaticText(m_wallPanel, wxID_ANY, "Server Look ID:"), 0);
     m_wallServerLookIdCtrl = new wxSpinCtrl(m_wallPanel, wxID_ANY, "0", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 65535);
     wallServerIdSizer->Add(m_wallServerLookIdCtrl, 0, wxEXPAND | wxTOP, 2);
-    wallTopSizer->Add(wallServerIdSizer, 0, wxEXPAND);
+    wallTopSizer->Add(wallServerIdSizer, 1, wxEXPAND);
 
     wallSizer->Add(wallTopSizer, 0, wxEXPAND | wxALL, 5);
 
@@ -620,15 +596,44 @@ void BorderEditorDialog::CreateGUIControls() {
     m_wallPanel->SetSizer(wallSizer);
     m_notebook->AddPage(m_wallPanel, "Wall");
     
-    topSizer->Add(m_notebook, 1, wxEXPAND | wxALL, 5);
+    // ========== HORIZONTAL LAYOUT: Content (Left) + Browser (Right) ==========
+    wxBoxSizer* mainHorizSizer = new wxBoxSizer(wxHORIZONTAL);
+    
+    // LEFT: Add notebook (existing content)
+    mainHorizSizer->Add(m_notebook, 1, wxEXPAND | wxALL, 5);
+    
+    // RIGHT: Browser Sidebar
+    wxBoxSizer* browserSizer = new wxBoxSizer(wxVERTICAL);
+    
+    m_browserLabel = new wxStaticText(this, wxID_ANY, "Borders");
+    wxFont boldFont = m_browserLabel->GetFont();
+    boldFont.MakeBold();
+    m_browserLabel->SetFont(boldFont);
+    browserSizer->Add(m_browserLabel, 0, wxALIGN_CENTER | wxTOP | wxBOTTOM, 5);
+    
+    // Search control
+    m_browserSearchCtrl = new wxSearchCtrl(this, wxID_ANY, "", wxDefaultPosition, wxSize(280, -1));
+    m_browserSearchCtrl->SetDescriptiveText("Search...");
+    m_browserSearchCtrl->Bind(wxEVT_SEARCHCTRL_SEARCH_BTN, &BorderEditorDialog::OnBrowserSearch, this);
+    m_browserSearchCtrl->Bind(wxEVT_TEXT, &BorderEditorDialog::OnBrowserSearch, this);
+    browserSizer->Add(m_browserSearchCtrl, 0, wxEXPAND | wxLEFT | wxRIGHT, 5);
+    
+    m_borderBrowserList = new wxListBox(this, wxID_ANY, wxDefaultPosition, wxSize(280, -1), 0, nullptr, wxLB_SINGLE);
+    m_borderBrowserList->SetToolTip("Click an item to load it for editing");
+    m_borderBrowserList->Bind(wxEVT_LISTBOX, &BorderEditorDialog::OnBorderBrowserSelection, this);
+    browserSizer->Add(m_borderBrowserList, 1, wxEXPAND | wxALL, 5);
+    
+    mainHorizSizer->Add(browserSizer, 0, wxEXPAND);
+    
+    // Add horizontal layout to top sizer
+    topSizer->Add(mainHorizSizer, 1, wxEXPAND);
     
     SetSizer(topSizer);
     Layout();
 }
 
-void BorderEditorDialog::OnLoadWallBrush(wxCommandEvent& event) {
-    int selection = m_existingWallBrushesCombo->GetSelection();
-    if (selection == wxNOT_FOUND || selection == 0) { // 0 is <Create New>
+void BorderEditorDialog::LoadWallBrushByName(const wxString& name) {
+    if (name.IsEmpty()) {
         // Clear all fields for new brush
         if (m_wallServerLookIdCtrl) m_wallServerLookIdCtrl->SetValue(0);
         if (m_wallIsOptionalCheck) m_wallIsOptionalCheck->SetValue(false);
@@ -636,9 +641,6 @@ void BorderEditorDialog::OnLoadWallBrush(wxCommandEvent& event) {
         ClearWallItems();
         return;
     }
-    
-    // Get the name of the selected brush
-    wxString name = m_existingWallBrushesCombo->GetString(selection);
     
     // Find the walls.xml file
     wxString dataDir = g_gui.GetDataDirectory();
@@ -658,6 +660,7 @@ void BorderEditorDialog::OnLoadWallBrush(wxCommandEvent& event) {
         pugi::xml_attribute nameAttr = brushNode.attribute("name");
         if (nameAttr && wxString(nameAttr.as_string()) == name) {
             // Found it! Load properties
+            m_nameCtrl->SetValue(name);
             
             // Server look ID
             pugi::xml_attribute lookIdAttr = brushNode.attribute("server_lookid");
@@ -704,8 +707,8 @@ void BorderEditorDialog::OnLoadWallBrush(wxCommandEvent& event) {
 }
 
 void BorderEditorDialog::SaveWallBrush() {
-    wxString name = m_existingWallBrushesCombo->GetValue();
-    if (name.IsEmpty() || name == "<Create New>") {
+    wxString name = m_nameCtrl->GetValue();
+    if (name.IsEmpty()) {
         wxMessageBox("Please enter a name for the wall brush.", "Error", wxICON_ERROR);
         return;
     }
@@ -770,37 +773,18 @@ void BorderEditorDialog::SaveWallBrush() {
     // Save
     if (doc.save_file(nstr(wallsFile).c_str())) {
         wxMessageBox("Wall brush saved successfully.", "Success", wxICON_INFORMATION);
-        LoadExistingWallBrushes(); // Reload list
-        m_existingWallBrushesCombo->SetValue(name); // Restore selection
+        // Repopulate sidebar if on wall tab
+        if (m_activeTab == 2) {
+            PopulateWallList();
+        }
     } else {
         wxMessageBox("Failed to save walls.xml", "Error", wxICON_ERROR);
     }
 }
 
 void BorderEditorDialog::LoadExistingWallBrushes() {
-    m_existingWallBrushesCombo->Clear();
-    m_existingWallBrushesCombo->Append("<Create New>");
-    m_existingWallBrushesCombo->SetSelection(0);
-    
-    wxString dataDir = g_gui.GetDataDirectory();
-    
-    wxString wallsFile = dataDir + wxFileName::GetPathSeparator() + 
-                        "materials" + wxFileName::GetPathSeparator() + "brushs" + wxFileName::GetPathSeparator() + "walls.xml";
-                        
-    if (!wxFileExists(wallsFile)) return;
-    
-    pugi::xml_document doc;
-    if (!doc.load_file(nstr(wallsFile).c_str())) return;
-    
-    pugi::xml_node materials = doc.child("materials");
-    if (!materials) return;
-    
-    wxArrayString names;
-    for (pugi::xml_node node = materials.child("brush"); node; node = node.next_sibling("brush")) {
-        names.Add(wxString(node.attribute("name").as_string()));
-    }
-    names.Sort();
-    m_existingWallBrushesCombo->Append(names);
+    // Legacy method - wall brushes are now populated via PopulateWallList()
+    // Called from constructor for compatibility, actual population happens on tab change
 }
 
 bool BorderEditorDialog::ValidateWallBrush() {
@@ -873,42 +857,29 @@ void BorderEditorDialog::OnRemoveWallItem(wxCommandEvent& event) {
 }
 
 void BorderEditorDialog::LoadExistingBorders() {
-    // Clear the combobox
-    m_existingBordersCombo->Clear();
+    // Clear the browser list
+    if (!m_borderBrowserList) return;
+    m_borderBrowserList->Clear();
     
-    // Add an empty entry
-    m_existingBordersCombo->Append("<Create New>");
-    m_existingBordersCombo->SetSelection(0);
-    
-    // Find the borders.xml file using the same version path conversion as in map_display.cpp
+    // Find borders.xml file - actual borders are in the borders/ subfolder
     wxString dataDir = g_gui.GetDataDirectory();
-    
-    // Get version string and convert to proper directory format
-    // Construct borders.xml path
     wxString bordersFile = dataDir + wxFileName::GetPathSeparator() + 
-                          "materials" + wxFileName::GetPathSeparator() + "borders.xml";
+                          "materials" + wxFileName::GetPathSeparator() + 
+                          "borders" + wxFileName::GetPathSeparator() + "borders.xml";
     
     if (!wxFileExists(bordersFile)) {
-        wxMessageBox("Cannot find borders.xml file in the data directory.", "Error", wxICON_ERROR);
-        return;
+        return; // Silently fail - no borders yet
     }
     
-    // Load the XML file
+    // Load XML
     pugi::xml_document doc;
     pugi::xml_parse_result result = doc.load_file(nstr(bordersFile).c_str());
-    
-    if (!result) {
-        wxMessageBox("Failed to load borders.xml: " + wxString(result.description()), "Error", wxICON_ERROR);
-        return;
-    }
+    if (!result) return;
     
     pugi::xml_node materials = doc.child("materials");
-    if (!materials) {
-        wxMessageBox("Invalid borders.xml file: missing 'materials' node", "Error", wxICON_ERROR);
-        return;
-    }
+    if (!materials) return;
     
-    int highestId = 0;
+    int maxId = 0;
     
     // Parse all borders
     for (pugi::xml_node borderNode = materials.child("border"); borderNode; borderNode = borderNode.next_sibling("border")) {
@@ -916,168 +887,111 @@ void BorderEditorDialog::LoadExistingBorders() {
         if (!idAttr) continue;
         
         int id = idAttr.as_int();
-        if (id > highestId) {
-            highestId = id;
+        if (id > maxId) {
+            maxId = id;
         }
         
-        // Get the comment node before this border for its description
-        std::string description;
-        pugi::xml_node commentNode = borderNode.previous_sibling();
-        if (commentNode && commentNode.type() == pugi::node_comment) {
-            description = commentNode.value();
-            // Extract the actual comment text by removing XML comment markers
-            description = description.c_str(); // Ensure we have a clean copy
-            
-            // Trim leading and trailing whitespace first
-            description.erase(0, description.find_first_not_of(" \t\n\r"));
-            description.erase(description.find_last_not_of(" \t\n\r") + 1);
-            
-            // Remove leading "<!--" if present
-            if (description.substr(0, 4) == "<!--") {
-                description.erase(0, 4);
-                // Trim whitespace after removing the marker
-                description.erase(0, description.find_first_not_of(" \t\n\r"));
-            }
-            
-            // Remove trailing "-->" if present
-            if (description.length() >= 3 && description.substr(description.length() - 3) == "-->") {
-                description.erase(description.length() - 3);
-                // Trim whitespace after removing the marker
-                description.erase(description.find_last_not_of(" \t\n\r") + 1);
-            }
+        // Get name attribute
+        wxString name;
+        pugi::xml_attribute nameAttr = borderNode.attribute("name");
+        if (nameAttr && wxString(nameAttr.as_string()).Trim().Length() > 0) {
+            name = wxString(nameAttr.as_string());
+        } else {
+            name = "(no name)";
         }
         
-        // Add to combobox
-        wxString label = wxString::Format("Border %d", id);
-        if (!description.empty()) {
-            label += wxString::Format(" (%s)", wxstr(description));
-        }
-        
-        m_existingBordersCombo->Append(label, new wxStringClientData(wxString::Format("%d", id)));
+        // Add to browser list: "ID - Name"
+        wxString label = wxString::Format("%d - %s", id, name);
+        m_borderBrowserList->Append(label, new wxStringClientData(wxString::Format("%d", id)));
     }
     
-    // Set the next border ID to one higher than the highest found
-    m_nextBorderId = highestId + 1;
+    // Set next border ID
+    m_nextBorderId = maxId + 1;
     m_idCtrl->SetValue(m_nextBorderId);
 }
 
-void BorderEditorDialog::OnLoadBorder(wxCommandEvent& event) {
-    int selection = m_existingBordersCombo->GetSelection();
-    if (selection <= 0) {
-        // Selected "Create New" or nothing
-        ClearItems();
-        return;
-    }
-    
-    wxStringClientData* data = static_cast<wxStringClientData*>(m_existingBordersCombo->GetClientObject(selection));
-    if (!data) return;
-    
-    int borderId = wxAtoi(data->GetData());
-    
-    // Find the borders.xml file using the same version path conversion as in LoadExistingBorders
+// Helper method to load a border by ID
+void BorderEditorDialog::LoadBorderById(int borderId) {
     wxString dataDir = g_gui.GetDataDirectory();
-    
-    // Get version string and convert to proper directory format
     wxString bordersFile = dataDir + wxFileName::GetPathSeparator() + 
-                          "materials" + wxFileName::GetPathSeparator() + "borders.xml";
+                          "materials" + wxFileName::GetPathSeparator() + 
+                          "borders" + wxFileName::GetPathSeparator() + "borders.xml";
     
-    if (!wxFileExists(bordersFile)) {
-        wxMessageBox("Cannot find borders.xml file in the data directory.", "Error", wxICON_ERROR);
-        return;
-    }
+    if (!wxFileExists(bordersFile)) return;
     
-    // Load the XML file
     pugi::xml_document doc;
-    pugi::xml_parse_result result = doc.load_file(nstr(bordersFile).c_str());
+    if (!doc.load_file(nstr(bordersFile).c_str())) return;
     
-    if (!result) {
-        wxMessageBox("Failed to load borders.xml: " + wxString(result.description()), "Error", wxICON_ERROR);
-        return;
-    }
-    
-    // Clear existing items
     ClearItems();
     
-    // Look for the border with the specified ID
     pugi::xml_node materials = doc.child("materials");
     for (pugi::xml_node borderNode = materials.child("border"); borderNode; borderNode = borderNode.next_sibling("border")) {
         pugi::xml_attribute idAttr = borderNode.attribute("id");
         if (!idAttr || idAttr.as_int() != borderId) continue;
         
-        // Set the ID in the control
         m_idCtrl->SetValue(borderId);
         
-        // Check for border type
+        // Name
+        pugi::xml_attribute nameAttr = borderNode.attribute("name");
+        m_nameCtrl->SetValue(nameAttr ? wxString(nameAttr.as_string()) : "");
+        
+        // Type
         pugi::xml_attribute typeAttr = borderNode.attribute("type");
-        if (typeAttr) {
-            std::string type = typeAttr.as_string();
-            m_isOptionalCheck->SetValue(type == "optional");
-        } else {
-            m_isOptionalCheck->SetValue(false);
-        }
+        m_isOptionalCheck->SetValue(typeAttr && std::string(typeAttr.as_string()) == "optional");
         
-        // Check for border group
+        // Ground
+        pugi::xml_attribute groundAttr = borderNode.attribute("ground");
+        m_isGroundCheck->SetValue(groundAttr && groundAttr.as_bool());
+        
+        // Group
         pugi::xml_attribute groupAttr = borderNode.attribute("group");
-        if (groupAttr) {
-            m_groupCtrl->SetValue(groupAttr.as_int());
-        } else {
-            m_groupCtrl->SetValue(0);
-        }
+        m_groupCtrl->SetValue(groupAttr ? groupAttr.as_int() : 0);
         
-        // Get the comment node before this border for its description
-        pugi::xml_node commentNode = borderNode.previous_sibling();
-        if (commentNode && commentNode.type() == pugi::node_comment) {
-            std::string description = commentNode.value();
-            // Extract the actual comment text by removing XML comment markers
-            description = description.c_str(); // Ensure we have a clean copy
-            
-            // Trim leading and trailing whitespace first
-            description.erase(0, description.find_first_not_of(" \t\n\r"));
-            description.erase(description.find_last_not_of(" \t\n\r") + 1);
-            
-            // Remove leading "<!--" if present
-            if (description.substr(0, 4) == "<!--") {
-                description.erase(0, 4);
-                // Trim whitespace after removing the marker
-                description.erase(0, description.find_first_not_of(" \t\n\r"));
-            }
-            
-            // Remove trailing "-->" if present
-            if (description.length() >= 3 && description.substr(description.length() - 3) == "-->") {
-                description.erase(description.length() - 3);
-                // Trim whitespace after removing the marker
-                description.erase(description.find_last_not_of(" \t\n\r") + 1);
-            }
-            
-            m_nameCtrl->SetValue(wxstr(description));
-        } else {
-            m_nameCtrl->SetValue("");
-        }
-        
-        // Load all border items
+        // Border items
         for (pugi::xml_node itemNode = borderNode.child("borderitem"); itemNode; itemNode = itemNode.next_sibling("borderitem")) {
             pugi::xml_attribute edgeAttr = itemNode.attribute("edge");
             pugi::xml_attribute itemAttr = itemNode.attribute("item");
-            
             if (!edgeAttr || !itemAttr) continue;
             
             BorderEdgePosition pos = edgeStringToPosition(edgeAttr.as_string());
             uint16_t itemId = itemAttr.as_uint();
-            
             if (pos != EDGE_NONE && itemId > 0) {
                 m_borderItems.push_back(BorderItem(pos, itemId));
                 m_gridPanel->SetItemId(pos, itemId);
             }
         }
-        
         break;
     }
-    
-    // Update the preview
     UpdatePreview();
+}
+
+// Browser sidebar selection handler - dispatches based on active tab
+void BorderEditorDialog::OnBorderBrowserSelection(wxCommandEvent& event) {
+    if (!m_borderBrowserList) return;
     
-    // Keep selection
-    m_existingBordersCombo->SetSelection(selection);
+    int selection = m_borderBrowserList->GetSelection();
+    if (selection == wxNOT_FOUND) return;
+    
+    wxStringClientData* data = static_cast<wxStringClientData*>(m_borderBrowserList->GetClientObject(selection));
+    if (!data) return;
+    
+    wxString dataStr = data->GetData();
+    
+    switch (m_activeTab) {
+        case 0: // Border tab - data is border ID
+            LoadBorderById(wxAtoi(dataStr));
+            break;
+        case 1: // Ground tab - data is brush name
+            LoadGroundBrushByName(dataStr);
+            break;
+        case 2: // Wall tab - data is brush name
+            LoadWallBrushByName(dataStr);
+            break;
+    }
+}
+
+void BorderEditorDialog::OnLoadBorder(wxCommandEvent& event) {
+    // Old combo box handler - now unused as browser list handles loading
 }
 
 void BorderEditorDialog::OnItemIdChanged(wxCommandEvent& event) {
@@ -1294,8 +1208,10 @@ void BorderEditorDialog::ClearItems() {
     m_isGroundCheck->SetValue(false);
     m_groupCtrl->SetValue(0);
     
-    // Set combo selection to "Create New"
-    m_existingBordersCombo->SetSelection(0);
+    // Deselect browser list
+    if (m_borderBrowserList) {
+        m_borderBrowserList->SetSelection(wxNOT_FOUND);
+    }
 }
 
 void BorderEditorDialog::UpdatePreview() {
@@ -1996,60 +1912,8 @@ void BorderPreviewPanel::OnPaint(wxPaintEvent& event) {
 }
 
 void BorderEditorDialog::LoadExistingGroundBrushes() {
-    // Clear the combo box
-    m_existingGroundBrushesCombo->Clear();
-    
-    // Add "Create New" as the first option
-    m_existingGroundBrushesCombo->Append("<Create New>");
-    m_existingGroundBrushesCombo->SetSelection(0);
-    
-    // Find the grounds.xml file based on the current version
-    wxString dataDir = g_gui.GetDataDirectory();
-    
-    // Get version string and convert to proper directory format
-    wxString groundsFile = dataDir + wxFileName::GetPathSeparator() + 
-                          "materials" + wxFileName::GetPathSeparator() + "brushs" + wxFileName::GetPathSeparator() + "grounds.xml";
-    
-    if (!wxFileExists(groundsFile)) {
-        wxMessageBox("Cannot find grounds.xml file in the data directory.", "Error", wxICON_ERROR);
-        return;
-    }
-    
-    // Load the XML file
-    pugi::xml_document doc;
-    pugi::xml_parse_result result = doc.load_file(nstr(groundsFile).c_str());
-    
-    if (!result) {
-        wxMessageBox("Failed to load grounds.xml: " + wxString(result.description()), "Error", wxICON_ERROR);
-        return;
-    }
-    
-    // Look for all brush nodes
-    pugi::xml_node materials = doc.child("materials");
-    if (!materials) {
-        wxMessageBox("Invalid grounds.xml file: missing 'materials' node", "Error", wxICON_ERROR);
-        return;
-    }
-    
-    for (pugi::xml_node brushNode = materials.child("brush"); brushNode; brushNode = brushNode.next_sibling("brush")) {
-        pugi::xml_attribute nameAttr = brushNode.attribute("name");
-        pugi::xml_attribute serverLookIdAttr = brushNode.attribute("server_lookid");
-        pugi::xml_attribute typeAttr = brushNode.attribute("type");
-        
-        // Only include ground brushes
-        if (!typeAttr || std::string(typeAttr.as_string()) != "ground") {
-            continue;
-        }
-        
-        if (nameAttr && serverLookIdAttr) {
-            wxString brushName = wxString(nameAttr.as_string());
-            int serverId = serverLookIdAttr.as_int();
-            
-            // Add the brush name to the combo box with the serverId as client data
-            wxStringClientData* data = new wxStringClientData(wxString::Format("%d", serverId));
-            m_existingGroundBrushesCombo->Append(brushName, data);
-        }
-    }
+    // Legacy method - ground brushes are now populated via PopulateGroundList()
+    // Called from constructor for compatibility, actual population happens on tab change
 }
 
 void BorderEditorDialog::ClearGroundItems() {
@@ -2081,9 +1945,206 @@ void BorderEditorDialog::UpdateGroundItemsList() {
 void BorderEditorDialog::OnPageChanged(wxBookCtrlEvent& event) {
     m_activeTab = event.GetSelection();
     
-    // When switching to the ground tab, use the same border items for the ground brush
-    if (m_activeTab == 1) {
-        // Update the ground items preview (not implemented yet)
+    // Clear search and repopulate sidebar based on active tab
+    if (m_browserSearchCtrl) {
+        m_browserSearchCtrl->Clear();
+    }
+    
+    UpdateBrowserLabel();
+    
+    switch (m_activeTab) {
+        case 0: PopulateBorderList(); break;
+        case 1: PopulateGroundList(); break;
+        case 2: PopulateWallList(); break;
+    }
+    
+    event.Skip();
+}
+
+void BorderEditorDialog::UpdateBrowserLabel() {
+    if (!m_browserLabel) return;
+    
+    switch (m_activeTab) {
+        case 0: m_browserLabel->SetLabel("Borders"); break;
+        case 1: m_browserLabel->SetLabel("Ground Brushes"); break;
+        case 2: m_browserLabel->SetLabel("Wall Brushes"); break;
+    }
+}
+
+void BorderEditorDialog::PopulateBorderList() {
+    m_fullBrowserList.Clear();
+    m_fullBrowserIds.Clear();
+    m_borderBrowserList->Clear();
+    
+    wxString dataDir = g_gui.GetDataDirectory();
+    // The actual borders are in borders/borders.xml (the main file is just a stub with an include)
+    wxString bordersFile = dataDir + wxFileName::GetPathSeparator() + 
+                          "materials" + wxFileName::GetPathSeparator() + 
+                          "borders" + wxFileName::GetPathSeparator() + "borders.xml";
+    
+    wxLogDebug("PopulateBorderList: Data directory = %s", dataDir.c_str());
+    wxLogDebug("PopulateBorderList: Looking for file = %s", bordersFile.c_str());
+    
+    if (!wxFileExists(bordersFile)) {
+        wxLogDebug("PopulateBorderList: File does NOT exist!");
+        return;
+    }
+    wxLogDebug("PopulateBorderList: File exists");
+    
+    pugi::xml_document doc;
+    pugi::xml_parse_result result = doc.load_file(nstr(bordersFile).c_str());
+    if (!result) {
+        wxLogDebug("PopulateBorderList: Failed to load XML: %s", result.description());
+        return;
+    }
+    wxLogDebug("PopulateBorderList: XML loaded successfully");
+    
+    pugi::xml_node materials = doc.child("materials");
+    if (!materials) {
+        wxLogDebug("PopulateBorderList: No 'materials' node found");
+        return;
+    }
+    
+    int maxId = 0;
+    int itemCount = 0;
+    
+    for (pugi::xml_node borderNode = materials.child("border"); borderNode; borderNode = borderNode.next_sibling("border")) {
+        pugi::xml_attribute idAttr = borderNode.attribute("id");
+        if (!idAttr) continue;
+        
+        int id = idAttr.as_int();
+        if (id > maxId) maxId = id;
+        
+        wxString name;
+        
+        // Try to get name from attribute first
+        pugi::xml_attribute nameAttr = borderNode.attribute("name");
+        if (nameAttr && wxString(nameAttr.as_string()).Trim().Length() > 0) {
+            name = wxString(nameAttr.as_string());
+        } else {
+            // Try to extract name from inline text like "> -- grass border --"
+            // This is stored as the text content of the node before the first child
+            const char* nodeText = borderNode.child_value();
+            if (nodeText && strlen(nodeText) > 0) {
+                wxString textContent = wxString(nodeText).Trim(true).Trim(false);
+                // Strip leading/trailing dashes and whitespace
+                while (textContent.StartsWith("-") || textContent.StartsWith(" ")) {
+                    textContent = textContent.Mid(1);
+                }
+                while (textContent.EndsWith("-") || textContent.EndsWith(" ")) {
+                    textContent = textContent.RemoveLast();
+                }
+                textContent = textContent.Trim(true).Trim(false);
+                if (!textContent.IsEmpty()) {
+                    name = textContent;
+                }
+            }
+            
+            // If still no name, check for a preceding XML comment
+            if (name.IsEmpty()) {
+                pugi::xml_node prevSibling = borderNode.previous_sibling();
+                if (prevSibling && prevSibling.type() == pugi::node_comment) {
+                    wxString comment = wxString(prevSibling.value()).Trim(true).Trim(false);
+                    if (!comment.IsEmpty()) {
+                        name = comment;
+                    }
+                }
+            }
+            
+            // Final fallback
+            if (name.IsEmpty()) {
+                name = "(no name)";
+            }
+        }
+        
+        wxString label = wxString::Format("%d - %s", id, name);
+        m_fullBrowserList.Add(label);
+        m_fullBrowserIds.Add(wxString::Format("%d", id));
+        
+        m_borderBrowserList->Append(label, new wxStringClientData(wxString::Format("%d", id)));
+        itemCount++;
+    }
+    
+    wxLogDebug("PopulateBorderList: Found %d borders, maxId=%d", itemCount, maxId);
+    
+    m_nextBorderId = maxId + 1;
+    m_idCtrl->SetValue(m_nextBorderId);
+}
+
+void BorderEditorDialog::PopulateGroundList() {
+    m_fullBrowserList.Clear();
+    m_fullBrowserIds.Clear();
+    m_borderBrowserList->Clear();
+    
+    wxString dataDir = g_gui.GetDataDirectory();
+    wxString groundsFile = dataDir + wxFileName::GetPathSeparator() + 
+                          "materials" + wxFileName::GetPathSeparator() + "brushs" + wxFileName::GetPathSeparator() + "grounds.xml";
+    
+    if (!wxFileExists(groundsFile)) return;
+    
+    pugi::xml_document doc;
+    if (!doc.load_file(nstr(groundsFile).c_str())) return;
+    
+    pugi::xml_node materials = doc.child("materials");
+    if (!materials) return;
+    
+    for (pugi::xml_node brushNode = materials.child("brush"); brushNode; brushNode = brushNode.next_sibling("brush")) {
+        pugi::xml_attribute typeAttr = brushNode.attribute("type");
+        if (!typeAttr || std::string(typeAttr.as_string()) != "ground") continue;
+        
+        pugi::xml_attribute nameAttr = brushNode.attribute("name");
+        if (!nameAttr) continue;
+        
+        wxString brushName = wxString(nameAttr.as_string());
+        m_fullBrowserList.Add(brushName);
+        m_fullBrowserIds.Add(brushName); // For ground, we use name as the ID
+        
+        m_borderBrowserList->Append(brushName, new wxStringClientData(brushName));
+    }
+}
+
+void BorderEditorDialog::PopulateWallList() {
+    m_fullBrowserList.Clear();
+    m_fullBrowserIds.Clear();
+    m_borderBrowserList->Clear();
+    
+    wxString dataDir = g_gui.GetDataDirectory();
+    wxString wallsFile = dataDir + wxFileName::GetPathSeparator() + 
+                        "materials" + wxFileName::GetPathSeparator() + "brushs" + wxFileName::GetPathSeparator() + "walls.xml";
+    
+    if (!wxFileExists(wallsFile)) return;
+    
+    pugi::xml_document doc;
+    if (!doc.load_file(nstr(wallsFile).c_str())) return;
+    
+    pugi::xml_node materials = doc.child("materials");
+    if (!materials) return;
+    
+    for (pugi::xml_node brushNode = materials.child("brush"); brushNode; brushNode = brushNode.next_sibling("brush")) {
+        pugi::xml_attribute nameAttr = brushNode.attribute("name");
+        if (!nameAttr) continue;
+        
+        wxString brushName = wxString(nameAttr.as_string());
+        m_fullBrowserList.Add(brushName);
+        m_fullBrowserIds.Add(brushName); // For wall, we use name as the ID
+        
+        m_borderBrowserList->Append(brushName, new wxStringClientData(brushName));
+    }
+}
+
+void BorderEditorDialog::OnBrowserSearch(wxCommandEvent& event) {
+    FilterBrowserList(m_browserSearchCtrl->GetValue());
+}
+
+void BorderEditorDialog::FilterBrowserList(const wxString& query) {
+    m_borderBrowserList->Clear();
+    wxString lowerQuery = query.Lower();
+    
+    for (size_t i = 0; i < m_fullBrowserList.GetCount(); i++) {
+        if (query.IsEmpty() || m_fullBrowserList[i].Lower().Contains(lowerQuery)) {
+            m_borderBrowserList->Append(m_fullBrowserList[i],
+                new wxStringClientData(m_fullBrowserIds[i]));
+        }
     }
 }
 
@@ -2135,28 +2196,19 @@ void BorderEditorDialog::OnGroundBrowse(wxCommandEvent& event) {
     }
 }
 
-void BorderEditorDialog::OnLoadGroundBrush(wxCommandEvent& event) {
-    int selection = m_existingGroundBrushesCombo->GetSelection();
-    if (selection <= 0) {
-        // Selected "Create New" or nothing
+void BorderEditorDialog::LoadGroundBrushByName(const wxString& name) {
+    if (name.IsEmpty()) {
         ClearGroundItems();
         return;
     }
     
-    wxStringClientData* data = static_cast<wxStringClientData*>(m_existingGroundBrushesCombo->GetClientObject(selection));
-    if (!data) return;
-    
-    int serverLookId = wxAtoi(data->GetData());
-    
     // Find the grounds.xml file using the same version path conversion
     wxString dataDir = g_gui.GetDataDirectory();
     
-    // Get version string and convert to proper directory format
     wxString groundsFile = dataDir + wxFileName::GetPathSeparator() + 
                           "materials" + wxFileName::GetPathSeparator() + "brushs" + wxFileName::GetPathSeparator() + "grounds.xml";
     
     if (!wxFileExists(groundsFile)) {
-        wxMessageBox("Cannot find grounds.xml file in the data directory.", "Error", wxICON_ERROR);
         return;
     }
     
@@ -2165,33 +2217,31 @@ void BorderEditorDialog::OnLoadGroundBrush(wxCommandEvent& event) {
     pugi::xml_parse_result result = doc.load_file(nstr(groundsFile).c_str());
     
     if (!result) {
-        wxMessageBox("Failed to load grounds.xml: " + wxString(result.description()), "Error", wxICON_ERROR);
         return;
     }
     
     // Clear existing items
     ClearGroundItems();
     
-    // Find the brush with the specified server_lookid
+    // Find the brush by name
     pugi::xml_node materials = doc.child("materials");
     if (!materials) {
-        wxMessageBox("Invalid grounds.xml file: missing 'materials' node", "Error", wxICON_ERROR);
         return;
     }
     
     for (pugi::xml_node brushNode = materials.child("brush"); brushNode; brushNode = brushNode.next_sibling("brush")) {
-        pugi::xml_attribute serverLookIdAttr = brushNode.attribute("server_lookid");
+        pugi::xml_attribute nameAttr = brushNode.attribute("name");
         
-        if (serverLookIdAttr && serverLookIdAttr.as_int() == serverLookId) {
+        if (nameAttr && wxString(nameAttr.as_string()) == name) {
             // Found the brush, load its properties
-            pugi::xml_attribute nameAttr = brushNode.attribute("name");
+            m_nameCtrl->SetValue(name);
+            
+            pugi::xml_attribute serverLookIdAttr = brushNode.attribute("server_lookid");
             pugi::xml_attribute zOrderAttr = brushNode.attribute("z-order");
             
-            if (nameAttr) {
-                m_nameCtrl->SetValue(wxString(nameAttr.as_string()));
+            if (serverLookIdAttr) {
+                m_serverLookIdCtrl->SetValue(serverLookIdAttr.as_int());
             }
-            
-            m_serverLookIdCtrl->SetValue(serverLookId);
             
             if (zOrderAttr) {
                 m_zOrderCtrl->SetValue(zOrderAttr.as_int());
@@ -2219,10 +2269,8 @@ void BorderEditorDialog::OnLoadGroundBrush(wxCommandEvent& event) {
             m_includeToNoneCheck->SetValue(true);     // Default to checked
             m_includeInnerCheck->SetValue(false);     // Default to unchecked
             
-            bool hasNormalBorder = false;
             bool hasToNoneBorder = false;
             bool hasInnerBorder = false;
-            bool hasInnerToNoneBorder = false;
             wxString alignment = "outer"; // Default
             
             for (pugi::xml_node borderNode = brushNode.child("border"); borderNode; borderNode = borderNode.next_sibling("border")) {
@@ -2242,13 +2290,10 @@ void BorderEditorDialog::OnLoadGroundBrush(wxCommandEvent& event) {
                             if (toAttr && wxString(toAttr.as_string()) == "none") {
                                 hasToNoneBorder = true;
                             } else {
-                                hasNormalBorder = true;
                                 alignment = "outer";
                             }
                         } else if (alignVal == "inner") {
-                            if (toAttr && wxString(toAttr.as_string()) == "none") {
-                                hasInnerToNoneBorder = true;
-                            } else {
+                            if (!(toAttr && wxString(toAttr.as_string()) == "none")) {
                                 hasInnerBorder = true;
                             }
                         }
@@ -2259,7 +2304,6 @@ void BorderEditorDialog::OnLoadGroundBrush(wxCommandEvent& event) {
                                          "materials" + wxFileName::GetPathSeparator() + "borders.xml";
                     
                     if (!wxFileExists(bordersFile)) {
-                        // Just skip if we can't find borders.xml
                         continue;
                     }
                     
@@ -2267,7 +2311,6 @@ void BorderEditorDialog::OnLoadGroundBrush(wxCommandEvent& event) {
                     pugi::xml_parse_result bordersResult = bordersDoc.load_file(nstr(bordersFile).c_str());
                     
                     if (!bordersResult) {
-                        // Skip if we can't load borders.xml
                         continue;
                     }
                     
@@ -2324,9 +2367,6 @@ void BorderEditorDialog::OnLoadGroundBrush(wxCommandEvent& event) {
             break;
         }
     }
-    
-    // Keep selection
-    m_existingGroundBrushesCombo->SetSelection(selection);
 }
 
 bool BorderEditorDialog::ValidateGroundBrush() {

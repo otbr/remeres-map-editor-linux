@@ -17,6 +17,7 @@
 #include <wx/combobox.h>
 #include <wx/notebook.h>
 #include <wx/choice.h>
+#include <wx/srchctrl.h>
 #include <vector>
 #include <map>
 #include <wx/treectrl.h>
@@ -148,11 +149,9 @@ public:
     void OnPageChanged(wxBookCtrlEvent& event);
     void OnAddGroundItem(wxCommandEvent& event);
     void OnRemoveGroundItem(wxCommandEvent& event);
-    void OnLoadGroundBrush(wxCommandEvent& event);
     void OnGroundBrowse(wxCommandEvent& event);
     
     // Wall events
-    void OnLoadWallBrush(wxCommandEvent& event);
     void OnWallBrowse(wxCommandEvent& event);
     void OnAddWallItem(wxCommandEvent& event);
     void OnRemoveWallItem(wxCommandEvent& event);
@@ -160,6 +159,10 @@ public:
     // Sidebar events
     void OnAssetTreeSelection(wxTreeEvent& event);
     void OnAssetSearch(wxCommandEvent& event);
+    
+    // Browser sidebar events
+    void OnBorderBrowserSelection(wxCommandEvent& event);
+    void OnBrowserSearch(wxCommandEvent& event);
 
 protected:
     void CreateGUIControls();
@@ -169,6 +172,9 @@ protected:
     void SaveBorder();
     void SaveGroundBrush();
     bool ValidateBorder();
+    void LoadBorderById(int borderId); // Helper to load border by ID
+    void LoadGroundBrushByName(const wxString& name); // Helper to load ground brush
+    void LoadWallBrushByName(const wxString& name); // Helper to load wall brush
 
     bool ValidateGroundBrush();
     bool ValidateWallBrush();
@@ -184,6 +190,13 @@ protected:
     // Sidebar helpers
     void PopulateAssetTree();
     void FilterAssetTree(const wxString& query);
+    
+    // Browser population methods
+    void PopulateBorderList();
+    void PopulateGroundList();
+    void PopulateWallList();
+    void FilterBrowserList(const wxString& query);
+    void UpdateBrowserLabel();
 
 public:
     // UI Elements - made public so they can be accessed by other components
@@ -202,7 +215,9 @@ public:
 
     // Border Tab
     wxPanel* m_borderPanel;
-    wxComboBox* m_existingBordersCombo;
+    wxListBox* m_borderBrowserList; // Sidebar browser for existing items
+    wxSearchCtrl* m_browserSearchCtrl; // Search control for sidebar
+    wxStaticText* m_browserLabel; // Dynamic label for sidebar
     wxCheckBox* m_isOptionalCheck;
     wxCheckBox* m_isGroundCheck;
     wxSpinCtrl* m_groupCtrl;
@@ -210,7 +225,6 @@ public:
     
     // Ground Tab
     wxPanel* m_groundPanel;
-    wxComboBox* m_existingGroundBrushesCombo;
     wxSpinCtrl* m_serverLookIdCtrl;
     wxSpinCtrl* m_zOrderCtrl;
     wxSpinCtrl* m_groundItemIdCtrl;
@@ -219,7 +233,6 @@ public:
     
     // Wall Tab
     wxPanel* m_wallPanel;
-    wxComboBox* m_existingWallBrushesCombo;
     wxSpinCtrl* m_wallServerLookIdCtrl;
     wxSpinCtrl* m_wallGroupCtrl; // Added missing Group control
     wxSpinCtrl* m_wallZOrderCtrl;
@@ -265,8 +278,12 @@ private:
     // Next available border ID
     int m_nextBorderId;
     
-    // Current active tab (0 = border, 1 = ground)
+    // Current active tab (0 = border, 1 = ground, 2 = wall)
     int m_activeTab;
+    
+    // Storage for unfiltered browser list items
+    wxArrayString m_fullBrowserList;
+    wxArrayString m_fullBrowserIds;
     
     DECLARE_EVENT_TABLE()
 };
