@@ -1265,7 +1265,6 @@ void BorderEditorDialog::SaveBorder() {
         wxMessageBox("You must provide a name for the border.", "Error", wxICON_ERROR);
         return;
     }
-    
     bool isOptional = m_isOptionalCheck->GetValue();
     bool isGround = m_isGroundCheck->GetValue();
     int group = m_groupCtrl->GetValue();
@@ -1273,9 +1272,10 @@ void BorderEditorDialog::SaveBorder() {
     // Find the borders.xml file using the same version path conversion
     wxString dataDir = g_gui.GetDataDirectory();
     
-    // Get version string and convert to proper directory format
+    // actual borders are in the borders/ subfolder
     wxString bordersFile = dataDir + wxFileName::GetPathSeparator() + 
-                          "materials" + wxFileName::GetPathSeparator() + "borders.xml";
+                          "materials" + wxFileName::GetPathSeparator() + 
+                          "borders" + wxFileName::GetPathSeparator() + "borders.xml";
     
     if (!wxFileExists(bordersFile)) {
         wxMessageBox("Cannot find borders.xml file in the data directory.", "Error", wxICON_ERROR);
@@ -1311,7 +1311,7 @@ void BorderEditorDialog::SaveBorder() {
     }
     
     if (borderExists) {
-        // Check if there's a comment node before the existing border
+        // Check if there's a comment node before the existing border - we want to remove legacy comments too
         pugi::xml_node commentNode = existingBorder.previous_sibling();
         bool hadComment = (commentNode && commentNode.type() == pugi::node_comment);
         
@@ -1321,20 +1321,26 @@ void BorderEditorDialog::SaveBorder() {
             return;
         }
         
-        // If there was a comment node, remove it too
+        // Remove precedent comment if it exists (legacy cleanup)
         if (hadComment) {
             materials.remove_child(commentNode);
         }
         
-        // Remove the existing border
+        // Remove the existing border - this ensures all old PCDATA/children are gone
         materials.remove_child(existingBorder);
     }
     
- 
+    // Format the name - ensure we have a fallback
+    if (name.IsEmpty()) {
+        name = wxString::Format("Border %d", id);
+    }
     
     // Create the new border node
     pugi::xml_node borderNode = materials.append_child("border");
     borderNode.append_attribute("id").set_value(id);
+    
+    // RULE: Always save name as attribute, NOT as PCDATA/Comment
+    borderNode.append_attribute("name").set_value(nstr(name).c_str());
     
     if (isOptional) {
         borderNode.append_attribute("type").set_value("optional");
