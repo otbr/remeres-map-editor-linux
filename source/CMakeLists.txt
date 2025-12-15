@@ -8,17 +8,74 @@ else()
     project(canary-map-editor LANGUAGES CXX)
 endif()
 
-find_package(asio CONFIG REQUIRED)
-find_package(fmt CONFIG REQUIRED)
+find_package(asio CONFIG QUIET)
+if(NOT asio_FOUND)
+    message(STATUS "Asio not found via find_package, using FetchContent...")
+    include(FetchContent)
+    FetchContent_Declare(
+        asio
+        GIT_REPOSITORY https://github.com/chriskohlhoff/asio.git
+        GIT_TAG asio-1-30-2
+    )
+    FetchContent_MakeAvailable(asio)
+    
+    if(NOT TARGET asio::asio)
+        add_library(asio::asio INTERFACE IMPORTED)
+        target_include_directories(asio::asio INTERFACE ${asio_SOURCE_DIR}/asio/include)
+        target_compile_definitions(asio::asio INTERFACE ASIO_STANDALONE) 
+    endif()
+endif()
+# --- DEPENDENCY FALLBACKS ---
+# Vcpkg is missing, so we use FetchContent for header-only/static libs
+
+# 1. fmt
+find_package(fmt CONFIG QUIET)
+if(NOT fmt_FOUND)
+    message(STATUS "fmt not found, fetching...")
+    include(FetchContent)
+    FetchContent_Declare(
+        fmt
+        GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+        GIT_TAG 10.1.1
+    )
+    FetchContent_MakeAvailable(fmt)
+endif()
+
+# 2. nlohmann_json
+find_package(nlohmann_json CONFIG QUIET)
+if(NOT nlohmann_json_FOUND)
+    message(STATUS "nlohmann_json not found, fetching...")
+    include(FetchContent)
+    FetchContent_Declare(
+        nlohmann_json
+        GIT_REPOSITORY https://github.com/nlohmann/json.git
+        GIT_TAG v3.11.3
+    )
+    FetchContent_MakeAvailable(nlohmann_json)
+endif()
+
+# 3. spdlog
+find_package(spdlog CONFIG QUIET)
+if(NOT spdlog_FOUND)
+    message(STATUS "spdlog not found, fetching...")
+    include(FetchContent)
+    FetchContent_Declare(
+        spdlog
+        GIT_REPOSITORY https://github.com/gabime/spdlog.git
+        GIT_TAG v1.12.0
+    )
+    FetchContent_MakeAvailable(spdlog)
+endif()
+
 find_package(GLUT REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(Threads REQUIRED)
 find_package(wxWidgets COMPONENTS html aui gl adv core net base REQUIRED)
 include(${wxWidgets_USE_FILE})
 find_package(ZLIB REQUIRED)
 find_package(pugixml CONFIG REQUIRED)
-find_package(liblzma CONFIG REQUIRED)
+# LibLZMA is usually found via Module mode on Linux
+find_package(LibLZMA REQUIRED)
 find_package(Protobuf REQUIRED)
 
 # *****************************************************************************
@@ -235,10 +292,11 @@ target_link_libraries(${PROJECT_NAME}
 	fmt::fmt
 	asio::asio
 	nlohmann_json::nlohmann_json
+	spdlog::spdlog
 	pugixml::pugixml
 	pugixml::pugixml
 	${wxWidgets_LIBRARIES}
-	liblzma::liblzma
+	${LIBLZMA_LIBRARIES}
 	OpenGL::GL
 	protobuf
 

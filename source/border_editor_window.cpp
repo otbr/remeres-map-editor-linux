@@ -34,6 +34,7 @@
 #include <wx/dcbuffer.h>
 #include <wx/filename.h>
 #include <wx/filepicker.h>
+#include <wx/settings.h>
 #include <pugixml.hpp>
 
 #define BORDER_GRID_SIZE 32
@@ -220,7 +221,8 @@ void BorderEditorDialog::CreateGUIControls() {
     wxBoxSizer* topSizer = new wxBoxSizer(wxVERTICAL);
     
     // Common properties - more compact horizontal layout
-    wxStaticBoxSizer* commonPropertiesSizer = new wxStaticBoxSizer(wxVERTICAL, this, "Common Properties");
+    // Common properties - cleaner layout
+    wxBoxSizer* commonPropertiesSizer = new wxBoxSizer(wxVERTICAL);
     
     wxBoxSizer* commonPropertiesHorizSizer = new wxBoxSizer(wxHORIZONTAL);
     
@@ -251,7 +253,8 @@ void BorderEditorDialog::CreateGUIControls() {
     wxBoxSizer* borderSizer = new wxBoxSizer(wxVERTICAL);
     
     // Border Properties - more compact layout
-    wxStaticBoxSizer* borderPropertiesSizer = new wxStaticBoxSizer(wxVERTICAL, m_borderPanel, "Border Properties");
+    // Border Properties - cleaner layout
+    wxBoxSizer* borderPropertiesSizer = new wxBoxSizer(wxVERTICAL);
     
     // Two-column horizontal layout
     wxBoxSizer* borderPropsHorizSizer = new wxBoxSizer(wxHORIZONTAL);
@@ -298,7 +301,7 @@ void BorderEditorDialog::CreateGUIControls() {
     wxBoxSizer* borderContentSizer = new wxBoxSizer(wxHORIZONTAL);
     
     // Left side - Grid Editor
-    wxStaticBoxSizer* gridSizer = new wxStaticBoxSizer(wxVERTICAL, m_borderPanel, "Border Grid");
+    wxBoxSizer* gridSizer = new wxBoxSizer(wxVERTICAL);
     m_gridPanel = new BorderGridPanel(m_borderPanel);
     gridSizer->Add(m_gridPanel, 0, wxALIGN_CENTER_HORIZONTAL | wxALL, 5);
     
@@ -306,7 +309,7 @@ void BorderEditorDialog::CreateGUIControls() {
     wxStaticText* instructions = new wxStaticText(m_borderPanel, wxID_ANY, 
         "Click on a grid position to place the currently selected brush.\n"
         "The item ID will be extracted automatically from the brush.");
-    instructions->SetForegroundColour(*wxBLUE);
+    instructions->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
     gridSizer->Add(instructions, 0, wxEXPAND | wxALL, 5);
     
     // Current selected item controls
@@ -328,7 +331,7 @@ void BorderEditorDialog::CreateGUIControls() {
     borderContentSizer->Add(gridSizer, 1, wxEXPAND | wxALL, 5);
     
     // Right side - Preview Panel
-    wxStaticBoxSizer* previewSizer = new wxStaticBoxSizer(wxVERTICAL, m_borderPanel, "Preview");
+    wxBoxSizer* previewSizer = new wxBoxSizer(wxVERTICAL);
     m_previewPanel = new BorderPreviewPanel(m_borderPanel);
     previewSizer->Add(m_previewPanel, 1, wxEXPAND | wxALL, 5);
     
@@ -353,8 +356,8 @@ void BorderEditorDialog::CreateGUIControls() {
     m_groundPanel = new wxPanel(m_notebook);
     wxBoxSizer* groundSizer = new wxBoxSizer(wxVERTICAL);
     
-    // Ground Brush Properties - more compact layout
-    wxStaticBoxSizer* groundPropertiesSizer = new wxStaticBoxSizer(wxVERTICAL, m_groundPanel, "Ground Brush Properties");
+    // Ground Brush Properties - cleaner layout
+    wxBoxSizer* groundPropertiesSizer = new wxBoxSizer(wxVERTICAL);
     
     // Two rows of two columns each
     wxBoxSizer* topRowSizer = new wxBoxSizer(wxHORIZONTAL);
@@ -401,7 +404,7 @@ void BorderEditorDialog::CreateGUIControls() {
     groundSizer->Add(groundPropertiesSizer, 0, wxEXPAND | wxALL, 5);
     
     // Ground Items
-    wxStaticBoxSizer* groundItemsSizer = new wxStaticBoxSizer(wxVERTICAL, m_groundPanel, "Ground Items");
+    wxBoxSizer* groundItemsSizer = new wxBoxSizer(wxVERTICAL);
     
     // List of ground items - set a smaller height
     m_groundItemsList = new wxListBox(m_groundPanel, ID_GROUND_ITEM_LIST, wxDefaultPosition, wxSize(-1, 100), 0, nullptr, wxLB_SINGLE);
@@ -455,7 +458,7 @@ void BorderEditorDialog::CreateGUIControls() {
     groundSizer->Add(groundItemsSizer, 0, wxEXPAND | wxALL, 5); // Changed from 1 to 0 to not expand
     
     // Grid and border selection for ground tab
-    wxStaticBoxSizer* groundBorderSizer = new wxStaticBoxSizer(wxVERTICAL, m_groundPanel, "Border for Ground Brush");
+    wxBoxSizer* groundBorderSizer = new wxBoxSizer(wxVERTICAL);
     
     // First row - Border alignment and 'to none' option
     wxBoxSizer* borderRow1 = new wxBoxSizer(wxHORIZONTAL);
@@ -493,7 +496,7 @@ void BorderEditorDialog::CreateGUIControls() {
     wxStaticText* borderIdLabel = new wxStaticText(m_groundPanel, wxID_ANY, "Border ID:");
     borderIdSizer->Add(borderIdLabel, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
     wxStaticText* borderId = new wxStaticText(m_groundPanel, wxID_ANY, "Uses the ID specified in 'Common Properties' section");
-    borderId->SetForegroundColour(*wxRED);
+    borderId->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
     borderIdSizer->Add(borderId, 1, wxALIGN_CENTER_VERTICAL);
     
     groundBorderSizer->Add(borderIdSizer, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 5);
@@ -501,7 +504,7 @@ void BorderEditorDialog::CreateGUIControls() {
     // Grid use instruction - shorter text
     wxStaticText* gridInstructions = new wxStaticText(m_groundPanel, wxID_ANY, 
         "Use the grid in the Border tab to define borders for this ground brush.");
-    gridInstructions->SetForegroundColour(*wxBLUE);
+    gridInstructions->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
     groundBorderSizer->Add(gridInstructions, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 5);
     
     groundSizer->Add(groundBorderSizer, 0, wxEXPAND | wxALL, 5);
@@ -521,9 +524,7 @@ void BorderEditorDialog::CreateGUIControls() {
     m_notebook->AddPage(m_borderPanel, "Border");
     m_notebook->AddPage(m_groundPanel, "Ground");
     
-    // Add tabs to notebook
-    m_notebook->AddPage(m_borderPanel, "Border Loop");
-    m_notebook->AddPage(m_groundPanel, "Ground Brush");
+    // Notebook pages "Border Loop" and "Ground Brush" removed as they were duplicate pointers
 
     // ========== WALL TAB ==========
     m_wallPanel = new wxPanel(m_notebook);
@@ -1453,8 +1454,8 @@ void BorderEditorDialog::SaveBorder() {
 void BorderEditorDialog::OnSave(wxCommandEvent& event) {
     if (m_activeTab == 0) {
         // Border tab
-    SaveBorder();
-    } else {
+        SaveBorder();
+    } else if (m_activeTab == 1) {
         // Ground tab
         SaveGroundBrush();
     }
@@ -1526,6 +1527,9 @@ BorderGridPanel::BorderGridPanel(wxWindow* parent, wxWindowID id) :
     m_items.clear();
     m_selectedPosition = EDGE_NONE;
     SetBackgroundStyle(wxBG_STYLE_PAINT);
+    
+    // Enable Full Repaint on Resize for responsive drawing
+    SetWindowStyle(GetWindowStyle() | wxFULL_REPAINT_ON_RESIZE);
 }
 
 BorderGridPanel::~BorderGridPanel() {
@@ -1559,46 +1563,60 @@ void BorderGridPanel::SetSelectedPosition(BorderEdgePosition pos) {
     Refresh();
 }
 
+// Helper to calculate grid metrics
+struct GridMetrics {
+    int cellSize;
+    int spacing;
+    int startX;
+    int startY;
+    int normalX, normalY;
+    int cornerX, cornerY;
+    int diagX, diagY;
+    
+    GridMetrics(const wxSize& size) {
+        int w = size.GetWidth();
+        int h = size.GetHeight();
+        int margin = 5;
+        
+        // We have 3 blocks of 2x2. 
+        // Width = 6 * cell + 2 * spacing. 
+        // Let spacing = cell / 2.
+        // Total width units = 7.
+        // Height = 2 * cell.
+        
+        cellSize = std::min((w - 2 * margin) / 7, (h - 2 * margin) / 2);
+        if (cellSize < 16) cellSize = 16; // Minimum size
+        
+        spacing = cellSize / 2;
+        int totalWidth = (2 * cellSize) * 3 + 2 * spacing;
+        
+        startX = (w - totalWidth) / 2;
+        startY = (h - 2 * cellSize) / 2;
+        
+        normalX = startX;
+        normalY = startY;
+        
+        cornerX = normalX + 2 * cellSize + spacing;
+        cornerY = startY;
+        
+        diagX = cornerX + 2 * cellSize + spacing;
+        diagY = startY;
+    }
+};
+
 void BorderGridPanel::OnPaint(wxPaintEvent& event) {
     wxAutoBufferedPaintDC dc(this);
     
-    // Draw the panel background
+    // Draw the panel background using system colors
     wxRect rect = GetClientRect();
-    dc.SetBackground(wxBrush(wxColour(200, 200, 200)));
+    dc.SetBackground(wxBrush(wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE)));
     dc.Clear();
     
+    GridMetrics m(rect.GetSize());
+    
     // Draw the grid layout
-    // Draw the grid layout
-    dc.SetPen(wxPen(wxColour(100, 100, 100)));
+    dc.SetPen(wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT)));
     dc.SetBrush(*wxTRANSPARENT_BRUSH);
-    
-    // Fixed layout constants
-    const int grid_cell_size = 64;
-    const int CELL_PADDING = 4;
-    const int SECTION_SPACING = 20; // Space between 2x2 blocks
-    
-    // Section 1: Normal directions (N, E, S, W) - 2x2 grid
-    const int normal_grid_size = 2;
-    const int normal_offset_x = 10; // Left margin
-    const int normal_offset_y = 10; // Top margin
-    
-    // Section 2: Corner positions
-    const int corner_grid_size = 2;
-    const int corner_offset_x = normal_offset_x + (normal_grid_size * grid_cell_size) + SECTION_SPACING;
-    const int corner_offset_y = 10;
-    
-    // Section 3: Diagonal positions
-    const int diag_grid_size = 2;
-    const int diag_offset_x = corner_offset_x + (corner_grid_size * grid_cell_size) + SECTION_SPACING;
-    const int diag_offset_y = 10;
-    
-    // Section labels - REMOVED to prevent overlap with grid
-    // dc.SetTextForeground(wxColour(0, 0, 0));
-    // dc.SetFont(wxFont(10, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD));
-    
-    // dc.DrawText("Normal", normal_offset_x, 10);
-    // dc.DrawText("Corner", corner_offset_x, 10);
-    // dc.DrawText("Diagonal", diag_offset_x, 10);
     
     // Helper function to draw a grid
     auto drawGrid = [&](int offsetX, int offsetY, int gridSize, int cellSize) {
@@ -1622,33 +1640,32 @@ void BorderGridPanel::OnPaint(wxPaintEvent& event) {
     };
     
     // Draw the three grid sections
-    drawGrid(normal_offset_x, normal_offset_y, normal_grid_size, grid_cell_size);
-    drawGrid(corner_offset_x, corner_offset_y, corner_grid_size, grid_cell_size);
-    drawGrid(diag_offset_x, diag_offset_y, diag_grid_size, grid_cell_size);
+    drawGrid(m.normalX, m.normalY, 2, m.cellSize);
+    drawGrid(m.cornerX, m.cornerY, 2, m.cellSize);
+    drawGrid(m.diagX, m.diagY, 2, m.cellSize);
     
     // Set font for position labels
-    dc.SetTextForeground(wxColour(50, 50, 50));
-    dc.SetFont(wxFont(8, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL));
+    dc.SetTextForeground(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
+    wxFont font = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
+    // Scale font size roughly
+    font.SetPixelSize(wxSize(0, std::max(10, m.cellSize / 4)));
+    dc.SetFont(font);
+    
+    int padding = 2; // Fixed small padding to maximize sprite size
     
     // Function to draw an item at a position
     auto drawItemAtPos = [&](BorderEdgePosition pos, int gridX, int gridY, int offsetX, int offsetY) {
-        int x = offsetX + gridX * grid_cell_size + CELL_PADDING;
-        int y = offsetY + gridY * grid_cell_size + CELL_PADDING;
+        int x = offsetX + gridX * m.cellSize + padding;
+        int y = offsetY + gridY * m.cellSize + padding;
+        int size = m.cellSize - 2 * padding;
         
         // Highlight selected position
         if (pos == m_selectedPosition) {
-            dc.SetPen(*wxRED_PEN);
-            dc.SetBrush(wxBrush(wxColour(255, 200, 200)));
-            dc.DrawRectangle(x - CELL_PADDING, y - CELL_PADDING, 
-                         grid_cell_size, grid_cell_size);
-            dc.SetPen(wxPen(wxColour(100, 100, 100)));
+            // "Selection Blue" border, transparent fill to keep sprite visible
+            dc.SetPen(wxPen(wxColour(0, 120, 215), 2));
+            dc.SetBrush(*wxTRANSPARENT_BRUSH);
+            dc.DrawRectangle(x - padding, y - padding, m.cellSize, m.cellSize);
         }
-        
-        // Draw position label
-        wxString label = wxstr(edgePositionToString(pos));
-        wxSize textSize = dc.GetTextExtent(label);
-        dc.DrawText(label, x + (grid_cell_size - 2 * CELL_PADDING - textSize.GetWidth()) / 2, 
-                  y + grid_cell_size - 2 * CELL_PADDING - textSize.GetHeight());
         
         // Draw sprite if available
         uint16_t itemId = GetItemId(pos);
@@ -1657,34 +1674,55 @@ void BorderGridPanel::OnPaint(wxPaintEvent& event) {
             if (type.id != 0) {
                 Sprite* sprite = g_gui.gfx.getSprite(type.clientID);
                 if (sprite) {
-                    sprite->DrawTo(&dc, SPRITE_SIZE_32x32, 
-                                 x, y, 
-                                 grid_cell_size - 2 * CELL_PADDING, 
-                                 grid_cell_size - 2 * CELL_PADDING);
+                    // Local scaling: Draw to temp DC, extract bitmap, scale, then draw
+                    wxMemoryDC tempDC;
+                    wxBitmap tempBitmap(32, 32);
+                    tempDC.SelectObject(tempBitmap);
+                    tempDC.SetBackground(*wxTRANSPARENT_BRUSH);
+                    tempDC.Clear();
+                    
+                    // Draw sprite at native size to temp DC
+                    sprite->DrawTo(&tempDC, SPRITE_SIZE_32x32, 0, 0);
+                    
+                    tempDC.SelectObject(wxNullBitmap);
+                    
+                    // Convert to image, scale, and draw
+                    wxImage img = tempBitmap.ConvertToImage();
+                    if (img.IsOk()) {
+                        img.Rescale(size, size, wxIMAGE_QUALITY_NEAREST);
+                        wxBitmap scaledBmp(img);
+                        dc.DrawBitmap(scaledBmp, x, y, true);
+                    }
                 }
             }
+        } else {
+            // Only draw text label if NO item is present to prevent overlap
+            wxString label = wxstr(edgePositionToString(pos));
+            wxSize textSize = dc.GetTextExtent(label);
+            
+            // Center text
+            dc.DrawText(label, x + (size - textSize.GetWidth()) / 2, 
+                      y + size - textSize.GetHeight());
         }
     };
     
     // Draw normal direction items
-    drawItemAtPos(EDGE_N, 0, 0, normal_offset_x, normal_offset_y);
-    drawItemAtPos(EDGE_E, 1, 0, normal_offset_x, normal_offset_y);
-    drawItemAtPos(EDGE_S, 0, 1, normal_offset_x, normal_offset_y);
-    drawItemAtPos(EDGE_W, 1, 1, normal_offset_x, normal_offset_y);
+    drawItemAtPos(EDGE_N, 0, 0, m.normalX, m.normalY);
+    drawItemAtPos(EDGE_E, 1, 0, m.normalX, m.normalY);
+    drawItemAtPos(EDGE_S, 0, 1, m.normalX, m.normalY);
+    drawItemAtPos(EDGE_W, 1, 1, m.normalX, m.normalY);
     
     // Draw corner items
-    drawItemAtPos(EDGE_CNW, 0, 0, corner_offset_x, corner_offset_y);
-    drawItemAtPos(EDGE_CNE, 1, 0, corner_offset_x, corner_offset_y);
-    drawItemAtPos(EDGE_CSW, 0, 1, corner_offset_x, corner_offset_y);
-    drawItemAtPos(EDGE_CSE, 1, 1, corner_offset_x, corner_offset_y);
+    drawItemAtPos(EDGE_CNW, 0, 0, m.cornerX, m.cornerY);
+    drawItemAtPos(EDGE_CNE, 1, 0, m.cornerX, m.cornerY);
+    drawItemAtPos(EDGE_CSW, 0, 1, m.cornerX, m.cornerY);
+    drawItemAtPos(EDGE_CSE, 1, 1, m.cornerX, m.cornerY);
     
     // Draw diagonal items
-    drawItemAtPos(EDGE_DNW, 0, 0, diag_offset_x, diag_offset_y);
-    drawItemAtPos(EDGE_DNE, 1, 0, diag_offset_x, diag_offset_y);
-    drawItemAtPos(EDGE_DSW, 0, 1, diag_offset_x, diag_offset_y);
-    drawItemAtPos(EDGE_DSE, 1, 1, diag_offset_x, diag_offset_y);
-    
-    // Remove the second row of information since we've added better instructions to the panel
+    drawItemAtPos(EDGE_DNW, 0, 0, m.diagX, m.diagY);
+    drawItemAtPos(EDGE_DNE, 1, 0, m.diagX, m.diagY);
+    drawItemAtPos(EDGE_DSW, 0, 1, m.diagX, m.diagY);
+    drawItemAtPos(EDGE_DSE, 1, 1, m.diagX, m.diagY);
 }
 
 wxPoint BorderGridPanel::GetPositionCoordinates(BorderEdgePosition pos) const {
@@ -1707,33 +1745,19 @@ wxPoint BorderGridPanel::GetPositionCoordinates(BorderEdgePosition pos) const {
 
 BorderEdgePosition BorderGridPanel::GetPositionFromCoordinates(int x, int y) const
 {
-    // Fixed layout constants (must match OnPaint)
-    const int grid_cell_size = 64;
-    const int SECTION_SPACING = 20;
+    GridMetrics m(GetClientSize());
     
-    const int normal_grid_size = 2;
-    const int normal_offset_x = 10;
-    const int normal_offset_y = 10;
-    
-    const int corner_grid_size = 2;
-    const int corner_offset_x = normal_offset_x + (normal_grid_size * grid_cell_size) + SECTION_SPACING;
-    const int corner_offset_y = 10;
-    
-    const int diag_grid_size = 2;
-    const int diag_offset_x = corner_offset_x + (corner_grid_size * grid_cell_size) + SECTION_SPACING;
-    const int diag_offset_y = 10;
-    
-    const int block_width = 2 * grid_cell_size;
-    const int block_height = 2 * grid_cell_size;
+    const int block_width = 2 * m.cellSize;
+    const int block_height = 2 * m.cellSize;
     
     // Check which grid section the click is in and calculate the grid cell
     
     // Normal grid
-    if (x >= normal_offset_x && x < normal_offset_x + block_width &&
-        y >= normal_offset_y && y < normal_offset_y + block_height) {
+    if (x >= m.normalX && x < m.normalX + block_width &&
+        y >= m.normalY && y < m.normalY + block_height) {
         
-        int gridX = (x - normal_offset_x) / grid_cell_size;
-        int gridY = (y - normal_offset_y) / grid_cell_size;
+        int gridX = (x - m.normalX) / m.cellSize;
+        int gridY = (y - m.normalY) / m.cellSize;
         
         if (gridX == 0 && gridY == 0) return EDGE_N;
         if (gridX == 1 && gridY == 0) return EDGE_E;
@@ -1742,11 +1766,11 @@ BorderEdgePosition BorderGridPanel::GetPositionFromCoordinates(int x, int y) con
     }
     
     // Corner grid
-    if (x >= corner_offset_x && x < corner_offset_x + block_width &&
-        y >= corner_offset_y && y < corner_offset_y + block_height) {
+    if (x >= m.cornerX && x < m.cornerX + block_width &&
+        y >= m.cornerY && y < m.cornerY + block_height) {
         
-        int gridX = (x - corner_offset_x) / grid_cell_size;
-        int gridY = (y - corner_offset_y) / grid_cell_size;
+        int gridX = (x - m.cornerX) / m.cellSize;
+        int gridY = (y - m.cornerY) / m.cellSize;
         
         if (gridX == 0 && gridY == 0) return EDGE_CNW;
         if (gridX == 1 && gridY == 0) return EDGE_CNE;
@@ -1755,11 +1779,11 @@ BorderEdgePosition BorderGridPanel::GetPositionFromCoordinates(int x, int y) con
     }
     
     // Diagonal grid
-    if (x >= diag_offset_x && x < diag_offset_x + block_width &&
-        y >= diag_offset_y && y < diag_offset_y + block_height) {
+    if (x >= m.diagX && x < m.diagX + block_width &&
+        y >= m.diagY && y < m.diagY + block_height) {
         
-        int gridX = (x - diag_offset_x) / grid_cell_size;
-        int gridY = (y - diag_offset_y) / grid_cell_size;
+        int gridX = (x - m.diagX) / m.cellSize;
+        int gridY = (y - m.diagY) / m.cellSize;
         
         if (gridX == 0 && gridY == 0) return EDGE_DNW;
         if (gridX == 1 && gridY == 0) return EDGE_DNE;
@@ -1833,9 +1857,12 @@ void BorderGridPanel::OnMouseDown(wxMouseEvent& event) {
 // BorderPreviewPanel
 
 BorderPreviewPanel::BorderPreviewPanel(wxWindow* parent, wxWindowID id) :
-    wxPanel(parent, id, wxDefaultPosition, wxSize(BORDER_PREVIEW_SIZE, BORDER_PREVIEW_SIZE)) {
+    wxPanel(parent, id, wxDefaultPosition, wxDefaultSize) { // Use default size, let sizer expand
     // Set up the panel to handle painting
     SetBackgroundStyle(wxBG_STYLE_PAINT);
+    
+    // Enable Full Repaint on Resize
+    SetWindowStyle(GetWindowStyle() | wxFULL_REPAINT_ON_RESIZE);
 }
 
 BorderPreviewPanel::~BorderPreviewPanel() {
@@ -1857,58 +1884,112 @@ void BorderPreviewPanel::OnPaint(wxPaintEvent& event) {
     
     // Draw the panel background
     wxRect rect = GetClientRect();
-    dc.SetBackground(wxBrush(wxColour(240, 240, 240)));
+    dc.SetBackground(wxBrush(wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE)));
     dc.Clear();
     
-    // Draw a grid to simulate a map
+    // Fixed: 5x5 Cross Test Pattern for comprehensive border verification
     const int GRID_SIZE = 5;
-    const int preview_cell_size = BORDER_PREVIEW_SIZE / GRID_SIZE;
+    const int preview_cell_size = 32;
+    const int total_grid_size = GRID_SIZE * preview_cell_size;
+
+    // Center grid in the panel
+    int startX = (rect.GetWidth() - total_grid_size) / 2;
+    int startY = (rect.GetHeight() - total_grid_size) / 2;
     
-    // Draw grid lines
-    dc.SetPen(wxPen(wxColour(200, 200, 200)));
-    for (int i = 0; i <= GRID_SIZE; i++) {
-        // Vertical lines
-        dc.DrawLine(i * preview_cell_size, 0, i * preview_cell_size, BORDER_PREVIEW_SIZE);
-        // Horizontal lines
-        dc.DrawLine(0, i * preview_cell_size, BORDER_PREVIEW_SIZE, i * preview_cell_size);
+    // Visual Polish: Add "Preview" label at the top
+    dc.SetTextForeground(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
+    wxFont font = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
+    font.MakeBold();
+    dc.SetFont(font);
+    
+    wxString label = "Preview (5x5 Test Pattern)";
+    wxSize textSize = dc.GetTextExtent(label);
+    dc.DrawText(label, (rect.GetWidth() - textSize.GetWidth()) / 2, 10);
+    
+    // Ensure grid doesn't overlap title if window is crunched
+    if (startY < textSize.GetHeight() + 20) {
+        startY = textSize.GetHeight() + 20;
     }
     
-    // Draw a sample ground tile in the center
-    dc.SetBrush(wxBrush(wxColour(120, 180, 100)));
-    dc.SetPen(*wxTRANSPARENT_PEN);
-    dc.DrawRectangle((GRID_SIZE / 2) * preview_cell_size, (GRID_SIZE / 2) * preview_cell_size, preview_cell_size, preview_cell_size);
+    // Draw grid lines for the 5x5 area
+    dc.SetPen(wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT)));
     
-    // Draw border items around the center
-    for (const BorderItem& item : m_borderItems) {
-        wxPoint offset(0, 0);
-        
-        // Calculate position based on the edge type
-        switch (item.position) {
-            case EDGE_N:   offset = wxPoint(0, -1); break;
-            case EDGE_E:   offset = wxPoint(1, 0); break;
-            case EDGE_S:   offset = wxPoint(0, 1); break;
-            case EDGE_W:   offset = wxPoint(-1, 0); break;
-            case EDGE_CNW: offset = wxPoint(-1, -1); break;
-            case EDGE_CNE: offset = wxPoint(1, -1); break;
-            case EDGE_CSE: offset = wxPoint(1, 1); break;
-            case EDGE_CSW: offset = wxPoint(-1, 1); break;
-            case EDGE_DNW: offset = wxPoint(-1, -1); break; // Diagonal positions use same offsets as corners
-            case EDGE_DNE: offset = wxPoint(1, -1); break;
-            case EDGE_DSE: offset = wxPoint(1, 1); break;
-            case EDGE_DSW: offset = wxPoint(-1, 1); break;
-            default: continue;
+    // Vertical lines
+    for (int i = 0; i <= GRID_SIZE; i++) {
+        dc.DrawLine(startX + i * preview_cell_size, startY, 
+                    startX + i * preview_cell_size, startY + total_grid_size);
+    }
+    
+    // Horizontal lines
+    for (int i = 0; i <= GRID_SIZE; i++) {
+        dc.DrawLine(startX, startY + i * preview_cell_size, 
+                    startX + total_grid_size, startY + i * preview_cell_size);
+    }
+    
+    // Helper lambda: Get the target edge for a grid position (x, y)
+    auto getEdgeAtPosition = [](int x, int y) -> BorderEdgePosition {
+        // Row 0
+        if (y == 0) {
+            if (x == 1) return EDGE_CSE;
+            if (x == 2) return EDGE_S;
+            if (x == 3) return EDGE_CSW;
+        }
+        // Row 1
+        else if (y == 1) {
+            if (x == 0) return EDGE_CSE;
+            if (x == 1) return EDGE_DSE;
+            if (x == 3) return EDGE_DSW;
+            if (x == 4) return EDGE_CSW;
+        }
+        // Row 2 (Center row)
+        else if (y == 2) {
+            if (x == 0) return EDGE_E;
+            if (x == 4) return EDGE_W;
+            // x=2 is center ground (empty)
+        }
+        // Row 3
+        else if (y == 3) {
+            if (x == 0) return EDGE_CNE;
+            if (x == 1) return EDGE_DNE;
+            if (x == 3) return EDGE_DNW;
+            if (x == 4) return EDGE_CNW;
+        }
+        // Row 4
+        else if (y == 4) {
+            if (x == 1) return EDGE_CNE;
+            if (x == 2) return EDGE_N;
+            if (x == 3) return EDGE_CNW;
         }
         
-        // Calculate the position on the grid
-        int x = (GRID_SIZE / 2 + offset.x) * preview_cell_size;
-        int y = (GRID_SIZE / 2 + offset.y) * preview_cell_size;
-        
-        // Draw the item sprite
-        const ItemType& type = g_items.getItemType(item.itemId);
-        if (type.id != 0) {
-            Sprite* sprite = g_gui.gfx.getSprite(type.clientID);
-            if (sprite) {
-                sprite->DrawTo(&dc, SPRITE_SIZE_32x32, x, y, preview_cell_size, preview_cell_size);
+        return static_cast<BorderEdgePosition>(-1); // No edge for this cell
+    };
+    
+    // Draw border items based on the cross pattern
+    for (int y = 0; y < GRID_SIZE; y++) {
+        for (int x = 0; x < GRID_SIZE; x++) {
+            BorderEdgePosition targetEdge = getEdgeAtPosition(x, y);
+            
+            if (targetEdge == static_cast<BorderEdgePosition>(-1)) {
+                continue; // Empty cell
+            }
+            
+            // Search for an item with this edge position
+            for (const BorderItem& item : m_borderItems) {
+                if (item.position == targetEdge) {
+                    int cellX = startX + x * preview_cell_size;
+                    int cellY = startY + y * preview_cell_size;
+                    
+                    // Draw the item sprite
+                    const ItemType& type = g_items.getItemType(item.itemId);
+                    if (type.id != 0) {
+                        Sprite* sprite = g_gui.gfx.getSprite(type.clientID);
+                        if (sprite) {
+                            // Draw exactly at 32x32
+                            sprite->DrawTo(&dc, SPRITE_SIZE_32x32, cellX, cellY, preview_cell_size, preview_cell_size);
+                        }
+                    }
+                    break; // Found and drawn, move to next grid cell
+                }
             }
         }
     }
