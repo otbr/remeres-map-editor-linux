@@ -18,12 +18,12 @@
 namespace ImGuiPanels {
 
 // === Panel State ===
-static bool g_ShowDebugOverlay = true;
 static bool g_ShowToolsPanel = true;
+static bool g_ShowPerformancePanel = false;  // Hidden by default, enabled via checkbox
 static float g_OverlayOpacity = 0.85f;
 
 // === Performance Metrics ===
-static constexpr int HISTORY_SIZE = 120;  // 2 seconds at 60fps
+static constexpr int HISTORY_SIZE = 120;
 
 // Frame timing
 static float g_FpsHistory[HISTORY_SIZE] = {0};
@@ -44,10 +44,7 @@ static int g_MinBinds = 99999;
 static int g_MaxBinds = 0;
 static int g_TotalBinds = 0;
 
-static int g_TilesRendered = 0;
-static int g_VisibleTiles = 0;
-
-// Mouse tracking for input latency analysis
+// Mouse tracking
 static int g_LastMouseX = 0;
 static int g_LastMouseY = 0;
 static int g_MouseMoveCount = 0;
@@ -56,18 +53,13 @@ static float g_AvgMouseLatency = 0.0f;
 static float g_TotalMouseLatency = 0.0f;
 static std::chrono::steady_clock::time_point g_LastMouseMoveTime;
 
-// Render timing
-static std::chrono::steady_clock::time_point g_FrameStartTime;
-static float g_LastRenderTime = 0.0f;
-
 void Init() {
-    g_ShowDebugOverlay = true;
     g_ShowToolsPanel = true;
+    g_ShowPerformancePanel = false;
     g_OverlayOpacity = 0.85f;
     g_HistoryIndex = 0;
     g_MinFps = 999.0f;
     g_MaxFps = 0.0f;
-    g_AvgFps = 0.0f;
     g_FrameCount = 0;
     g_TotalFrameTime = 0.0f;
     g_MouseMoveCount = 0;
@@ -84,19 +76,12 @@ void Init() {
     }
 }
 
-void Shutdown() {
-    // Nothing to clean up
-}
+void Shutdown() {}
 
 void UpdateRMEMetrics(int textureBinds, int tilesRendered, int visibleTiles) {
     g_TextureBinds = textureBinds;
-    g_TilesRendered = tilesRendered;
-    g_VisibleTiles = visibleTiles;
-    
-    // Update binds history
     g_TextureBindsHistory[g_HistoryIndex] = textureBinds;
     
-    // Update binds stats
     if (textureBinds > 0) {
         g_MinBinds = std::min(g_MinBinds, textureBinds);
         g_MaxBinds = std::max(g_MaxBinds, textureBinds);
@@ -105,11 +90,7 @@ void UpdateRMEMetrics(int textureBinds, int tilesRendered, int visibleTiles) {
 }
 
 void DrawDebugOverlay(Editor* editor, int mouseX, int mouseY, Tile* hoverTile) {
-    if (!g_ShowDebugOverlay) {
-        return;
-    }
-    
-    // === Update Metrics ===
+    // Update metrics even if not showing
     float currentFps = ImGui::GetIO().Framerate;
     float currentFrameTime = 1000.0f / (currentFps > 0 ? currentFps : 1.0f);
     
@@ -117,7 +98,6 @@ void DrawDebugOverlay(Editor* editor, int mouseX, int mouseY, Tile* hoverTile) {
     g_FrameTimeHistory[g_HistoryIndex] = currentFrameTime;
     g_HistoryIndex = (g_HistoryIndex + 1) % HISTORY_SIZE;
     
-    // Stats
     g_MinFps = std::min(g_MinFps, currentFps);
     g_MaxFps = std::max(g_MaxFps, currentFps);
     g_FrameCount++;
@@ -135,26 +115,25 @@ void DrawDebugOverlay(Editor* editor, int mouseX, int mouseY, Tile* hoverTile) {
         g_TotalMouseLatency += g_MouseLatency;
         g_AvgMouseLatency = g_TotalMouseLatency / g_MouseMoveCount;
     }
+
+    // Don't draw if not visible
+    if (!g_ShowPerformancePanel) {
+        return;
+    }
     
-    // === Window Setup ===
-    ImGuiWindowFlags overlayFlags = 
-        ImGuiWindowFlags_NoDecoration |
+    // === Window Setup - MOVABLE performance panel ===
+    ImGuiWindowFlags perfFlags = 
+        ImGuiWindowFlags_NoResize |
         ImGuiWindowFlags_AlwaysAutoResize |
-        ImGuiWindowFlags_NoSavedSettings |
-        ImGuiWindowFlags_NoFocusOnAppearing |
-        ImGuiWindowFlags_NoNav |
-        ImGuiWindowFlags_NoMove;
+        ImGuiWindowFlags_NoSavedSettings;
     
+    // Initial position in top-left, but user can move it
     const float PAD = 10.0f;
     ImVec2 workPos = ImGui::GetMainViewport()->WorkPos;
-    ImGui::SetNextWindowPos(ImVec2(workPos.x + PAD, workPos.y + PAD), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2(workPos.x + PAD, workPos.y + PAD), ImGuiCond_Once);
     ImGui::SetNextWindowBgAlpha(g_OverlayOpacity);
     
-    if (ImGui::Begin("##PerfMonitor", nullptr, overlayFlags)) {
-        // === Header ===
-        ImGui::TextColored(ImVec4(0.4f, 0.9f, 0.4f, 1.0f), "RME Performance");
-        ImGui::Separator();
-        
+    if (ImGui::Begin("RME Performance", &g_ShowPerformancePanel, perfFlags)) {
         // === FPS Section ===
         ImVec4 fpsColor = (currentFps >= 55) ? ImVec4(0.4f, 1.0f, 0.4f, 1.0f) :
                           (currentFps >= 30) ? ImVec4(1.0f, 1.0f, 0.4f, 1.0f) :
@@ -164,7 +143,6 @@ void DrawDebugOverlay(Editor* editor, int mouseX, int mouseY, Tile* hoverTile) {
         ImGui::SameLine();
         ImGui::Text("(%.2f ms)", currentFrameTime);
         
-        // FPS Graph
         char overlay[32];
         snprintf(overlay, sizeof(overlay), "%.0f fps", currentFps);
         ImGui::PlotLines("##FPS", g_FpsHistory, HISTORY_SIZE, g_HistoryIndex, 
@@ -176,13 +154,11 @@ void DrawDebugOverlay(Editor* editor, int mouseX, int mouseY, Tile* hoverTile) {
         ImGui::Separator();
         ImGui::TextColored(ImVec4(0.9f, 0.7f, 0.4f, 1.0f), "Graphics");
         
-        // Texture binds with color coding
         ImVec4 bindsColor = (g_TextureBinds < 100) ? ImVec4(0.4f, 1.0f, 0.4f, 1.0f) :
                             (g_TextureBinds < 300) ? ImVec4(1.0f, 1.0f, 0.4f, 1.0f) :
                                                      ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
         ImGui::TextColored(bindsColor, "Tex Binds: %d", g_TextureBinds);
         
-        // Texture binds graph
         float bindsHistoryFloat[HISTORY_SIZE];
         for (int i = 0; i < HISTORY_SIZE; i++) {
             bindsHistoryFloat[i] = static_cast<float>(g_TextureBindsHistory[i]);
@@ -195,10 +171,6 @@ void DrawDebugOverlay(Editor* editor, int mouseX, int mouseY, Tile* hoverTile) {
                         g_TotalBinds / g_FrameCount);
         }
         
-        // Tiles info
-        ImGui::Text("Tiles: %d visible", g_VisibleTiles);
-        
-        // ImGui internal
         ImGui::Text("ImGui: %d vtx, %d idx", 
                     ImGui::GetIO().MetricsRenderVertices,
                     ImGui::GetIO().MetricsRenderIndices);
@@ -212,7 +184,7 @@ void DrawDebugOverlay(Editor* editor, int mouseX, int mouseY, Tile* hoverTile) {
                               (g_MouseLatency < 50) ? ImVec4(1.0f, 1.0f, 0.4f, 1.0f) :
                                                       ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
         ImGui::TextColored(latencyColor, "Latency: %.1f ms", g_MouseLatency);
-        ImGui::Text("Avg: %.1f ms (%d moves)", g_AvgMouseLatency, g_MouseMoveCount);
+        ImGui::Text("Avg: %.1f ms (%d)", g_AvgMouseLatency, g_MouseMoveCount);
         
         // === Tile Info ===
         if (hoverTile) {
@@ -225,10 +197,6 @@ void DrawDebugOverlay(Editor* editor, int mouseX, int mouseY, Tile* hoverTile) {
             
             if (hoverTile->ground) {
                 ImGui::Text("Ground: %d", hoverTile->ground->getID());
-            }
-            
-            if (hoverTile->isBlocking()) {
-                ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "[Blocking]");
             }
         }
         
@@ -256,17 +224,24 @@ void DrawToolsPanel(Editor* editor, int currentFloor, double currentZoom) {
     
     ImGuiWindowFlags toolsFlags = 
         ImGuiWindowFlags_NoResize |
-        ImGuiWindowFlags_NoSavedSettings |
         ImGuiWindowFlags_AlwaysAutoResize;
     
+    // Get viewport info for proper positioning
     ImVec2 workPos = ImGui::GetMainViewport()->WorkPos;
     ImVec2 workSize = ImGui::GetMainViewport()->WorkSize;
-    const float PAD = 10.0f;
     
-    ImGui::SetNextWindowPos(ImVec2(workPos.x + workSize.x - 180 - PAD, workPos.y + PAD), ImGuiCond_Once);
+    // Calculate position so panel is INSIDE the viewport (not cut off)
+    // We need to account for the panel width (~150px) + padding
+    const float PAD = 10.0f;
+    const float PANEL_WIDTH = 160.0f;
+    float posX = workPos.x + workSize.x - PANEL_WIDTH - PAD;
+    float posY = workPos.y + PAD;
+    
+    ImGui::SetNextWindowPos(ImVec2(posX, posY), ImGuiCond_Once);
     ImGui::SetNextWindowBgAlpha(g_OverlayOpacity);
     
     if (ImGui::Begin("Tools", &g_ShowToolsPanel, toolsFlags)) {
+        // Navigation section
         ImGui::TextColored(ImVec4(0.7f, 0.85f, 0.7f, 1.0f), "Navigation");
         ImGui::Separator();
         
@@ -275,16 +250,17 @@ void DrawToolsPanel(Editor* editor, int currentFloor, double currentZoom) {
         
         ImGui::Spacing();
         
-        ImGui::TextColored(ImVec4(0.85f, 0.7f, 0.7f, 1.0f), "Quick Actions");
+        // Tools section
+        ImGui::TextColored(ImVec4(0.85f, 0.7f, 0.7f, 1.0f), "Panels");
         ImGui::Separator();
         
-        if (ImGui::Button("Toggle Monitor", ImVec2(-1, 0))) {
-            ToggleDebugOverlay();
-        }
+        // Checkbox to toggle Performance Monitor
+        ImGui::Checkbox("Performance", &g_ShowPerformancePanel);
         
         ImGui::Spacing();
         
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.85f, 1.0f), "View Settings");
+        // View settings
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.85f, 1.0f), "View");
         ImGui::Separator();
         
         ImGui::SliderFloat("Opacity", &g_OverlayOpacity, 0.3f, 1.0f);
@@ -293,7 +269,7 @@ void DrawToolsPanel(Editor* editor, int currentFloor, double currentZoom) {
 }
 
 void ToggleDebugOverlay() {
-    g_ShowDebugOverlay = !g_ShowDebugOverlay;
+    g_ShowPerformancePanel = !g_ShowPerformancePanel;
 }
 
 void ToggleToolsPanel() {
@@ -301,7 +277,7 @@ void ToggleToolsPanel() {
 }
 
 bool IsDebugOverlayVisible() {
-    return g_ShowDebugOverlay;
+    return g_ShowPerformancePanel;
 }
 
 bool IsToolsPanelVisible() {
