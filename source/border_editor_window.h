@@ -155,9 +155,11 @@ public:
     void OnAddGroundItem(wxCommandEvent& event);
     void OnRemoveGroundItem(wxCommandEvent& event);
     void OnGroundBrowse(wxCommandEvent& event);
+    void OnGroundTilesetSelect(wxCommandEvent& event);
     
     // Wall events
     void OnWallBrowse(wxCommandEvent& event);
+    void OnGroundTilesetListSelect(wxCommandEvent& event);
     void OnRawCategoryChange(wxCommandEvent& event);
     void OnAddWallItem(wxCommandEvent& event);
     void OnRemoveWallItem(wxCommandEvent& event);
@@ -227,6 +229,7 @@ private:
     
     // Common controls
     wxTextCtrl* m_nameCtrl;
+    wxTextCtrl* m_groundNameCtrl;
     wxButton* m_newButton;  // "New Border/Ground/Wall" button with dynamic label
     
     // Sidebar (Tree view - legacy, may not be used)
@@ -249,7 +252,7 @@ private:
     BorderPreviewPanel* m_previewPanel;
     // Palette panels
     SimpleRawPalettePanel* m_itemPalettePanel;  // Changed from BrushPalettePanel*
-    BrushPalettePanel* m_groundPalette;     
+    SimpleRawPalettePanel* m_groundPalette;     
     BrushPalettePanel* m_wallPalette;
     
     // Border items data
@@ -267,12 +270,14 @@ private:
     wxCheckBox* m_includeToNoneCheck;
 
     wxCheckBox* m_includeInnerCheck;
-    wxChoice* m_tilesetChoice;
+    wxListBox* m_groundTilesetList;
+    wxArrayString m_tilesetListData;
     wxComboBox* m_rawCategoryCombo;
     
     // Ground items data
     std::vector<GroundItem> m_groundItems;
     std::map<wxString, wxString> m_tilesets;
+    long long m_lastInteractionTime;
 
     // BrushPalettePanel* m_groundPalette;  // Removed duplicate
     
@@ -324,6 +329,7 @@ public:
     virtual ~SimpleRawPalettePanel();
 
     void LoadTileset(const wxString& categoryName);
+    void SetItemIds(const std::vector<uint16_t>& ids);
     void OnPaint(wxPaintEvent& event);
     void OnLeftUp(wxMouseEvent& event);
     void OnMotion(wxMouseEvent& event);

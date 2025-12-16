@@ -198,7 +198,8 @@ BorderEditorDialog::BorderEditorDialog(wxWindow* parent, const wxString& title) 
     wxDialog(parent, wxID_ANY, title, wxDefaultPosition, wxSize(850, 650),
         wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER),
     m_nextBorderId(1),
-    m_activeTab(0) {
+    m_activeTab(0),
+    m_lastInteractionTime(0) {
     
     CreateGUIControls();
     
@@ -327,13 +328,9 @@ void BorderEditorDialog::CreateGUIControls() {
     
     // Name Field (Expand)
     groundHeaderSizer->Add(new wxStaticText(m_groundPanel, wxID_ANY, "Name:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
-    // Note: m_nameCtrl is shared across tabs, created in Border tab
-    
-    // Tileset selector
-    groundHeaderSizer->Add(new wxStaticText(m_groundPanel, wxID_ANY, "Tileset:"), 0, wxALIGN_CENTER_VERTICAL | wxLEFT | wxRIGHT, 5);
-    m_tilesetChoice = new wxChoice(m_groundPanel, wxID_ANY, wxDefaultPosition, wxSize(100, -1));
-    m_tilesetChoice->SetToolTip("Select tileset to add this brush to");
-    groundHeaderSizer->Add(m_tilesetChoice, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 10);
+    m_groundNameCtrl = new wxTextCtrl(m_groundPanel, wxID_ANY);
+    m_groundNameCtrl->SetToolTip("Name of the ground brush");
+    groundHeaderSizer->Add(m_groundNameCtrl, 1, wxALIGN_CENTER_VERTICAL | wxRIGHT, 15);
     
     // Server Look ID
     groundHeaderSizer->Add(new wxStaticText(m_groundPanel, wxID_ANY, "ID:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
@@ -354,9 +351,14 @@ void BorderEditorDialog::CreateGUIControls() {
     
     // === Left Column: Raw Item Palette ===
     wxBoxSizer* groundLeftSizer = new wxBoxSizer(wxVERTICAL);
-    m_groundPalette = new BrushPalettePanel(m_groundPanel, g_materials.tilesets, TILESET_RAW);
-    // m_groundPalette->SetListType(BRUSHLIST_LARGE_ICONS);
-    m_groundPalette->SetMinSize(wxSize(220, 300));
+
+    // Tileset List (wxListBox for stable selection)
+    m_groundTilesetList = new wxListBox(m_groundPanel, wxID_ANY, wxDefaultPosition, wxSize(220, 100));
+    m_groundTilesetList->SetToolTip("Select Tileset");
+    groundLeftSizer->Add(m_groundTilesetList, 0, wxEXPAND | wxBOTTOM, 5);
+
+    m_groundPalette = new SimpleRawPalettePanel(m_groundPanel);
+    m_groundPalette->SetMinSize(wxSize(220, 200));
     groundLeftSizer->Add(m_groundPalette, 1, wxEXPAND | wxALL, 5);
     groundContentSizer->Add(groundLeftSizer, 0, wxEXPAND);
     
@@ -607,6 +609,19 @@ void BorderEditorDialog::CreateGUIControls() {
         ev.SetEventObject(m_rawCategoryCombo);
         OnRawCategoryChange(ev);
     }
+
+    // Initialize Tileset Choice (Ground Tab)
+    LoadTilesets(); // Ensure m_groundTilesetCombo is populated
+    
+    // Bind selection event for dynamic updates
+    m_groundTilesetList->Bind(wxEVT_LISTBOX, &BorderEditorDialog::OnGroundTilesetListSelect, this);
+    
+    // Select first tileset if any
+    if (!m_tilesetListData.IsEmpty()) {
+        m_groundTilesetList->SetSelection(0);
+        wxCommandEvent ev(wxEVT_LISTBOX, m_groundTilesetList->GetId());
+        OnGroundTilesetListSelect(ev);
+    }
 }
 
 void BorderEditorDialog::OnRawCategoryChange(wxCommandEvent& event) {
@@ -614,6 +629,46 @@ void BorderEditorDialog::OnRawCategoryChange(wxCommandEvent& event) {
     
     wxString category = m_rawCategoryCombo->GetValue();
     m_itemPalettePanel->LoadTileset(category);
+}
+
+void BorderEditorDialog::OnGroundTilesetListSelect(wxCommandEvent& event) {
+    int sel = m_groundTilesetList->GetSelection();
+    if (sel == wxNOT_FOUND || sel >= (int)m_tilesetListData.GetCount()) return;
+    
+    wxString tilesetName = m_tilesetListData[sel];
+    if (!m_groundPalette) return;
+
+    std::vector<uint16_t> itemIds;
+    auto it = g_materials.tilesets.find(nstr(tilesetName).c_str());
+    if (it != g_materials.tilesets.end()) {
+        Tileset* tileset = it->second;
+        if (tileset) {
+            const TilesetCategory* rawCat = tileset->getCategory(TILESET_RAW);
+            if (rawCat) {
+                for (Brush* brush : rawCat->brushlist) {
+                    int lookid = brush->getLookID();
+                    if (lookid > 0 && lookid < g_items.getMaxID()) {
+                         const ItemType& type = g_items.getItemType(lookid);
+                         if (type.isGroundTile()) itemIds.push_back(lookid);
+                    }
+                }
+            }
+            const TilesetCategory* terrainCat = tileset->getCategory(TILESET_TERRAIN);
+            if (terrainCat) {
+                for (Brush* brush : terrainCat->brushlist) {
+                    if (!brush->visibleInPalette()) continue;
+                    int lookid = brush->getLookID();
+                    if (lookid > 0 && lookid < g_items.getMaxID()) {
+                         const ItemType& type = g_items.getItemType(lookid);
+                         if (type.isGroundTile()) itemIds.push_back(lookid);
+                    }
+                }
+            }
+        }
+    }
+    std::sort(itemIds.begin(), itemIds.end());
+    itemIds.erase(std::unique(itemIds.begin(), itemIds.end()), itemIds.end());
+    m_groundPalette->SetItemIds(itemIds);
 }
 
 void BorderEditorDialog::LoadWallBrushByName(const wxString& name) {
@@ -1475,6 +1530,12 @@ SimpleRawPalettePanel::SimpleRawPalettePanel(wxWindow* parent, wxWindowID id) :
     RecalculateLayout();
 }
 
+void SimpleRawPalettePanel::SetItemIds(const std::vector<uint16_t>& ids) {
+    m_itemIds = ids;
+    RecalculateLayout();
+    Refresh();
+}
+
 void SimpleRawPalettePanel::LoadTileset(const wxString& categoryName) {
     m_itemIds.clear();
     
@@ -1519,9 +1580,10 @@ void SimpleRawPalettePanel::RecalculateLayout() {
 
     m_rows = (m_itemIds.size() + m_cols - 1) / m_cols;
     
+    int unitY = m_itemSize + m_padding;
     SetVirtualSize(m_cols * (m_itemSize + m_padding) + m_padding, 
-                   m_rows * (m_itemSize + m_padding) + m_padding);
-    SetScrollRate(0, 1); // Pixel-level scrolling for smoothness
+                   m_rows * unitY + m_padding);
+    SetScrollRate(0, unitY); // Row-level scrolling for speed
     Refresh();
 }
 
@@ -1542,11 +1604,10 @@ void SimpleRawPalettePanel::OnPaint(wxPaintEvent& event) {
     int clientW, clientH;
     GetClientSize(&clientW, &clientH);
     
-    // Scroll unit is 1 pixel
-    int pixelY = startUnitY;
-    int startRow = pixelY / (m_itemSize + m_padding);
+    // Scroll unit is 1 row (itemSize + padding)
+    int startRow = startUnitY;
     // Add extra buffer rows to be safe
-    int endRow = (pixelY + clientH) / (m_itemSize + m_padding) + 2;
+    int endRow = startRow + (clientH / (m_itemSize + m_padding)) + 2;
     
     if (startRow < 0) startRow = 0;
     
@@ -2166,17 +2227,16 @@ void BorderEditorDialog::LoadExistingGroundBrushes() {
 
 void BorderEditorDialog::ClearGroundItems() {
     m_groundItems.clear();
-    m_nameCtrl->SetValue("");
+    if (m_groundItemsList) m_groundItemsList->Clear();
+    if (m_groundNameCtrl) m_groundNameCtrl->SetValue("");
+    if (m_serverLookIdCtrl) m_serverLookIdCtrl->SetValue(0);
+    if (m_zOrderCtrl) m_zOrderCtrl->SetValue(0);
+    if (m_borderAlignmentChoice) m_borderAlignmentChoice->SetSelection(0);
     // m_currentBorderId = m_nextBorderId; // Usually kept same or reset? ClearGroundItems resets UI for new ground?
     // Ground brushes don't really have numeric IDs in the same way borders do (they have names).
     // So removing ID assignment is safe here.
-    m_serverLookIdCtrl->SetValue(0);
-    m_zOrderCtrl->SetValue(0);
-    m_groundItemIdCtrl->SetValue(0);
-    m_groundItemChanceCtrl->SetValue(10);
     
     // Reset border alignment options
-    m_borderAlignmentChoice->SetSelection(0); // Default to "outer"
     m_includeToNoneCheck->SetValue(true);     // Default to checked
     m_includeInnerCheck->SetValue(false);     // Default to unchecked
     
@@ -2528,7 +2588,38 @@ void BorderEditorDialog::LoadGroundBrushByName(const wxString& name) {
         
         if (nameAttr && wxString(nameAttr.as_string()) == name) {
             // Found the brush, load its properties
-            m_nameCtrl->SetValue(name);
+            // Load the name
+            if (m_groundNameCtrl) {
+                m_groundNameCtrl->SetValue(name);
+            }
+            
+            // Tileset selection
+            wxString tilesetName = "Nature"; // Default
+            bool found = false;
+            pugi::xml_node parent = brushNode.parent();
+            if (parent) {
+                pugi::xml_attribute parentName = parent.attribute("name");
+                if (parentName) {
+                    tilesetName = parentName.as_string();
+                    found = true;
+                }
+            }
+            
+            if (!found && !m_tilesetListData.IsEmpty()) {
+                tilesetName = m_tilesetListData[0];
+                found = true;
+            }
+            
+            if (found) {
+                if (m_groundTilesetList) {
+                    int idx = m_tilesetListData.Index(tilesetName);
+                    if (idx != wxNOT_FOUND) {
+                        m_groundTilesetList->SetSelection(idx);
+                        wxCommandEvent ev(wxEVT_LISTBOX, m_groundTilesetList->GetId());
+                        OnGroundTilesetListSelect(ev);
+                    }
+                }
+            }
             
             pugi::xml_attribute serverLookIdAttr = brushNode.attribute("server_lookid");
             pugi::xml_attribute zOrderAttr = brushNode.attribute("z-order");
@@ -2665,7 +2756,7 @@ void BorderEditorDialog::LoadGroundBrushByName(const wxString& name) {
 
 bool BorderEditorDialog::ValidateGroundBrush() {
     // Check for empty name
-    if (m_nameCtrl->GetValue().IsEmpty()) {
+    if (m_groundNameCtrl->GetValue().IsEmpty()) {
         wxMessageBox("Please enter a name for the ground brush.", "Validation Error", wxICON_ERROR);
         return false;
     }
@@ -2680,8 +2771,12 @@ bool BorderEditorDialog::ValidateGroundBrush() {
         return false;
     }
     
-    // Check tileset selection
-    if (m_tilesetChoice->GetSelection() == wxNOT_FOUND) {
+    if (m_tilesetListData.IsEmpty()) {
+        wxMessageBox("No tileset available for the ground brush.", "Validation Error", wxICON_ERROR);
+        return false;
+    }
+    
+    if (m_groundTilesetList && m_groundTilesetList->GetSelection() == wxNOT_FOUND) {
         wxMessageBox("Please select a tileset for the ground brush.", "Validation Error", wxICON_ERROR);
         return false;
     }
@@ -2695,7 +2790,7 @@ void BorderEditorDialog::SaveGroundBrush() {
     }
     
     // Get the ground brush properties
-    wxString name = m_nameCtrl->GetValue();
+    wxString name = m_groundNameCtrl->GetValue();
     
     // Double check that we have a name (it's also checked in ValidateGroundBrush)
     if (name.IsEmpty()) {
@@ -2705,17 +2800,17 @@ void BorderEditorDialog::SaveGroundBrush() {
     
     int serverId = m_serverLookIdCtrl->GetValue();
     int zOrder = m_zOrderCtrl->GetValue();
-    int borderId = m_currentBorderId;  // This should be taken from common properties
-    
-    // Get the selected tileset
-    int tilesetSelection = m_tilesetChoice->GetSelection();
-    if (tilesetSelection == wxNOT_FOUND) {
-        wxMessageBox("Please select a tileset.", "Validation Error", wxICON_ERROR);
+    int borderId = m_currentBorderId;
+    wxString tilesetName;
+    if (m_groundTilesetList && m_groundTilesetList->GetSelection() != wxNOT_FOUND) {
+       tilesetName = m_groundTilesetList->GetStringSelection();
+    } else {
+        wxMessageBox("Tileset not selected.", "Error", wxICON_ERROR);
         return;
     }
-    wxString tilesetName = m_tilesetChoice->GetString(tilesetSelection);
     
-    // Find the grounds.xml file using the same version path conversion
+    // Find tilesets.xml ...
+    // using the same version path conversion
     wxString dataDir = g_gui.GetDataDirectory();
     
     // Get version string and convert to proper directory format
@@ -2774,10 +2869,15 @@ void BorderEditorDialog::SaveGroundBrush() {
     
     // Create the new brush node
     pugi::xml_node brushNode = materials.append_child("brush");
-    brushNode.append_attribute("name").set_value(nstr(name).c_str());
+    if (brushNode) {
+            brushNode.append_attribute("name").set_value(nstr(name).c_str());
+            brushNode.append_attribute("server_lookid").set_value(serverId);
+            brushNode.append_attribute("z-order").set_value(zOrder);
+        } else {
+             wxMessageBox("Failed to create new brush node.", "Error", wxICON_ERROR);
+             return;
+        }
     brushNode.append_attribute("type").set_value("ground");
-    brushNode.append_attribute("server_lookid").set_value(serverId);
-    brushNode.append_attribute("z-order").set_value(zOrder);
     
     // Add all ground items
     for (const GroundItem& item : m_groundItems) {
@@ -2911,7 +3011,7 @@ void BorderEditorDialog::SaveGroundBrush() {
 
 void BorderEditorDialog::LoadTilesets() {
     // Clear the choice control
-    m_tilesetChoice->Clear();
+    m_tilesetListData.Clear();
     m_tilesets.clear();
     
     // Find the tilesets.xml file
@@ -2960,14 +3060,17 @@ void BorderEditorDialog::LoadTilesets() {
     // Sort tileset names alphabetically
     tilesetNames.Sort();
     
-    // Add sorted names to the choice control
-    for (size_t i = 0; i < tilesetNames.GetCount(); ++i) {
-        m_tilesetChoice->Append(tilesetNames[i]);
-    }
+    // Add sorted names to the tileset list
+    m_tilesetListData = tilesetNames;
     
-    // Select the first tileset by default if any exist
-    if (m_tilesetChoice->GetCount() > 0) {
-        m_tilesetChoice->SetSelection(0);
+    if (m_groundTilesetList) {
+        m_groundTilesetList->Clear();
+        m_groundTilesetList->Append(m_tilesetListData);
+        if (!m_tilesetListData.IsEmpty()) {
+            m_groundTilesetList->SetSelection(0);
+            wxCommandEvent ev(wxEVT_LISTBOX, m_groundTilesetList->GetId());
+            OnGroundTilesetListSelect(ev);
+        }
     }
 } 
 

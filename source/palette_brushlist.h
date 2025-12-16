@@ -254,7 +254,7 @@ public:
 	void OnSwitchIn();
 
 	// Event handlers
-	void OnCategoryChanged(wxCommandEvent &event);  // Replaces OnSwitchingPage/OnPageChanged
+	void OnCategoryListChanged(wxCommandEvent& event);
 	void OnClickAddTileset(wxCommandEvent &WXUNUSED(event));
 	void OnClickAddItemToTileset(wxCommandEvent &WXUNUSED(event));
 
@@ -284,7 +284,7 @@ protected:
 	PaletteType paletteType;
 	
 	// Replaced wxChoicebook with manual implementation
-	wxComboBox* m_categoryCombo = nullptr;
+	wxListBox* m_categoryList = nullptr;
 	wxPanel* m_pageContainer = nullptr;
 	std::vector<BrushPanel*> m_pages;
 	int m_currentPageIndex = -1;

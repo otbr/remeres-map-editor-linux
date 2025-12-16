@@ -33,19 +33,19 @@ EVT_BUTTON(wxID_ADD, BrushPalettePanel::OnClickAddItemToTileset)
 EVT_BUTTON(wxID_NEW, BrushPalettePanel::OnClickAddTileset)
 EVT_BUTTON(wxID_FORWARD, BrushPalettePanel::OnNextPage)
 EVT_BUTTON(wxID_BACKWARD, BrushPalettePanel::OnPreviousPage)
-EVT_COMBOBOX(wxID_ANY, BrushPalettePanel::OnCategoryChanged)
+EVT_LISTBOX(wxID_ANY, BrushPalettePanel::OnCategoryListChanged)
 END_EVENT_TABLE()
 
 BrushPalettePanel::BrushPalettePanel(wxWindow* parent, const TilesetContainer &tilesets, TilesetCategoryType category, wxWindowID id) :
 	PalettePanel(parent, id),
 	paletteType(category) {
 
-	// Create main layout: Category dropdown on top, content below
+	// Create main layout: Tileset list on top (fixed height), content below
 	const auto tsSizer = newd wxStaticBoxSizer(wxVERTICAL, this, "Tileset");
 	
-	// Category dropdown (replaces wxChoicebook's built-in choice)
-	m_categoryCombo = newd wxComboBox(this, wxID_ANY, "", wxDefaultPosition, wxSize(180, -1), 0, nullptr, wxCB_READONLY);
-	tsSizer->Add(m_categoryCombo, 0, wxEXPAND | wxBOTTOM, 5);
+	// Category list (replaces wxComboBox for stable selection)
+	m_categoryList = newd wxListBox(this, wxID_ANY, wxDefaultPosition, wxSize(180, 80), 0, nullptr, wxLB_SINGLE);
+	tsSizer->Add(m_categoryList, 0, wxEXPAND | wxBOTTOM, 5);
 	
 	// Page container - will hold the current BrushPanel
 	m_pageContainer = newd wxPanel(this, wxID_ANY);
@@ -64,8 +64,8 @@ BrushPalettePanel::BrushPalettePanel(wxWindow* parent, const TilesetContainer &t
 	for (auto it = tilesets.begin(); it != tilesets.end(); ++it) {
 		const auto tilesetCategory = it->second->getCategory(category);
 		if (tilesetCategory && !tilesetCategory->brushlist.empty()) {
-			// Add to dropdown
-			m_categoryCombo->Append(wxstr(it->second->name));
+			// Add to list
+			m_categoryList->Append(wxstr(it->second->name));
 			
 			// Create the panel (hidden initially)
 			const auto panel = newd BrushPanel(m_pageContainer, tilesetCategory);
@@ -76,7 +76,7 @@ BrushPalettePanel::BrushPalettePanel(wxWindow* parent, const TilesetContainer &t
 	
 	// Select first page if available
 	if (!m_pages.empty()) {
-		m_categoryCombo->SetSelection(0);
+		m_categoryList->SetSelection(0);
 		ChangeSelection(0);
 	}
 
@@ -155,8 +155,8 @@ int BrushPalettePanel::GetSelection() const {
 }
 
 wxString BrushPalettePanel::GetPageText(int index) const {
-	if (m_categoryCombo && index >= 0 && index < static_cast<int>(m_categoryCombo->GetCount())) {
-		return m_categoryCombo->GetString(index);
+	if (m_categoryList && index >= 0 && index < static_cast<int>(m_categoryList->GetCount())) {
+		return m_categoryList->GetString(index);
 	}
 	return wxEmptyString;
 }
@@ -202,9 +202,9 @@ void BrushPalettePanel::ChangeSelection(int index) {
 		m_pageContainer->Layout();
 	}
 	
-	// Update dropdown selection
-	if (m_categoryCombo && m_categoryCombo->GetSelection() != index) {
-		m_categoryCombo->SetSelection(index);
+	// Update list selection
+	if (m_categoryList && m_categoryList->GetSelection() != index) {
+		m_categoryList->SetSelection(index);
 	}
 }
 
@@ -337,8 +337,8 @@ bool BrushPalettePanel::SelectBrush(const Brush* whatBrush) {
 
 // === Event Handlers ===
 
-void BrushPalettePanel::OnCategoryChanged(wxCommandEvent &event) {
-	int selection = m_categoryCombo->GetSelection();
+void BrushPalettePanel::OnCategoryListChanged(wxCommandEvent &event) {
+	int selection = m_categoryList->GetSelection();
 	if (selection != wxNOT_FOUND && selection != m_currentPageIndex) {
 		ChangeSelection(selection);
 		g_gui.ActivatePalette(GetParentPalette());
