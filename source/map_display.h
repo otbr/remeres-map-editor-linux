@@ -22,6 +22,8 @@
 #include "tile.h"
 #include "monster.h"
 #include "npc.h"
+#include "imgui_impl_wx.h"
+#include "imgui_panels.h"
 
 class Item;
 class Monster;
@@ -228,6 +230,7 @@ private:
 	bool render_pending;
 
 	wxStopWatch refresh_watch;
+	bool imgui_initialized = false;  // Dear ImGui state
 	MapPopupMenu* popup_menu;
 	AnimationTimer* animation_timer;
 

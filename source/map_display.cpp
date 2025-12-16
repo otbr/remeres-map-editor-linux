@@ -47,6 +47,10 @@
 #include "spawn_npc_brush.h"
 #include "npc_brush.h"
 
+// Dear ImGui integration
+#include <imgui.h>
+#include <imgui_impl_opengl3.h>
+
 // Forward declare from map_drawer.cpp for telemetry
 extern int GetTextureBindsLastFrame();
 
@@ -310,6 +314,35 @@ void MapCanvas::OnPaint(wxPaintEvent &event) {
 
 		drawer->Release();
 	}
+
+	// === Dear ImGui Rendering ===
+	// Lazy initialization of ImGui (done once per canvas)
+	if (!imgui_initialized) {
+		IMGUI_CHECKVERSION();
+		ImGui::CreateContext();
+		ImGui_ImplOpenGL3_Init("#version 130");
+		ImGuiWx::Init(this);
+		ImGuiPanels::Init();
+		imgui_initialized = true;
+	}
+	
+	// Render ImGui overlay
+	ImGui_ImplOpenGL3_NewFrame();
+	ImGuiWx::NewFrame();
+	ImGui::NewFrame();
+	
+	// Get hover tile for overlay
+	Tile* hoverTile = nullptr;
+	if (last_cursor_map_x >= 0 && last_cursor_map_y >= 0) {
+		hoverTile = editor.getMap().getTile(last_cursor_map_x, last_cursor_map_y, floor);
+	}
+	
+	// Draw our panels
+	ImGuiPanels::DrawDebugOverlay(&editor, cursor_x, cursor_y, hoverTile);
+	
+	// Finalize ImGui frame
+	ImGui::Render();
+	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 	// Clean unused textures
 	g_gui.gfx.garbageCollection();
