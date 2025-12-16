@@ -105,8 +105,8 @@ void DrawToolsPanel(Editor* editor, int currentFloor, double currentZoom) {
     ImVec2 workSize = ImGui::GetMainViewport()->WorkSize;
     const float PAD = 10.0f;
     
-    // Use Always to ensure panel appears in correct position (fixes invisible panel issue)
-    ImGui::SetNextWindowPos(ImVec2(workPos.x + workSize.x - 180 - PAD, workPos.y + PAD), ImGuiCond_Always);
+    // Use Once to set initial position but allow user to move it
+    ImGui::SetNextWindowPos(ImVec2(workPos.x + workSize.x - 180 - PAD, workPos.y + PAD), ImGuiCond_Once);
     ImGui::SetNextWindowBgAlpha(g_OverlayOpacity);
     
     if (ImGui::Begin("Tools", &g_ShowToolsPanel, toolsFlags)) {
