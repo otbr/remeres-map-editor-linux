@@ -231,12 +231,11 @@ void DrawToolsPanel(Editor* editor, int currentFloor, double currentZoom) {
     ImVec2 workPos = ImGui::GetMainViewport()->WorkPos;
     ImVec2 workSize = ImGui::GetMainViewport()->WorkSize;
     
-    // Calculate position so panel is INSIDE the viewport (not cut off)
-    // We need to account for the panel width (~150px) + padding
-    const float PAD = 10.0f;
-    const float PANEL_WIDTH = 200.0f;  // Increased to move panel more left
-    float posX = workPos.x + workSize.x - PANEL_WIDTH - PAD;
-    float posY = workPos.y + PAD;
+    // Position in top-right corner, flush against edge
+    const float PAD = 0.0f;  // No padding - flush to corner
+    const float PANEL_WIDTH = 140.0f;  // Compact width
+    float posX = workPos.x + workSize.x - PANEL_WIDTH;
+    float posY = workPos.y;
     
     ImGui::SetNextWindowPos(ImVec2(posX, posY), ImGuiCond_Once);
     ImGui::SetNextWindowBgAlpha(g_OverlayOpacity);
