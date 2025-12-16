@@ -26,17 +26,20 @@ void Shutdown();
 // This is always drawn in the top-left corner
 void DrawDebugOverlay(Editor* editor, int mouseX, int mouseY, Tile* hoverTile);
 
-// Draw the brush palette panel (prototype)
-// void DrawBrushPalette();
-
-// Draw item properties panel (prototype)
-// void DrawItemProperties(Item* item);
+// Draw the tools panel (brush selection, zoom, floor)
+void DrawToolsPanel(Editor* editor, int currentFloor, double currentZoom);
 
 // Toggle debug overlay visibility
 void ToggleDebugOverlay();
 
+// Toggle tools panel visibility
+void ToggleToolsPanel();
+
 // Check if debug overlay is visible
 bool IsDebugOverlayVisible();
+
+// Check if tools panel is visible
+bool IsToolsPanelVisible();
 
 // Set overlay opacity (0.0 - 1.0)
 void SetOverlayOpacity(float opacity);

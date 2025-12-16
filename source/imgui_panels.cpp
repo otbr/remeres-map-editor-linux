@@ -16,10 +16,12 @@ namespace ImGuiPanels {
 
 // State
 static bool g_ShowDebugOverlay = true;
+static bool g_ShowToolsPanel = true;
 static float g_OverlayOpacity = 0.85f;
 
 void Init() {
     g_ShowDebugOverlay = true;
+    g_ShowToolsPanel = true;
     g_OverlayOpacity = 0.85f;
 }
 
@@ -51,7 +53,7 @@ void DrawDebugOverlay(Editor* editor, int mouseX, int mouseY, Tile* hoverTile) {
     
     if (ImGui::Begin("##DebugOverlay", nullptr, overlayFlags)) {
         // FPS Counter
-        ImGui::TextColored(ImVec4(0.6f, 0.8f, 0.6f, 1.0f), "RME Debug");
+        ImGui::TextColored(ImVec4(0.6f, 0.8f, 0.6f, 1.0f), "RME ImGui");
         ImGui::Separator();
         
         // Frame rate
@@ -66,14 +68,14 @@ void DrawDebugOverlay(Editor* editor, int mouseX, int mouseY, Tile* hoverTile) {
         // Tile info if hovering
         if (hoverTile) {
             ImGui::Separator();
-            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.5f, 1.0f), "Tile Info");
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.5f, 1.0f), "Tile");
             
             Position pos = hoverTile->getPosition();
             ImGui::Text("Pos: %d, %d, %d", pos.x, pos.y, pos.z);
             ImGui::Text("Items: %zu", hoverTile->items.size());
             
             if (hoverTile->ground) {
-                ImGui::Text("Ground ID: %d", hoverTile->ground->getID());
+                ImGui::Text("Ground: %d", hoverTile->ground->getID());
             }
             
             // Use direct tile state checks
@@ -84,12 +86,55 @@ void DrawDebugOverlay(Editor* editor, int mouseX, int mouseY, Tile* hoverTile) {
                 ImGui::TextColored(ImVec4(0.5f, 0.5f, 1.0f, 1.0f), "[PZ]");
             }
         }
+    }
+    ImGui::End();
+}
+
+void DrawToolsPanel(Editor* editor, int currentFloor, double currentZoom) {
+    if (!g_ShowToolsPanel) {
+        return;
+    }
+    
+    // Position in top-right corner
+    ImGuiWindowFlags toolsFlags = 
+        ImGuiWindowFlags_NoResize |
+        ImGuiWindowFlags_NoSavedSettings |
+        ImGuiWindowFlags_AlwaysAutoResize;
+    
+    ImVec2 workPos = ImGui::GetMainViewport()->WorkPos;
+    ImVec2 workSize = ImGui::GetMainViewport()->WorkSize;
+    const float PAD = 10.0f;
+    
+    ImGui::SetNextWindowPos(ImVec2(workPos.x + workSize.x - 180 - PAD, workPos.y + PAD), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowBgAlpha(g_OverlayOpacity);
+    
+    if (ImGui::Begin("Tools", &g_ShowToolsPanel, toolsFlags)) {
+        // Floor indicator
+        ImGui::TextColored(ImVec4(0.7f, 0.85f, 0.7f, 1.0f), "Navigation");
+        ImGui::Separator();
         
-        // Editor info
-        if (editor) {
-            ImGui::Separator();
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.9f, 1.0f), "Editor");
-            ImGui::Text("Ready");
+        ImGui::Text("Floor: %d", currentFloor);
+        ImGui::Text("Zoom: %.0f%%", (1.0 / currentZoom) * 100.0);
+        
+        ImGui::Spacing();
+        
+        // Quick actions section
+        ImGui::TextColored(ImVec4(0.85f, 0.7f, 0.7f, 1.0f), "Quick Actions");
+        ImGui::Separator();
+        
+        if (ImGui::Button("Toggle Debug", ImVec2(-1, 0))) {
+            ToggleDebugOverlay();
+        }
+        
+        ImGui::Spacing();
+        
+        // View settings
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.85f, 1.0f), "View Settings");
+        ImGui::Separator();
+        
+        static float opacity = 0.85f;
+        if (ImGui::SliderFloat("Opacity", &opacity, 0.3f, 1.0f)) {
+            SetOverlayOpacity(opacity);
         }
     }
     ImGui::End();
@@ -99,8 +144,16 @@ void ToggleDebugOverlay() {
     g_ShowDebugOverlay = !g_ShowDebugOverlay;
 }
 
+void ToggleToolsPanel() {
+    g_ShowToolsPanel = !g_ShowToolsPanel;
+}
+
 bool IsDebugOverlayVisible() {
     return g_ShowDebugOverlay;
+}
+
+bool IsToolsPanelVisible() {
+    return g_ShowToolsPanel;
 }
 
 void SetOverlayOpacity(float opacity) {

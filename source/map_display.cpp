@@ -339,6 +339,7 @@ void MapCanvas::OnPaint(wxPaintEvent &event) {
 	
 	// Draw our panels
 	ImGuiPanels::DrawDebugOverlay(&editor, cursor_x, cursor_y, hoverTile);
+	ImGuiPanels::DrawToolsPanel(&editor, floor, zoom);
 	
 	// Finalize ImGui frame
 	ImGui::Render();
