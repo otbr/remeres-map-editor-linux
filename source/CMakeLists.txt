@@ -78,6 +78,9 @@ find_package(pugixml CONFIG REQUIRED)
 find_package(LibLZMA REQUIRED)
 find_package(Protobuf REQUIRED)
 
+# Dear ImGui for modern UI overlay
+find_package(imgui CONFIG REQUIRED)
+
 # *****************************************************************************
 # Options
 # *****************************************************************************
@@ -273,6 +276,8 @@ target_sources(${PROJECT_NAME}
 	welcome_dialog.cpp
 	zone_brush.cpp
 	zones.cpp
+	imgui_impl_wx.cpp
+	imgui_panels.cpp
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -299,6 +304,7 @@ target_link_libraries(${PROJECT_NAME}
 	${LIBLZMA_LIBRARIES}
 	OpenGL::GL
 	protobuf
+	imgui::imgui
 
 	$<$<PLATFORM_ID:Linux>:xcb>
 )

@@ -10,7 +10,13 @@
 		"opengl",
 		"protobuf",
 		"liblzma",
-		"spdlog"
+		"spdlog",
+		{
+			"name": "imgui",
+			"features": [
+				"opengl3-binding"
+			]
+		}
 	],
 	"builtin-baseline": "67cc1677c3bf5c23ea14b9d2416c7422fdeac492"
 }
