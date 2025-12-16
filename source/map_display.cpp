@@ -605,6 +605,9 @@ void MapCanvas::getLineTiles(int x0, int y0, int x1, int y1, int z, PositionVect
 }
 
 void MapCanvas::OnMouseMove(wxMouseEvent &event) {
+	// Process mouse event for Dear ImGui
+	ImGuiWx::ProcessMouseEvent(event);
+	
 	if (screendragging) {
 		GetMapWindow()->ScrollRelative(int(g_settings.getFloat(Config::SCROLL_SPEED) * zoom * (event.GetX() - cursor_x)), int(g_settings.getFloat(Config::SCROLL_SPEED) * zoom * (event.GetY() - cursor_y)));
 		Refresh();
@@ -761,10 +764,26 @@ void MapCanvas::OnMouseMove(wxMouseEvent &event) {
 }
 
 void MapCanvas::OnMouseLeftRelease(wxMouseEvent &event) {
+	// Process mouse event for Dear ImGui
+	ImGuiWx::ProcessMouseEvent(event);
+	
+	// If ImGui wants the mouse, don't process in RME
+	if (ImGuiWx::WantCaptureMouse()) {
+		return;
+	}
+	
 	OnMouseActionRelease(event);
 }
 
 void MapCanvas::OnMouseLeftClick(wxMouseEvent &event) {
+	// Process mouse event for Dear ImGui
+	ImGuiWx::ProcessMouseEvent(event);
+	
+	// If ImGui wants the mouse, don't process in RME
+	if (ImGuiWx::WantCaptureMouse()) {
+		return;
+	}
+	
 	OnMouseActionClick(event);
 }
 

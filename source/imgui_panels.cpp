@@ -105,7 +105,8 @@ void DrawToolsPanel(Editor* editor, int currentFloor, double currentZoom) {
     ImVec2 workSize = ImGui::GetMainViewport()->WorkSize;
     const float PAD = 10.0f;
     
-    ImGui::SetNextWindowPos(ImVec2(workPos.x + workSize.x - 180 - PAD, workPos.y + PAD), ImGuiCond_FirstUseEver);
+    // Use Always to ensure panel appears in correct position (fixes invisible panel issue)
+    ImGui::SetNextWindowPos(ImVec2(workPos.x + workSize.x - 180 - PAD, workPos.y + PAD), ImGuiCond_Always);
     ImGui::SetNextWindowBgAlpha(g_OverlayOpacity);
     
     if (ImGui::Begin("Tools", &g_ShowToolsPanel, toolsFlags)) {
@@ -132,9 +133,9 @@ void DrawToolsPanel(Editor* editor, int currentFloor, double currentZoom) {
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.85f, 1.0f), "View Settings");
         ImGui::Separator();
         
-        static float opacity = 0.85f;
-        if (ImGui::SliderFloat("Opacity", &opacity, 0.3f, 1.0f)) {
-            SetOverlayOpacity(opacity);
+        // Use global opacity directly (fixes desync issue)
+        if (ImGui::SliderFloat("Opacity", &g_OverlayOpacity, 0.3f, 1.0f)) {
+            // g_OverlayOpacity is modified directly by the slider
         }
     }
     ImGui::End();
