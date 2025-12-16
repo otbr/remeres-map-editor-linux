@@ -23,6 +23,7 @@ static bool g_ShowPerformancePanel = false;  // Hidden by default, enabled via c
 static float g_OverlayOpacity = 0.85f;
 
 // === Performance Metrics ===
+
 static constexpr int HISTORY_SIZE = 120;
 
 // Frame timing
@@ -233,7 +234,7 @@ void DrawToolsPanel(Editor* editor, int currentFloor, double currentZoom) {
     // Calculate position so panel is INSIDE the viewport (not cut off)
     // We need to account for the panel width (~150px) + padding
     const float PAD = 10.0f;
-    const float PANEL_WIDTH = 160.0f;
+    const float PANEL_WIDTH = 200.0f;  // Increased to move panel more left
     float posX = workPos.x + workSize.x - PANEL_WIDTH - PAD;
     float posY = workPos.y + PAD;
     

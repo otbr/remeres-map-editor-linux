@@ -195,24 +195,8 @@ void MapDrawer::SetupVars() {
 		start_y -= 2;
 	}
 
-	// === OPTIMIZATION: Reduce tile padding from +2 to +1 ===
-	// Original: +2 padding caused ~20% more tiles to be rendered
-	end_x = start_x + screensize_x / tile_size + 1;
-	end_y = start_y + screensize_y / tile_size + 1;
-	
-	// === OPTIMIZATION: Limit max viewport when zoomed out ===
-	// When zoomed out far, cap the maximum tiles rendered
-	const int MAX_TILES_PER_AXIS = 100;  // Cap at 100x100 = 10,000 tiles max
-	if ((end_x - start_x) > MAX_TILES_PER_AXIS) {
-		int center_x = (start_x + end_x) / 2;
-		start_x = center_x - MAX_TILES_PER_AXIS / 2;
-		end_x = center_x + MAX_TILES_PER_AXIS / 2;
-	}
-	if ((end_y - start_y) > MAX_TILES_PER_AXIS) {
-		int center_y = (start_y + end_y) / 2;
-		start_y = center_y - MAX_TILES_PER_AXIS / 2;
-		end_y = center_y + MAX_TILES_PER_AXIS / 2;
-	}
+	end_x = start_x + screensize_x / tile_size + 2;
+	end_y = start_y + screensize_y / tile_size + 2;
 }
 
 void MapDrawer::SetupGL() {
