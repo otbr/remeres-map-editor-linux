@@ -337,6 +337,10 @@ void MapCanvas::OnPaint(wxPaintEvent &event) {
 		hoverTile = editor.getMap().getTile(last_cursor_map_x, last_cursor_map_y, floor);
 	}
 	
+	// Update RME metrics for performance monitor
+	int texBinds = GetTextureBindsLastFrame();
+	ImGuiPanels::UpdateRMEMetrics(texBinds, 0, 0);
+	
 	// Draw our panels
 	ImGuiPanels::DrawDebugOverlay(&editor, cursor_x, cursor_y, hoverTile);
 	ImGuiPanels::DrawToolsPanel(&editor, floor, zoom);

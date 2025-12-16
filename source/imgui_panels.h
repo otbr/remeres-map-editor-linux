@@ -22,23 +22,22 @@ void Init();
 // Shutdown the panels system
 void Shutdown();
 
-// Draw the debug overlay (FPS, mouse position, tile info)
-// This is always drawn in the top-left corner
+// Draw the performance monitor (FPS, graphics stats, input latency)
+// Expanded version with RME-specific metrics
 void DrawDebugOverlay(Editor* editor, int mouseX, int mouseY, Tile* hoverTile);
 
 // Draw the tools panel (brush selection, zoom, floor)
 void DrawToolsPanel(Editor* editor, int currentFloor, double currentZoom);
 
-// Toggle debug overlay visibility
-void ToggleDebugOverlay();
+// Update RME-specific metrics (call from render loop)
+void UpdateRMEMetrics(int textureBinds, int tilesRendered, int visibleTiles);
 
-// Toggle tools panel visibility
+// Toggle panels visibility
+void ToggleDebugOverlay();
 void ToggleToolsPanel();
 
-// Check if debug overlay is visible
+// Check visibility
 bool IsDebugOverlayVisible();
-
-// Check if tools panel is visible
 bool IsToolsPanelVisible();
 
 // Set overlay opacity (0.0 - 1.0)
