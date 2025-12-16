@@ -120,7 +120,7 @@ public:
 	}
 
 	// Scrolls the window to the position of the named brush button
-	void EnsureVisible(const BrushButton* brushButto);
+	void EnsureVisible(const BrushButton* brushButto); // Note: param unused in new impl
 
 	bool LoadContentByPage(int page = 1);
 	bool LoadAllContent();
@@ -137,24 +137,32 @@ public:
 	bool SetPage(int page) override;
 	bool PreviousPage() override;
 
-	// Event handling...
-	void OnClickBrushButton(wxCommandEvent &event);
+	// Event handling
+	void OnPaint(wxPaintEvent& event);
+	void OnSize(wxSizeEvent& event);
+	void OnLeftUp(wxMouseEvent& event);
+	void OnMotion(wxMouseEvent& event);
+	void OnLeave(wxMouseEvent& event);
 
 private:
-	// Used internally to select a button.
-	void Select(BrushButton* brushButton);
+	// Used internally to select a brush
+	void Select(int index);
 	// Used internally to deselect a button before selecting a new one.
 	void Deselect();
 
-	int width = 0;
-	int height = 0;
+	// Helper to calculate grid layout
+	void RecalculateLayout();
+	// Helper to get brush at position
+	int HitTest(const wxPoint& pt) const;
 
-	BrushButton* selectedButton = nullptr;
-	std::vector<BrushButton*> brushButtons;
 	RenderSize iconSize;
-
-	wxBoxSizer* stacksizer = nullptr;
-	std::vector<const wxBoxSizer*> rowsizers;
+	int m_cols = 1;
+	int m_rows = 0;
+	int m_cellWidth = 32;
+	int m_cellHeight = 32;
+	
+	int m_selectedIndex = -1;
+	int m_hoverIndex = -1;
 
 	DECLARE_EVENT_TABLE();
 };

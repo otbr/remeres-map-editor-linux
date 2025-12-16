@@ -16,16 +16,20 @@
 #include <wx/checkbox.h>
 #include <wx/combobox.h>
 #include <wx/notebook.h>
+#include <wx/simplebook.h>
+#include <wx/tglbtn.h>
 #include <wx/choice.h>
 #include <wx/srchctrl.h>
 #include <vector>
 #include <map>
 #include <wx/treectrl.h>
 
+// Forward declarations
 class BorderItemButton;
-
 class BorderGridPanel;
+class BorderPreviewPanel;
 class WallVisualPanel;
+class BrushPalettePanel;
 
 // Represents a border edge position
 enum BorderEdgePosition {
@@ -89,7 +93,6 @@ struct GroundItem {
     bool operator!=(const GroundItem& other) const {
         return !(*this == other);
     }
-
 };
 
 // Represents a wall type group (e.g., "vertical", "horizontal")
@@ -131,12 +134,14 @@ private:
     wxString m_name;
 };
 
+class SimpleRawPalettePanel;
+
 class BorderEditorDialog : public wxDialog {
 public:
     BorderEditorDialog(wxWindow* parent, const wxString& title);
     virtual ~BorderEditorDialog();
 
-    // Event handlers - made public so they can be accessed by other components
+    // Event handlers
     void OnItemIdChanged(wxCommandEvent& event);
     void OnPositionSelected(wxCommandEvent& event);
     void OnAddItem(wxCommandEvent& event);
@@ -153,6 +158,7 @@ public:
     
     // Wall events
     void OnWallBrowse(wxCommandEvent& event);
+    void OnRawCategoryChange(wxCommandEvent& event);
     void OnAddWallItem(wxCommandEvent& event);
     void OnRemoveWallItem(wxCommandEvent& event);
     
@@ -163,6 +169,9 @@ public:
     // Browser sidebar events
     void OnBorderBrowserSelection(wxCommandEvent& event);
     void OnBrowserSearch(wxCommandEvent& event);
+    
+    // Mode switcher events
+    void OnModeSwitch(wxCommandEvent& event);
 
 protected:
     void CreateGUIControls();
@@ -172,10 +181,9 @@ protected:
     void SaveBorder();
     void SaveGroundBrush();
     bool ValidateBorder();
-    void LoadBorderById(int borderId); // Helper to load border by ID
-    void LoadGroundBrushByName(const wxString& name); // Helper to load ground brush
-    void LoadWallBrushByName(const wxString& name); // Helper to load wall brush
-
+    void LoadBorderById(int borderId);
+    void LoadGroundBrushByName(const wxString& name);
+    void LoadWallBrushByName(const wxString& name);
     bool ValidateGroundBrush();
     bool ValidateWallBrush();
     void LoadExistingWallBrushes();
@@ -198,92 +206,94 @@ protected:
     void FilterBrowserList(const wxString& query);
     void UpdateBrowserLabel();
 
-public:
-    // UI Elements - made public so they can be accessed by other components
-    // Common
-    wxTextCtrl* m_nameCtrl;
-    wxSpinCtrl* m_idCtrl;
-    wxNotebook* m_notebook;
+private:
+    // ===== State =====
+    int m_maxBorderId;
+    int m_nextBorderId;
+    int m_currentBorderId;  // Currently edited border ID (replaces m_idCtrl)
+    int m_activeTab;        // 0 = border, 1 = ground, 2 = wall
     
-    // Sidebar
+    // Storage for unfiltered browser list items
+    wxArrayString m_fullBrowserList;
+    wxArrayString m_fullBrowserIds;
+
+    // ===== UI Controls =====
+    wxSimplebook* m_notebook;
+    
+    // Mode switcher buttons
+    wxToggleButton* m_borderModeBtn;
+    wxToggleButton* m_groundModeBtn;
+    wxToggleButton* m_wallModeBtn;
+    
+    // Common controls
+    wxTextCtrl* m_nameCtrl;
+    wxButton* m_newButton;  // "New Border/Ground/Wall" button with dynamic label
+    
+    // Sidebar (Tree view - legacy, may not be used)
     wxTextCtrl* m_searchCtrl;
     wxTreeCtrl* m_assetTree;
     wxTreeItemId m_rootId;
     wxTreeItemId m_bordersRootId;
     wxTreeItemId m_groundsRootId;
     wxTreeItemId m_wallsRootId;
-
-    // Border Tab
+    
+    // ===== Border Tab =====
     wxPanel* m_borderPanel;
-    wxListBox* m_borderBrowserList; // Sidebar browser for existing items
-    wxSearchCtrl* m_browserSearchCtrl; // Search control for sidebar
-    wxStaticText* m_browserLabel; // Dynamic label for sidebar
+    wxListBox* m_borderBrowserList;     // Sidebar browser for existing items
+    wxSearchCtrl* m_browserSearchCtrl;  // Search control for sidebar
+    wxStaticText* m_browserLabel;       // Dynamic label for sidebar
     wxCheckBox* m_isOptionalCheck;
     wxCheckBox* m_isGroundCheck;
-    wxSpinCtrl* m_groupCtrl;
-    wxSpinCtrl* m_itemIdCtrl;
+    wxCheckBox* m_groupCheck;           // NEW: Replaces m_groupCtrl SpinCtrl
+    BorderGridPanel* m_gridPanel;
+    BorderPreviewPanel* m_previewPanel;
+    // Palette panels
+    SimpleRawPalettePanel* m_itemPalettePanel;  // Changed from BrushPalettePanel*
+    BrushPalettePanel* m_groundPalette;     
+    BrushPalettePanel* m_wallPalette;
     
-    // Ground Tab
+    // Border items data
+    std::vector<BorderItem> m_borderItems;
+    std::map<BorderEdgePosition, BorderItemButton*> m_borderButtons;
+    
+    // ===== Ground Tab =====
     wxPanel* m_groundPanel;
     wxSpinCtrl* m_serverLookIdCtrl;
     wxSpinCtrl* m_zOrderCtrl;
     wxSpinCtrl* m_groundItemIdCtrl;
     wxSpinCtrl* m_groundItemChanceCtrl;
     wxListBox* m_groundItemsList;
+    wxChoice* m_borderAlignmentChoice;
+    wxCheckBox* m_includeToNoneCheck;
+
+    wxCheckBox* m_includeInnerCheck;
+    wxChoice* m_tilesetChoice;
+    wxComboBox* m_rawCategoryCombo;
     
-    // Wall Tab
+    // Ground items data
+    std::vector<GroundItem> m_groundItems;
+    std::map<wxString, wxString> m_tilesets;
+
+    // BrushPalettePanel* m_groundPalette;  // Removed duplicate
+    
+    // ===== Wall Tab =====
     wxPanel* m_wallPanel;
     wxSpinCtrl* m_wallServerLookIdCtrl;
-    wxSpinCtrl* m_wallGroupCtrl; // Added missing Group control
+    wxSpinCtrl* m_wallGroupCtrl;
     wxSpinCtrl* m_wallZOrderCtrl;
     wxSpinCtrl* m_wallItemIdCtrl;
     wxSpinCtrl* m_wallItemChanceCtrl;
     wxListBox* m_wallItemsList;
     wxCheckBox* m_wallIsOptionalCheck;
-    wxCheckBox* m_wallIsGroundCheck; // For "Force Ground"
+    wxCheckBox* m_wallIsGroundCheck;
     WallVisualPanel* m_wallVisualPanel;
-    
-    // Wall items
-    std::map<std::string, WallTypeData> m_wallTypes;
-    wxString m_currentWallType;
     wxChoice* m_wallTypeChoice;
     
-    // Border alignment for ground brushes
-    wxChoice* m_borderAlignmentChoice;
-    wxCheckBox* m_includeToNoneCheck;
-    wxCheckBox* m_includeInnerCheck;
-    
-    // Tileset selector for ground brushes
-    wxChoice* m_tilesetChoice;
-    
-    // Map of tileset names to internal identifiers
-    std::map<wxString, wxString> m_tilesets;
-    
-    // Border items
-    std::vector<BorderItem> m_borderItems;
-    
-    // Ground items
-    std::vector<GroundItem> m_groundItems;
-    
-    // Border grid
-    BorderGridPanel* m_gridPanel;
-    
-    // Border item buttons for each position
-    std::map<BorderEdgePosition, BorderItemButton*> m_borderButtons;
-    
-    // Border preview panel
-    class BorderPreviewPanel* m_previewPanel;
-    
-private:
-    // Next available border ID
-    int m_nextBorderId;
-    
-    // Current active tab (0 = border, 1 = ground, 2 = wall)
-    int m_activeTab;
-    
-    // Storage for unfiltered browser list items
-    wxArrayString m_fullBrowserList;
-    wxArrayString m_fullBrowserIds;
+    // Wall items data
+    // Wall items data
+    std::map<std::string, WallTypeData> m_wallTypes;
+    wxString m_currentWallType;
+    // BrushPalettePanel* m_wallPalette;  // Removed duplicate
     
     DECLARE_EVENT_TABLE()
 };
@@ -304,6 +314,33 @@ private:
     uint16_t m_itemId;
     BorderEdgePosition m_position;
     
+    DECLARE_EVENT_TABLE()
+};
+
+// Grid panel to visually show border item positions
+class SimpleRawPalettePanel : public wxScrolledWindow {
+public:
+    SimpleRawPalettePanel(wxWindow* parent, wxWindowID id = wxID_ANY);
+    virtual ~SimpleRawPalettePanel();
+
+    void LoadTileset(const wxString& categoryName);
+    void OnPaint(wxPaintEvent& event);
+    void OnLeftUp(wxMouseEvent& event);
+    void OnMotion(wxMouseEvent& event);
+    void OnLeave(wxMouseEvent& event);
+    void OnSize(wxSizeEvent& event);
+
+private:
+    std::vector<uint16_t> m_itemIds;
+    int m_cols = 1;
+    int m_rows = 1;
+    int m_itemSize = 32;
+    int m_padding = 2;
+    int m_hoverIndex = -1;
+
+    void RecalculateLayout();
+    int HitTest(const wxPoint& pt) const;
+
     DECLARE_EVENT_TABLE()
 };
 
@@ -373,4 +410,4 @@ private:
     DECLARE_EVENT_TABLE()
 };
 
-#endif // RME_BORDER_EDITOR_WINDOW_H_ 
+#endif // RME_BORDER_EDITOR_WINDOW_H_

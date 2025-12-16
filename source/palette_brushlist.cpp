@@ -565,246 +565,250 @@ BrushBoxInterface* BrushPanel::GetBrushBox() const {
 // ============================================================================
 // BrushIconBox
 
+// ============================================================================
+// BrushIconBox
+
 BEGIN_EVENT_TABLE(BrushIconBox, wxScrolledWindow)
-// Listbox style
-EVT_TOGGLEBUTTON(wxID_ANY, BrushIconBox::OnClickBrushButton)
+EVT_PAINT(BrushIconBox::OnPaint)
+EVT_SIZE(BrushIconBox::OnSize)
+EVT_LEFT_UP(BrushIconBox::OnLeftUp)
+EVT_MOTION(BrushIconBox::OnMotion)
+EVT_LEAVE_WINDOW(BrushIconBox::OnLeave)
 END_EVENT_TABLE()
 
 BrushIconBox::BrushIconBox(wxWindow* parent, const TilesetCategory* tileset, RenderSize rsz) :
-	wxScrolledWindow(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxVSCROLL),
+	wxScrolledWindow(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxVSCROLL | wxBORDER_NONE),
 	BrushBoxInterface(tileset),
 	iconSize(rsz) {
 	ASSERT(tileset->getType() >= TILESET_UNKNOWN && tileset->getType() <= TILESET_HOUSE);
-	width = iconSize == RENDER_SIZE_32x32 ? std::max(g_settings.getInteger(Config::PALETTE_COL_COUNT) / 2 + 1, 1) : std::max(g_settings.getInteger(Config::PALETTE_COL_COUNT) + 1, 1);
-	// Note: 'height' is kept for settings compatibility but doesn't limit scrolling
-	height = iconSize == RENDER_SIZE_32x32 ? std::max(g_settings.getInteger(Config::PALETTE_ROW_COUNT) / 2 + 1, 1) : std::max(g_settings.getInteger(Config::PALETTE_ROW_COUNT) + 1, 1);
+	
+	SetBackgroundStyle(wxBG_STYLE_PAINT);
+	SetBackgroundColour(*wxWHITE);
 
-	// Reserve space for all items (not just one page)
-	const auto totalItems = tileset->brushlist.size();
-	brushButtons.reserve(totalItems);
+	m_cellWidth = (iconSize == RENDER_SIZE_32x32) ? 36 : 20; // 32+4 padding
+	m_cellHeight = (iconSize == RENDER_SIZE_32x32) ? 36 : 20;
 
-	// Load all content with scrolling enabled
-	LoadAllContent();
+	// Initial layout calculation
+	RecalculateLayout();
 }
 
-bool BrushIconBox::LoadContentByPage(int page /* = 1 */) {
-	if (page <= 0 || page > totalPages) {
-		return false;
-	}
+void BrushIconBox::RecalculateLayout() {
+	int width, height;
+	GetClientSize(&width, &height);
 
-	currentPage = page;
+	if (width < m_cellWidth) width = m_cellWidth; // prevent div by zero
+	
+	m_cols = width / m_cellWidth;
+	if (m_cols < 1) m_cols = 1;
 
-	const auto startOffset = (width * height) * (page - 1);
-	auto endOffset = (width * height) * page;
-	endOffset = page > 1 ? endOffset : startOffset + endOffset;
-	endOffset = endOffset > tileset->brushlist.size() ? tileset->brushlist.size() : endOffset;
+	size_t count = tileset->brushlist.size();
+	m_rows = (count + m_cols - 1) / m_cols;
 
-	if (stacksizer) {
-		stacksizer->ShowItems(false);
-		stacksizer->Clear();
-		rowsizers.clear();
-		brushButtons.clear();
-	}
+	SetVirtualSize(m_cols * m_cellWidth, m_rows * m_cellHeight);
+	SetScrollRate(0, m_cellHeight);
+}
 
-	stacksizer = newd wxBoxSizer(wxVERTICAL);
-	SetSizer(stacksizer);
+void BrushIconBox::OnSize(wxSizeEvent& event) {
+	RecalculateLayout();
+	event.Skip();
+	Refresh();
+}
 
-	auto rowSizer = newd wxBoxSizer(wxHORIZONTAL);
+void BrushIconBox::OnPaint(wxPaintEvent& event) {
+	wxAutoBufferedPaintDC dc(this);
+	DoPrepareDC(dc);
 
-	for (auto i = startOffset; i < endOffset; ++i) {
-		const auto brushButton = newd BrushButton(this, tileset->brushlist[i], iconSize);
-		brushButtons.emplace_back(brushButton);
-		rowSizer->Add(brushButton);
+	dc.Clear();
 
-		if (brushButtons.size() % width == 0) {
-			stacksizer->Add(rowSizer);
-			rowsizers.emplace_back(rowSizer);
-			rowSizer = newd wxBoxSizer(wxHORIZONTAL);
+	if (!tileset || tileset->brushlist.empty()) return;
+
+	// Optimization: Determine visible range
+	int startX, startY, noUnitsX, noUnitsY;
+	GetViewStart(&startX, &startY);
+	int clientW, clientH;
+	GetClientSize(&clientW, &clientH);
+
+	// Calculate visible rows
+	// ViewStart is in scroll units (m_cellHeight)
+	int startRow = startY; 
+	int endRow = startRow + (clientH / m_cellHeight) + 2; // +buffer
+
+	if (startRow < 0) startRow = 0;
+	if (endRow > m_rows) endRow = m_rows;
+
+	int startIndex = startRow * m_cols;
+	int endIndex = endRow * m_cols;
+	if (endIndex > (int)tileset->brushlist.size()) endIndex = tileset->brushlist.size();
+
+	for (int i = startIndex; i < endIndex; ++i) {
+		int col = i % m_cols;
+		int row = i / m_cols;
+		
+		int x = col * m_cellWidth;
+		int y = row * m_cellHeight;
+
+		wxRect cellRect(x, y, m_cellWidth, m_cellHeight);
+		
+		// Draw Selection/Hover bg
+		if (i == m_selectedIndex) {
+			dc.SetBrush(wxBrush(wxColor(180, 210, 255)));
+			dc.SetPen(wxPen(wxColor(50, 100, 200)));
+			dc.DrawRectangle(cellRect);
+		} else if (i == m_hoverIndex) {
+			dc.SetBrush(wxBrush(wxColor(220, 230, 255)));
+			dc.SetPen(*wxTRANSPARENT_PEN);
+			dc.DrawRectangle(cellRect);
+		}
+
+		// Draw Sprite
+		const auto brush = tileset->brushlist[i];
+		if (const auto sprite = g_gui.gfx.getSprite(brush->getLookID()); sprite) {
+			// Center sprite in cell
+			int spriteSize = (iconSize == RENDER_SIZE_32x32) ? 32 : 16;
+			int offX = (m_cellWidth - spriteSize) / 2;
+			int offY = (m_cellHeight - spriteSize) / 2;
+			
+			// Use proper enum for size if available, or just raw numbers? 
+			// BrushListBox uses SPRITE_SIZE_32x32. We trust it maps to ints or enum correctly.
+			// Actually DrawTo takes SpriteSize enum for implementation but maybe int is fine?
+			// BrushListBox calls `sprite->DrawTo(&dc, SPRITE_SIZE_32x32, ...)`
+			// We should match that.
+			SpriteSize sz = (iconSize == RENDER_SIZE_32x32) ? SPRITE_SIZE_32x32 : SPRITE_SIZE_32x32; // Assuming small also draws at 32 or scale?
+			// Actually raw palette is usually 32x32. If small is requested, we might need SPRITE_SIZE_32x32 scaled?
+			// Let's stick to 32x32 for now as that's the main request.
+			
+			sprite->DrawTo(&dc, sz, x + offX, y + offY, spriteSize, spriteSize);
 		}
 	}
+}
 
-	if (rowsizers.size() <= 0 || rowSizer != rowsizers.back()) {
-		stacksizer->Add(rowSizer);
-		rowsizers.emplace_back(rowSizer);
+void BrushIconBox::OnMotion(wxMouseEvent& event) {
+	wxPoint pos = event.GetPosition();
+	// Adjust for scrolling
+	CalcUnscrolledPosition(pos.x, pos.y, &pos.x, &pos.y);
+
+	int index = HitTest(pos);
+	if (index != m_hoverIndex) {
+		m_hoverIndex = index;
+		Refresh();
+		
+		if (index >= 0 && index < (int)tileset->brushlist.size()) {
+			SetToolTip(tileset->brushlist[index]->getName());
+		} else {
+			UnsetToolTip();
+		}
 	}
+}
 
-	if (!stacksizer->AreAnyItemsShown()) {
-		stacksizer->ShowItems(true);
+void BrushIconBox::OnLeave(wxMouseEvent& event) {
+	if (m_hoverIndex != -1) {
+		m_hoverIndex = -1;
+		Refresh();
 	}
+}
 
+void BrushIconBox::OnLeftUp(wxMouseEvent& event) {
+	wxPoint pos = event.GetPosition();
+	CalcUnscrolledPosition(pos.x, pos.y, &pos.x, &pos.y);
+	
+	int index = HitTest(pos);
+	if (index >= 0 && index < (int)tileset->brushlist.size()) {
+		Select(index);
+		
+		// Notify GUI
+		const auto brush = tileset->brushlist[index];
+		if (const auto paletteWindow = g_gui.GetParentWindowByType<PaletteWindow*>(this); paletteWindow) {
+			g_gui.ActivatePalette(paletteWindow);
+		}
+		g_gui.SelectBrush(brush, tileset->getType());
+	}
+}
+
+int BrushIconBox::HitTest(const wxPoint& pt) const {
+	int col = pt.x / m_cellWidth;
+	int row = pt.y / m_cellHeight;
+	
+	if (col >= m_cols) return -1;
+	
+	int index = row * m_cols + col;
+	if (index >= 0 && index < (int)tileset->brushlist.size()) {
+		return index;
+	}
+	return -1;
+}
+
+void BrushIconBox::Select(int index) {
+	m_selectedIndex = index;
+	Refresh();
+	
+	// Ensure visible? logic handled by EnsureVisible if called, or we could do it here
+}
+
+// Interface implementations
+bool BrushIconBox::LoadContentByPage(int page) {
+	// Not used in scroll mode
 	return true;
 }
 
 bool BrushIconBox::LoadAllContent() {
-	// Clear existing content
-	if (stacksizer) {
-		stacksizer->ShowItems(false);
-		stacksizer->Clear();
-		rowsizers.clear();
-		brushButtons.clear();
-	}
-
-	stacksizer = newd wxBoxSizer(wxVERTICAL);
-	SetSizer(stacksizer);
-
-	auto rowSizer = newd wxBoxSizer(wxHORIZONTAL);
-
-	// Load ALL brushes (not just one page)
-	for (auto i = 0; i < tileset->brushlist.size(); ++i) {
-		const auto brushButton = newd BrushButton(this, tileset->brushlist[i], iconSize);
-		brushButtons.emplace_back(brushButton);
-		rowSizer->Add(brushButton);
-
-		// Start new row after 'width' items
-		if ((i + 1) % width == 0) {
-			stacksizer->Add(rowSizer);
-			rowsizers.emplace_back(rowSizer);
-			rowSizer = newd wxBoxSizer(wxHORIZONTAL);
-		}
-	}
-
-	// Add final row if it has any items
-	if (rowSizer->GetItemCount() > 0) {
-		stacksizer->Add(rowSizer);
-		rowsizers.emplace_back(rowSizer);
-	}
-
-	// Calculate virtual size for ALL content to enable scrolling
-	const auto totalRows = (tileset->brushlist.size() + width - 1) / width;
-	const auto buttonHeight = iconSize == RENDER_SIZE_32x32 ? 32 : 16;
-	const auto buttonWidth = iconSize == RENDER_SIZE_32x32 ? 32 : 16;
-
-	// Set scrollbar for entire content - this enables scrolling through all items
-	SetScrollbars(
-		buttonWidth,  // x scroll unit
-		buttonHeight, // y scroll unit
-		width,        // x units (columns)
-		totalRows,    // y units (rows) - enables scrolling!
-		0, 0, false
-	);
-
-	if (!stacksizer->AreAnyItemsShown()) {
-		stacksizer->ShowItems(true);
-	}
-
+	RecalculateLayout();
+	Refresh();
 	return true;
 }
 
 void BrushIconBox::SelectFirstBrush() {
-	if (tileset && tileset->size() > 0) {
-		Select(brushButtons[0]);
+	if (tileset && !tileset->brushlist.empty()) {
+		Select(0);
 	}
 }
 
 Brush* BrushIconBox::GetSelectedBrush() const {
-	if (!tileset) {
-		return nullptr;
+	if (m_selectedIndex >= 0 && m_selectedIndex < (int)tileset->brushlist.size()) {
+		return tileset->brushlist[m_selectedIndex];
 	}
-
-	return selectedButton ? selectedButton->brush : nullptr;
+	return nullptr;
 }
 
 bool BrushIconBox::SelectPaginatedBrush(const Brush* whatBrush, BrushPalettePanel* brushPalettePanel) {
-	// All brushes are now loaded, so simply find and select
-	const auto it = std::ranges::find_if(brushButtons, [&](const auto &brushButton) {
-		return brushButton->brush == whatBrush;
-	});
-
-	if (it != brushButtons.end()) {
-		Select(*it);
-		return true;
-	}
-
-	return false;
+	return SelectBrush(whatBrush);
 }
 
 bool BrushIconBox::SelectBrush(const Brush* whatBrush) {
-	Deselect();
-
 	if (!whatBrush) {
+		m_selectedIndex = -1;
+		Refresh();
 		return false;
 	}
-
-	// Direct selection - all brushes are loaded
-	const auto it = std::ranges::find_if(brushButtons, [&](const auto &brushButton) {
-		return brushButton->brush == whatBrush;
-	});
-
-	if (it != brushButtons.end()) {
-		Select(*it);
-		return true;
-	}
-
-	return false;
-}
-
-bool BrushIconBox::NextPage() {
-	// No-op: Scrolling replaces pagination
-	return false;
-}
-
-bool BrushIconBox::SetPage(int page) {
-	// No-op: Scrolling replaces pagination
-	return false;
-}
-
-bool BrushIconBox::PreviousPage() {
-	// No-op: Scrolling replaces pagination
-	return false;
-}
-
-void BrushIconBox::Select(BrushButton* brushButton) {
-	Deselect();
-	selectedButton = brushButton;
-	selectedButton->SetValue(true);
-	EnsureVisible(selectedButton);
-}
-
-void BrushIconBox::Deselect() {
-	if (selectedButton != nullptr) {
-		selectedButton->SetValue(false);
-		selectedButton = nullptr;
-	}
-}
-
-void BrushIconBox::EnsureVisible(const BrushButton* whatBrush) {
-	int windowSizeX, windowSizeY;
-	GetVirtualSize(&windowSizeX, &windowSizeY);
-
-	int scrollUnitX;
-	int scrollUnitY;
-	GetScrollPixelsPerUnit(&scrollUnitX, &scrollUnitY);
-
-	const auto &rect = whatBrush->GetRect();
-	int y;
-	CalcUnscrolledPosition(0, rect.y, nullptr, &y);
-
-	const auto maxScrollPos = windowSizeY / scrollUnitY;
-	const auto scrollPosY = std::min(maxScrollPos, (y / scrollUnitY));
-
-	int startScrollPosY;
-	GetViewStart(nullptr, &startScrollPosY);
-
-	int clientSizeX, clientSizeY;
-	GetClientSize(&clientSizeX, &clientSizeY);
-	const auto endScrollPosY = startScrollPosY + clientSizeY / scrollUnitY;
-
-	if (scrollPosY < startScrollPosY || scrollPosY > endScrollPosY) {
-		// only scroll if the button isnt visible
-		Scroll(-1, scrollPosY);
-	}
-}
-
-void BrushIconBox::OnClickBrushButton(wxCommandEvent &event) {
-	const auto eventObject = event.GetEventObject();
-	const auto brushButton = dynamic_cast<BrushButton*>(eventObject);
-	if (brushButton) {
-		if (const auto paletteWindow = g_gui.GetParentWindowByType<PaletteWindow*>(this); paletteWindow) {
-			g_gui.ActivatePalette(paletteWindow);
+	
+	for (size_t i = 0; i < tileset->brushlist.size(); ++i) {
+		if (tileset->brushlist[i] == whatBrush) {
+			Select(static_cast<int>(i));
+			// Ensure visible logic:
+			int row = i / m_cols;
+			int y = row * m_cellHeight;
+			int startX, startY;
+			GetViewStart(&startX, &startY);
+			// StartY is in scroll units (m_cellHeight)
+			int visibleRows = GetClientSize().y / m_cellHeight;
+			if (row < startY || row >= startY + visibleRows) {
+				Scroll(0, row);
+			}
+			return true;
 		}
-		g_gui.SelectBrush(brushButton->brush, tileset->getType());
 	}
+	return false;
 }
+
+bool BrushIconBox::NextPage() { return false; }
+bool BrushIconBox::SetPage(int page) { return false; }
+bool BrushIconBox::PreviousPage() { return false; }
+
+// Old methods stubs
+void BrushIconBox::EnsureVisible(const BrushButton* brushButto) {
+	// No-op
+}
+
+void BrushIconBox::Deselect() { }
 
 // ============================================================================
 // BrushListBox

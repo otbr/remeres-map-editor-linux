@@ -1186,7 +1186,14 @@ void GameSprite::DrawTo(wxDC* dcWindow, SpriteSize spriteSize, int start_x, int 
 	}
 	wxMemoryDC* sdc = getDC(spriteSize);
 	if (sdc) {
-		dcWindow->Blit(start_x, start_y, sizeWidth, sizeHeight, sdc, 0, 0, wxCOPY, true);
+		// Blit doesn't support Alpha transparency well on all platforms (e.g. Linux GTK3)
+		// So we prefer DrawBitmap when no scaling is needed.
+		const wxBitmap& bmp = sdc->GetSelectedBitmap();
+		if (bmp.IsOk() && bmp.GetWidth() == sizeWidth && bmp.GetHeight() == sizeHeight) {
+			dcWindow->DrawBitmap(bmp, start_x, start_y, true);
+		} else {
+			dcWindow->Blit(start_x, start_y, sizeWidth, sizeHeight, sdc, 0, 0, wxCOPY, true);
+		}
 	} else {
 		const wxBrush &b = dcWindow->GetBrush();
 		dcWindow->SetBrush(*wxRED_BRUSH);
