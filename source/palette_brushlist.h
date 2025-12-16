@@ -245,9 +245,8 @@ public:
 	// Called when this page is displayed
 	void OnSwitchIn();
 
-	// Event handler for child window
-	void OnSwitchingPage(wxChoicebookEvent &event);
-	void OnPageChanged(wxChoicebookEvent &event);
+	// Event handlers
+	void OnCategoryChanged(wxCommandEvent &event);  // Replaces OnSwitchingPage/OnPageChanged
 	void OnClickAddTileset(wxCommandEvent &WXUNUSED(event));
 	void OnClickAddItemToTileset(wxCommandEvent &WXUNUSED(event));
 
@@ -263,12 +262,25 @@ public:
 	void EnablePreviousPage(bool enable = true);
 	void SetPageInfo(const wxString &text);
 	void SetCurrentPage(const wxString &text);
+	
+	// Page management
+	int GetPageCount() const { return static_cast<int>(m_pages.size()); }
+	BrushPanel* GetCurrentPage() const;
+	int GetSelection() const;
+	wxString GetPageText(int index) const;
+	void ChangeSelection(int index);
 
 protected:
 	wxSizer* sizer = newd wxBoxSizer(wxVERTICAL);
 	wxSizer* pageInfoSizer = newd wxFlexGridSizer(7, 1, 1);
 	PaletteType paletteType;
-	wxChoicebook* choicebook = nullptr;
+	
+	// Replaced wxChoicebook with manual implementation
+	wxComboBox* m_categoryCombo = nullptr;
+	wxPanel* m_pageContainer = nullptr;
+	std::vector<BrushPanel*> m_pages;
+	int m_currentPageIndex = -1;
+	
 	wxButton* nextPageButton = nullptr;
 	wxButton* previousPageButton = nullptr;
 	wxTextCtrl* currentPageCtrl = nullptr;

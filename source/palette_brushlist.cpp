@@ -33,18 +33,25 @@ EVT_BUTTON(wxID_ADD, BrushPalettePanel::OnClickAddItemToTileset)
 EVT_BUTTON(wxID_NEW, BrushPalettePanel::OnClickAddTileset)
 EVT_BUTTON(wxID_FORWARD, BrushPalettePanel::OnNextPage)
 EVT_BUTTON(wxID_BACKWARD, BrushPalettePanel::OnPreviousPage)
-EVT_CHOICEBOOK_PAGE_CHANGING(wxID_ANY, BrushPalettePanel::OnSwitchingPage)
-EVT_CHOICEBOOK_PAGE_CHANGED(wxID_ANY, BrushPalettePanel::OnPageChanged)
+EVT_COMBOBOX(wxID_ANY, BrushPalettePanel::OnCategoryChanged)
 END_EVENT_TABLE()
 
 BrushPalettePanel::BrushPalettePanel(wxWindow* parent, const TilesetContainer &tilesets, TilesetCategoryType category, wxWindowID id) :
 	PalettePanel(parent, id),
 	paletteType(category) {
 
-	// Create the tileset panel
+	// Create main layout: Category dropdown on top, content below
 	const auto tsSizer = newd wxStaticBoxSizer(wxVERTICAL, this, "Tileset");
-	choicebook = newd wxChoicebook(this, wxID_ANY, wxDefaultPosition, wxSize(180, 250));
-	tsSizer->Add(choicebook, 1, wxEXPAND);
+	
+	// Category dropdown (replaces wxChoicebook's built-in choice)
+	m_categoryCombo = newd wxComboBox(this, wxID_ANY, "", wxDefaultPosition, wxSize(180, -1), 0, nullptr, wxCB_READONLY);
+	tsSizer->Add(m_categoryCombo, 0, wxEXPAND | wxBOTTOM, 5);
+	
+	// Page container - will hold the current BrushPanel
+	m_pageContainer = newd wxPanel(this, wxID_ANY);
+	m_pageContainer->SetSizer(newd wxBoxSizer(wxVERTICAL));
+	tsSizer->Add(m_pageContainer, 1, wxEXPAND);
+	
 	sizer->Add(tsSizer, 1, wxEXPAND);
 
 	if (g_settings.getBoolean(Config::SHOW_TILESET_EDITOR)) {
@@ -53,12 +60,24 @@ BrushPalettePanel::BrushPalettePanel(wxWindow* parent, const TilesetContainer &t
 
 	sizer->Add(pageInfoSizer);
 
+	// Populate categories and create pages
 	for (auto it = tilesets.begin(); it != tilesets.end(); ++it) {
 		const auto tilesetCategory = it->second->getCategory(category);
 		if (tilesetCategory && !tilesetCategory->brushlist.empty()) {
-			const auto panel = newd BrushPanel(choicebook, tilesetCategory);
-			choicebook->AddPage(panel, wxstr(it->second->name));
+			// Add to dropdown
+			m_categoryCombo->Append(wxstr(it->second->name));
+			
+			// Create the panel (hidden initially)
+			const auto panel = newd BrushPanel(m_pageContainer, tilesetCategory);
+			panel->Hide();
+			m_pages.push_back(panel);
 		}
+	}
+	
+	// Select first page if available
+	if (!m_pages.empty()) {
+		m_categoryCombo->SetSelection(0);
+		ChangeSelection(0);
 	}
 
 	SetSizerAndFit(sizer);
@@ -122,17 +141,86 @@ void BrushPalettePanel::AddTilesetEditor() {
 	sizer->Add(tmpsizer, 0, wxCENTER, 10);
 }
 
+// === Page Management Methods ===
+
+BrushPanel* BrushPalettePanel::GetCurrentPage() const {
+	if (m_currentPageIndex >= 0 && m_currentPageIndex < static_cast<int>(m_pages.size())) {
+		return m_pages[m_currentPageIndex];
+	}
+	return nullptr;
+}
+
+int BrushPalettePanel::GetSelection() const {
+	return m_currentPageIndex;
+}
+
+wxString BrushPalettePanel::GetPageText(int index) const {
+	if (m_categoryCombo && index >= 0 && index < static_cast<int>(m_categoryCombo->GetCount())) {
+		return m_categoryCombo->GetString(index);
+	}
+	return wxEmptyString;
+}
+
+void BrushPalettePanel::ChangeSelection(int index) {
+	if (index < 0 || index >= static_cast<int>(m_pages.size())) {
+		return;
+	}
+	
+	// Hide old page
+	if (m_currentPageIndex >= 0 && m_currentPageIndex < static_cast<int>(m_pages.size())) {
+		BrushPanel* oldPanel = m_pages[m_currentPageIndex];
+		if (oldPanel) {
+			oldPanel->OnSwitchOut();
+			oldPanel->Hide();
+			// Remember brush selection
+			for (const auto palettePanel : tool_bars) {
+				const auto brush = palettePanel->GetSelectedBrush();
+				if (brush) {
+					rememberedBrushes[oldPanel] = brush;
+				}
+			}
+		}
+	}
+	
+	// Show new page
+	m_currentPageIndex = index;
+	BrushPanel* newPanel = m_pages[m_currentPageIndex];
+	if (newPanel) {
+		// Add to container sizer if not already added
+		wxSizer* containerSizer = m_pageContainer->GetSizer();
+		if (containerSizer->GetItemCount() == 0 || containerSizer->GetItem(newPanel) == nullptr) {
+			containerSizer->Add(newPanel, 1, wxEXPAND);
+		}
+		newPanel->Show();
+		newPanel->OnSwitchIn();
+		
+		// Restore remembered brush
+		for (const auto palettePanel : tool_bars) {
+			palettePanel->SelectBrush(rememberedBrushes[newPanel]);
+		}
+		
+		m_pageContainer->Layout();
+	}
+	
+	// Update dropdown selection
+	if (m_categoryCombo && m_categoryCombo->GetSelection() != index) {
+		m_categoryCombo->SetSelection(index);
+	}
+}
+
+// === Interface Methods ===
+
 void BrushPalettePanel::InvalidateContents() {
-	for (auto pageIndex = 0; pageIndex < choicebook->GetPageCount(); ++pageIndex) {
-		const auto panel = dynamic_cast<BrushPanel*>(choicebook->GetPage(pageIndex));
-		panel->InvalidateContents();
+	for (auto panel : m_pages) {
+		if (panel) {
+			panel->InvalidateContents();
+		}
 	}
 	PalettePanel::InvalidateContents();
 }
 
 void BrushPalettePanel::LoadCurrentContents() {
-	const auto page = choicebook->GetCurrentPage();
-	const auto panel = dynamic_cast<BrushPanel*>(page);
+	BrushPanel* panel = GetCurrentPage();
 	if (panel) {
 		panel->OnSwitchIn();
 	}
@@ -140,9 +228,10 @@ void BrushPalettePanel::LoadCurrentContents() {
 }
 
 void BrushPalettePanel::LoadAllContents() {
-	for (auto pageIndex = 0; pageIndex < choicebook->GetPageCount(); ++pageIndex) {
-		const auto panel = dynamic_cast<BrushPanel*>(choicebook->GetPage(pageIndex));
-		panel->LoadContents();
+	for (auto panel : m_pages) {
+		if (panel) {
+			panel->LoadContents();
+		}
 	}
 	PalettePanel::LoadAllContents();
 }
@@ -152,31 +241,28 @@ PaletteType BrushPalettePanel::GetType() const {
 }
 
 BrushListType BrushPalettePanel::GetListType() const {
-	if (!choicebook) {
+	if (m_pages.empty()) {
 		return BRUSHLIST_LISTBOX;
 	}
-
-	const auto panel = dynamic_cast<BrushPanel*>(choicebook->GetPage(0));
-	return panel->GetListType();
+	return m_pages[0]->GetListType();
 }
 
 void BrushPalettePanel::SetListType(BrushListType newListType) {
-	if (!choicebook) {
+	if (m_pages.empty()) {
 		return;
 	}
 
 	RemovePagination();
 
-	// Pagination UI removed - icons now use scrolling like listbox mode
-
-	for (auto pageIndex = 0; pageIndex < choicebook->GetPageCount(); ++pageIndex) {
-		const auto panel = dynamic_cast<BrushPanel*>(choicebook->GetPage(pageIndex));
-		panel->SetListType(newListType);
+	for (auto panel : m_pages) {
+		if (panel) {
+			panel->SetListType(newListType);
+		}
 	}
 }
 
 void BrushPalettePanel::SetListType(const wxString &newListType) {
-	if (!choicebook) {
+	if (m_pages.empty()) {
 		return;
 	}
 
@@ -185,45 +271,34 @@ void BrushPalettePanel::SetListType(const wxString &newListType) {
 		return;
 	}
 
-	const auto newListTypeEnum = (*it).second;
-
-	SetListType(newListTypeEnum);
+	SetListType(it->second);
 }
 
 Brush* BrushPalettePanel::GetSelectedBrush() const {
-	if (!choicebook) {
+	BrushPanel* panel = GetCurrentPage();
+	if (!panel) {
 		return nullptr;
 	}
-	const auto page = choicebook->GetCurrentPage();
-	const auto panel = dynamic_cast<BrushPanel*>(page);
-	Brush* brush = nullptr;
-	if (panel) {
-		for (const auto &palettePanel : tool_bars) {
-			brush = palettePanel->GetSelectedBrush();
-			if (brush) {
-				return brush;
-			}
+	
+	// Check tool bars first
+	for (const auto &palettePanel : tool_bars) {
+		Brush* brush = palettePanel->GetSelectedBrush();
+		if (brush) {
+			return brush;
 		}
-		brush = panel->GetSelectedBrush();
 	}
-	return brush;
+	return panel->GetSelectedBrush();
 }
 
 void BrushPalettePanel::SelectFirstBrush() {
-	if (!choicebook) {
-		return;
+	BrushPanel* panel = GetCurrentPage();
+	if (panel) {
+		panel->SelectFirstBrush();
 	}
-	const auto page = choicebook->GetCurrentPage();
-	const auto panel = dynamic_cast<BrushPanel*>(page);
-	panel->SelectFirstBrush();
 }
 
 bool BrushPalettePanel::SelectBrush(const Brush* whatBrush) {
-	if (!choicebook) {
-		return false;
-	}
-
-	auto panel = dynamic_cast<BrushPanel*>(choicebook->GetCurrentPage());
+	BrushPanel* panel = GetCurrentPage();
 	if (!panel) {
 		return false;
 	}
@@ -242,14 +317,15 @@ bool BrushPalettePanel::SelectBrush(const Brush* whatBrush) {
 		}
 	}
 
-	for (auto pageIndex = 0; pageIndex < choicebook->GetPageCount(); ++pageIndex) {
-		if (pageIndex == choicebook->GetSelection()) {
+	// Search other pages
+	for (int pageIndex = 0; pageIndex < static_cast<int>(m_pages.size()); ++pageIndex) {
+		if (pageIndex == m_currentPageIndex) {
 			continue;
 		}
 
-		panel = dynamic_cast<BrushPanel*>(choicebook->GetPage(pageIndex));
-		if (panel && panel->SelectBrush(whatBrush)) {
-			choicebook->ChangeSelection(pageIndex);
+		BrushPanel* otherPanel = m_pages[pageIndex];
+		if (otherPanel && otherPanel->SelectBrush(whatBrush)) {
+			ChangeSelection(pageIndex);
 			for (const auto palettePanel : tool_bars) {
 				palettePanel->SelectBrush(nullptr);
 			}
@@ -259,38 +335,15 @@ bool BrushPalettePanel::SelectBrush(const Brush* whatBrush) {
 	return false;
 }
 
-void BrushPalettePanel::OnSwitchingPage(wxChoicebookEvent &event) {
-	event.Skip();
-	if (!choicebook) {
-		return;
-	}
-	if (const auto oldPanel = dynamic_cast<BrushPanel*>(choicebook->GetCurrentPage()); oldPanel) {
-		oldPanel->OnSwitchOut();
-		for (const auto palettePanel : tool_bars) {
-			const auto brush = palettePanel->GetSelectedBrush();
-			if (brush) {
-				rememberedBrushes[oldPanel] = brush;
-			}
-		}
-	}
+// === Event Handlers ===
 
-	const auto page = choicebook->GetPage(event.GetSelection());
-	const auto panel = dynamic_cast<BrushPanel*>(page);
-	if (panel) {
-		panel->OnSwitchIn();
-		// Pagination UI removed - no updates needed
-		for (const auto palettePanel : tool_bars) {
-			palettePanel->SelectBrush(rememberedBrushes[panel]);
-		}
+void BrushPalettePanel::OnCategoryChanged(wxCommandEvent &event) {
+	int selection = m_categoryCombo->GetSelection();
+	if (selection != wxNOT_FOUND && selection != m_currentPageIndex) {
+		ChangeSelection(selection);
+		g_gui.ActivatePalette(GetParentPalette());
+		g_gui.SelectBrush();
 	}
-}
-
-void BrushPalettePanel::OnPageChanged(wxChoicebookEvent &event) {
-	if (!choicebook) {
-		return;
-	}
-	g_gui.ActivatePalette(GetParentPalette());
-	g_gui.SelectBrush();
 }
 
 void BrushPalettePanel::OnSwitchIn() {
@@ -301,7 +354,7 @@ void BrushPalettePanel::OnSwitchIn() {
 }
 
 void BrushPalettePanel::OnClickAddTileset(wxCommandEvent &WXUNUSED(event)) {
-	if (!choicebook) {
+	if (m_pages.empty()) {
 		return;
 	}
 
@@ -316,10 +369,10 @@ void BrushPalettePanel::OnClickAddTileset(wxCommandEvent &WXUNUSED(event)) {
 }
 
 void BrushPalettePanel::OnClickAddItemToTileset(wxCommandEvent &WXUNUSED(event)) {
-	if (!choicebook) {
+	if (m_pages.empty() || m_currentPageIndex < 0) {
 		return;
 	}
-	const auto &tilesetName = choicebook->GetPageText(choicebook->GetSelection()).ToStdString();
+	const auto &tilesetName = GetPageText(m_currentPageIndex).ToStdString();
 
 	const auto it = g_materials.tilesets.find(tilesetName);
 
