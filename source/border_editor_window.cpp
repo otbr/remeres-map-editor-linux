@@ -2940,6 +2940,7 @@ void WallVisualPanel::OnPaint(wxPaintEvent& event) {
 BEGIN_EVENT_TABLE(GroundGridPanel, wxPanel)
     EVT_PAINT(GroundGridPanel::OnPaint)
     EVT_LEFT_UP(GroundGridPanel::OnMouseClick)
+    EVT_RIGHT_UP(GroundGridPanel::OnRightClick)
 END_EVENT_TABLE()
 
 GroundGridPanel::GroundGridPanel(wxWindow* parent, wxWindowID id) :
@@ -3004,7 +3005,36 @@ void GroundGridPanel::OnMouseClick(wxMouseEvent& event) {
         }
     }
 }
-
+void GroundGridPanel::OnRightClick(wxMouseEvent& event) {
+    wxSize size = GetClientSize();
+    int w = size.GetWidth();
+    int h = size.GetHeight();
+    int margin = 5;
+    
+    // Fixed cell size matching OnPaint
+    int cellSize = 64;
+    
+    // Start at top-left with margin (matching OnPaint)
+    int gridX = margin;
+    int gridY = margin;
+    
+    int clickX = event.GetX();
+    int clickY = event.GetY();
+    
+    // Check if click is within the grid cell
+    if (clickX >= gridX && clickX < gridX + cellSize &&
+        clickY >= gridY && clickY < gridY + cellSize) {
+        
+        // If the cell is not empty, request removal from container
+        if (!IsEmpty()) {
+            wxWindow* parent = GetParent();
+            GroundGridContainer* container = dynamic_cast<GroundGridContainer*>(parent);
+            if (container) {
+                container->RemoveCell(this);
+            }
+        }
+    }
+}
 void GroundGridPanel::OnPaint(wxPaintEvent& event) {
     wxAutoBufferedPaintDC dc(this);
     
@@ -3146,6 +3176,36 @@ void GroundGridContainer::EnsureEmptyCell() {
     
     if (!m_gridCells.back()->IsEmpty()) {
         CreateNewCell();
+    }
+}
+
+void GroundGridContainer::RemoveCell(GroundGridPanel* cell) {
+    if (!cell) return;
+    
+    // Don't remove the only cell if it's already empty
+    if (m_gridCells.size() == 1 && cell->IsEmpty()) {
+        return;
+    }
+    
+    // Find the cell in our list
+    auto it = std::find(m_gridCells.begin(), m_gridCells.end(), cell);
+    if (it != m_gridCells.end()) {
+        // Remove from sizer
+        m_gridSizer->Detach(cell);
+        
+        // Remove from our list
+        m_gridCells.erase(it);
+        
+        // Destroy the window
+        cell->Destroy();
+        
+        // Ensure we still have an empty cell at the end
+        EnsureEmptyCell();
+        
+        // Refresh layout
+        FitInside();
+        Layout();
+        Refresh();
     }
 }
 

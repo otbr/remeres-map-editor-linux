@@ -520,6 +520,7 @@ public:
     // Event handlers
     void OnPaint(wxPaintEvent& event);
     void OnMouseClick(wxMouseEvent& event);
+    void OnRightClick(wxMouseEvent& event);
     
     // Layout helper
     wxSize DoGetBestSize() const override;
@@ -540,6 +541,7 @@ public:
     
     // Item management
     void AddItem(uint16_t itemId);
+    void RemoveCell(GroundGridPanel* cell);
     void Clear();
     
     // Get all filled items
