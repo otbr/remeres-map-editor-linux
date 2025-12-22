@@ -733,7 +733,8 @@ TilesetFilterDialog::TilesetFilterDialog(wxWindow* parent,
     }
     
     // Bind click-anywhere toggle (clicking the label toggles the checkbox)
-    m_tilesetList->Bind(wxEVT_LISTBOX, &TilesetFilterDialog::OnListItemClick, this);
+    // REMOVED: Triggers on auto-selection (focus) in GTK, causing first item to be checked automatically
+    // m_tilesetList->Bind(wxEVT_LISTBOX, &TilesetFilterDialog::OnListItemClick, this);
     
     mainSizer->Add(m_tilesetList, 1, wxEXPAND | wxLEFT | wxRIGHT, 10);
     
@@ -3233,12 +3234,15 @@ void BorderEditorDialog::LoadTilesets() {
 
 void BorderEditorDialog::SaveFilterConfig() {
     // Save filter configuration to JSON file
-    wxString configDir = wxStandardPaths::Get().GetUserConfigDir() + wxFileName::GetPathSeparator() + ".rme";
+    wxString configDir = wxFileName::GetHomeDir() + wxFileName::GetPathSeparator() + ".rme";
     if (!wxDirExists(configDir)) {
-        wxMkdir(configDir);
+        if (!wxMkdir(configDir)) {
+            // Failed to create directory
+            return;
+        }
     }
     
-    wxString configFile = configDir + wxFileName::GetPathSeparator() + "border_editor_filters.json";
+    wxString configFile = configDir + wxFileName::GetPathSeparator() + "border_editor_filters_v2.json";
     
     // Build JSON manually (simple format)
     wxString json = "{\n";
@@ -3275,19 +3279,25 @@ void BorderEditorDialog::SaveFilterConfig() {
     
     json += "}\n";
     
-    wxFile file(configFile, wxFile::write);
-    if (file.IsOpened()) {
+    wxFile file;
+    if (file.Create(configFile, true)) { // true = overwrite
         file.Write(json);
         file.Close();
     }
 }
 
 void BorderEditorDialog::LoadFilterConfig() {
-    wxString configDir = wxStandardPaths::Get().GetUserConfigDir() + wxFileName::GetPathSeparator() + ".rme";
-    wxString configFile = configDir + wxFileName::GetPathSeparator() + "border_editor_filters.json";
+    // Ensure clean state
+    m_borderEnabledTilesets.clear();
+    m_groundEnabledTilesets.clear();
+    m_wallEnabledTilesets.clear();
+
+    wxString configDir = wxFileName::GetHomeDir() + wxFileName::GetPathSeparator() + ".rme";
+    wxString configFile = configDir + wxFileName::GetPathSeparator() + "border_editor_filters_v2.json";
     
     if (!wxFileExists(configFile)) {
-        // No config file - whitelists stay empty (default: no filter applied)
+        // No config file - whitelists stay empty (default: no filter applied / clean state)
+        // This ensures "Addon and Quest Items" is NOT selected by default
         return;
     }
     

@@ -25,12 +25,16 @@ When a dialog has multiple tabs (Border, Ground, Wall), each may need:
 | `wxNotebook` | `ChangeSelection` | **DOES NOT** fire `wxEVT_NOTEBOOK_PAGE_CHANGED` |
 | `wxNotebook` | `SetSelection` | Fires `wxEVT_NOTEBOOK_PAGE_CHANGED` |
 
-**Critical Trap**: If you use `ChangeSelection` (e.g., in custom toggle buttons), you MUST manually trigger any update logic (like `LoadTilesets()`) that would normally happen in `OnPageChanged`.
+**Critical Trap (Focus & Events)**:
+- On **Linux/GTK**, when a dialog opens, the first item in a `wxCheckListBox` often receives **focus** automatically.
+- This focus event can trigger a `wxEVT_LISTBOX` event (selection)!
+- **AVOID**: Do not bind `wxEVT_LISTBOX` to toggle the checkbox. If you do, the auto-focus will trigger the handler and unintentionally check/uncheck the first item immediately upon opening the dialog.
+- **SOLUTION**: Use explicit checkboxes or buttons. Remove convenience handlers that rely on selection events unless you can filter out focus-driven selection.
 
 ## Real-Time Persistence Pattern
 
 Used for saving filter configuration immediately (like XML brush saves):
-Config location: `~/.rme/border_editor_filters.json`
+Config location: `~/.rme/border_editor_filters_v2.json` (Versioned to avoid legacy data issues)
 
 ## Common Pitfalls
 
@@ -50,4 +54,4 @@ Config location: `~/.rme/border_editor_filters.json`
 
 - `border_editor_window.h` - TilesetFilterDialog class, whitelists, persistence methods
 - `border_editor_window.cpp` - Filter dialog implementation, LoadTilesets fixes, OnModeSwitch fixes
-- Config saved to: `~/.rme/border_editor_filters.json`
+- Config saved to: `~/.rme/border_editor_filters_v2.json`
