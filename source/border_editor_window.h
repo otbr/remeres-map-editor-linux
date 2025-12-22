@@ -11,6 +11,8 @@
 #include <wx/button.h>
 #include <wx/listbox.h>
 #include <wx/spinctrl.h>
+#include <wx/bmpbuttn.h>
+#include <wx/artprov.h>
 #include <wx/grid.h>
 #include <wx/panel.h>
 #include <wx/checkbox.h>
@@ -22,7 +24,9 @@
 #include <wx/srchctrl.h>
 #include <vector>
 #include <map>
+#include <set>
 #include <wx/treectrl.h>
+#include <wx/checklst.h>
 
 // Forward declarations
 class BorderItemButton;
@@ -136,6 +140,25 @@ private:
 
 class SimpleRawPalettePanel;
 
+// Dialog for filtering visible tilesets
+class TilesetFilterDialog : public wxDialog {
+public:
+    TilesetFilterDialog(wxWindow* parent, 
+                       const wxArrayString& allTilesets,
+                       const std::set<wxString>& enabledTilesets,
+                       const wxString& modeLabel);
+    
+    std::set<wxString> GetEnabledTilesets() const;
+    
+private:
+    wxCheckListBox* m_tilesetList;
+    wxArrayString m_allTilesets;
+    
+    void OnSelectAll(wxCommandEvent& event);
+    void OnSelectNone(wxCommandEvent& event);
+    void OnListItemClick(wxCommandEvent& event);
+};
+
 class BorderEditorDialog : public wxDialog {
 public:
     BorderEditorDialog(wxWindow* parent, const wxString& title);
@@ -156,6 +179,8 @@ public:
     void OnRemoveGroundItem(wxCommandEvent& event);
     void OnGroundBrowse(wxCommandEvent& event);
     void OnGroundTilesetSelect(wxCommandEvent& event);
+    void OnGroundPaletteSelect(wxCommandEvent& event);
+    void OnOpenTilesetFilter(wxCommandEvent& event);
     
     // Wall events
     void OnWallBrowse(wxCommandEvent& event);
@@ -270,7 +295,7 @@ private:
     wxCheckBox* m_includeToNoneCheck;
 
     wxCheckBox* m_includeInnerCheck;
-    wxListBox* m_groundTilesetList;
+    wxComboBox* m_groundTilesetCombo;
     wxArrayString m_tilesetListData;
     wxComboBox* m_rawCategoryCombo;
     
@@ -278,6 +303,16 @@ private:
     std::vector<GroundItem> m_groundItems;
     std::map<wxString, wxString> m_tilesets;
     long long m_lastInteractionTime;
+    
+    // Tileset filter whitelists (per-mode) - only enabled tilesets
+    std::set<wxString> m_borderEnabledTilesets;
+    std::set<wxString> m_groundEnabledTilesets;
+    std::set<wxString> m_wallEnabledTilesets;
+    wxBitmapButton* m_tilesetFilterBtn;  // Filter button
+    
+    // Filter config persistence
+    void SaveFilterConfig();
+    void LoadFilterConfig();
 
     // BrushPalettePanel* m_groundPalette;  // Removed duplicate
     

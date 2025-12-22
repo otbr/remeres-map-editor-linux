@@ -40,6 +40,8 @@
 #include <wx/filepicker.h>
 #include <wx/settings.h>
 #include <pugixml.hpp>
+#include <wx/file.h>
+#include <wx/stdpaths.h>
 
 #define BORDER_GRID_SIZE 32
 #define BORDER_PREVIEW_SIZE 192
@@ -201,6 +203,9 @@ BorderEditorDialog::BorderEditorDialog(wxWindow* parent, const wxString& title) 
     m_activeTab(0),
     m_lastInteractionTime(0) {
     
+    // Load saved filter configuration (before creating UI)
+    LoadFilterConfig();
+    
     CreateGUIControls();
     
     // Default to border tab
@@ -265,7 +270,9 @@ void BorderEditorDialog::CreateGUIControls() {
     wxBoxSizer* leftColumnSizer = new wxBoxSizer(wxVERTICAL);
     
     // Raw Item Palette - shows all raw items for selection    // Raw Item Palette - shows all raw items for selection
-    // Category Selector
+    // Category Selector Row (ComboBox + Filter Button)
+    wxBoxSizer* borderTilesetRowSizer = new wxBoxSizer(wxHORIZONTAL);
+    
     wxArrayString categories;
     for (const auto& pair : g_materials.tilesets) {
         categories.Add(wxstr(pair.first));
@@ -273,8 +280,16 @@ void BorderEditorDialog::CreateGUIControls() {
     m_rawCategoryCombo = new wxComboBox(m_borderPanel, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, categories, wxCB_READONLY | wxCB_SORT);
     m_rawCategoryCombo->SetToolTip("Filter by Tileset Category");
     m_rawCategoryCombo->Bind(wxEVT_COMBOBOX, &BorderEditorDialog::OnRawCategoryChange, this);
+    borderTilesetRowSizer->Add(m_rawCategoryCombo, 1, wxEXPAND | wxRIGHT, 2);
     
-    leftColumnSizer->Add(m_rawCategoryCombo, 0, wxEXPAND | wxBOTTOM, 5);
+    // Filter button with Cut icon (scissors)
+    wxBitmapButton* borderFilterBtn = new wxBitmapButton(m_borderPanel, wxID_ANY, 
+        wxArtProvider::GetBitmap(wxART_CUT, wxART_BUTTON, wxSize(16, 16)));
+    borderFilterBtn->SetToolTip("Filter visible tilesets");
+    borderFilterBtn->Bind(wxEVT_BUTTON, &BorderEditorDialog::OnOpenTilesetFilter, this);
+    borderTilesetRowSizer->Add(borderFilterBtn, 0, wxALIGN_CENTER_VERTICAL);
+    
+    leftColumnSizer->Add(borderTilesetRowSizer, 0, wxEXPAND | wxBOTTOM, 5);
     
     m_itemPalettePanel = new SimpleRawPalettePanel(m_borderPanel);
     // m_itemPalettePanel->SetListType(BRUSHLIST_LARGE_ICONS);
@@ -352,13 +367,26 @@ void BorderEditorDialog::CreateGUIControls() {
     // === Left Column: Raw Item Palette ===
     wxBoxSizer* groundLeftSizer = new wxBoxSizer(wxVERTICAL);
 
-    // Tileset List (wxListBox for stable selection)
-    m_groundTilesetList = new wxListBox(m_groundPanel, wxID_ANY, wxDefaultPosition, wxSize(220, 100));
-    m_groundTilesetList->SetToolTip("Select Tileset");
-    groundLeftSizer->Add(m_groundTilesetList, 0, wxEXPAND | wxBOTTOM, 5);
+    // Tileset selector row (ComboBox + Gear button)
+    wxBoxSizer* tilesetRowSizer = new wxBoxSizer(wxHORIZONTAL);
+    
+    m_groundTilesetCombo = new wxComboBox(m_groundPanel, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_READONLY);
+    m_groundTilesetCombo->SetToolTip("Select Tileset");
+    m_groundTilesetCombo->Bind(wxEVT_COMBOBOX, &BorderEditorDialog::OnGroundTilesetSelect, this);
+    tilesetRowSizer->Add(m_groundTilesetCombo, 1, wxEXPAND | wxRIGHT, 2);
+    
+    // Filter button with Cut icon (scissors)
+    m_tilesetFilterBtn = new wxBitmapButton(m_groundPanel, wxID_ANY, 
+        wxArtProvider::GetBitmap(wxART_CUT, wxART_BUTTON, wxSize(16, 16)));
+    m_tilesetFilterBtn->SetToolTip("Filter visible tilesets");
+    m_tilesetFilterBtn->Bind(wxEVT_BUTTON, &BorderEditorDialog::OnOpenTilesetFilter, this);
+    tilesetRowSizer->Add(m_tilesetFilterBtn, 0, wxALIGN_CENTER_VERTICAL);
+    
+    groundLeftSizer->Add(tilesetRowSizer, 0, wxEXPAND | wxBOTTOM, 5);
 
     m_groundPalette = new SimpleRawPalettePanel(m_groundPanel);
     m_groundPalette->SetMinSize(wxSize(220, 200));
+    m_groundPalette->Bind(wxEVT_COMMAND_LISTBOX_SELECTED, &BorderEditorDialog::OnGroundPaletteSelect, this);
     groundLeftSizer->Add(m_groundPalette, 1, wxEXPAND | wxALL, 5);
     groundContentSizer->Add(groundLeftSizer, 0, wxEXPAND);
     
@@ -613,14 +641,12 @@ void BorderEditorDialog::CreateGUIControls() {
     // Initialize Tileset Choice (Ground Tab)
     LoadTilesets(); // Ensure m_groundTilesetCombo is populated
     
-    // Bind selection event for dynamic updates
-    m_groundTilesetList->Bind(wxEVT_LISTBOX, &BorderEditorDialog::OnGroundTilesetListSelect, this);
-    
     // Select first tileset if any
     if (!m_tilesetListData.IsEmpty()) {
-        m_groundTilesetList->SetSelection(0);
-        wxCommandEvent ev(wxEVT_LISTBOX, m_groundTilesetList->GetId());
-        OnGroundTilesetListSelect(ev);
+        m_groundTilesetCombo->SetSelection(0);
+        wxCommandEvent ev(wxEVT_COMBOBOX, m_groundTilesetCombo->GetId());
+        ev.SetEventObject(m_groundTilesetCombo);
+        OnGroundTilesetSelect(ev);
     }
 }
 
@@ -631,44 +657,137 @@ void BorderEditorDialog::OnRawCategoryChange(wxCommandEvent& event) {
     m_itemPalettePanel->LoadTileset(category);
 }
 
-void BorderEditorDialog::OnGroundTilesetListSelect(wxCommandEvent& event) {
-    int sel = m_groundTilesetList->GetSelection();
+void BorderEditorDialog::OnGroundTilesetSelect(wxCommandEvent& event) {
+    int sel = m_groundTilesetCombo->GetSelection();
     if (sel == wxNOT_FOUND || sel >= (int)m_tilesetListData.GetCount()) return;
     
     wxString tilesetName = m_tilesetListData[sel];
     if (!m_groundPalette) return;
 
-    std::vector<uint16_t> itemIds;
-    auto it = g_materials.tilesets.find(nstr(tilesetName).c_str());
-    if (it != g_materials.tilesets.end()) {
-        Tileset* tileset = it->second;
-        if (tileset) {
-            const TilesetCategory* rawCat = tileset->getCategory(TILESET_RAW);
-            if (rawCat) {
-                for (Brush* brush : rawCat->brushlist) {
-                    int lookid = brush->getLookID();
-                    if (lookid > 0 && lookid < g_items.getMaxID()) {
-                         const ItemType& type = g_items.getItemType(lookid);
-                         if (type.isGroundTile()) itemIds.push_back(lookid);
-                    }
-                }
-            }
-            const TilesetCategory* terrainCat = tileset->getCategory(TILESET_TERRAIN);
-            if (terrainCat) {
-                for (Brush* brush : terrainCat->brushlist) {
-                    if (!brush->visibleInPalette()) continue;
-                    int lookid = brush->getLookID();
-                    if (lookid > 0 && lookid < g_items.getMaxID()) {
-                         const ItemType& type = g_items.getItemType(lookid);
-                         if (type.isGroundTile()) itemIds.push_back(lookid);
-                    }
-                }
-            }
+    // Use LoadTileset which loads all RAW items from the tileset
+    // This is the same approach used in the Border tab
+    m_groundPalette->LoadTileset(tilesetName);
+}
+
+void BorderEditorDialog::OnGroundPaletteSelect(wxCommandEvent& event) {
+    int itemId = event.GetInt();
+    if (m_groundItemIdCtrl) {
+        m_groundItemIdCtrl->SetValue(itemId);
+    }
+}
+
+void BorderEditorDialog::OnOpenTilesetFilter(wxCommandEvent& event) {
+    // Get all available tilesets
+    wxArrayString allTilesets;
+    for (const auto& pair : g_materials.tilesets) {
+        if (pair.second) {
+            allTilesets.Add(wxString(pair.first));
         }
     }
-    std::sort(itemIds.begin(), itemIds.end());
-    itemIds.erase(std::unique(itemIds.begin(), itemIds.end()), itemIds.end());
-    m_groundPalette->SetItemIds(itemIds);
+    allTilesets.Sort();
+    
+    // Get the appropriate whitelist for the current mode
+    std::set<wxString>& currentWhitelist = 
+        (m_activeTab == 0) ? m_borderEnabledTilesets :
+        (m_activeTab == 1) ? m_groundEnabledTilesets :
+                             m_wallEnabledTilesets;
+    
+    wxString modeLabel = (m_activeTab == 0) ? "Border" :
+                         (m_activeTab == 1) ? "Ground" : "Wall";
+    
+    TilesetFilterDialog dlg(this, allTilesets, currentWhitelist, modeLabel);
+    if (dlg.ShowModal() == wxID_OK) {
+        currentWhitelist = dlg.GetEnabledTilesets();
+        SaveFilterConfig();  // Save to file immediately
+        LoadTilesets();  // Refresh the ComboBox with filtered list
+    }
+}
+
+// ============================================================================
+// TilesetFilterDialog Implementation
+
+TilesetFilterDialog::TilesetFilterDialog(wxWindow* parent,
+                                         const wxArrayString& allTilesets,
+                                         const std::set<wxString>& enabledTilesets,
+                                         const wxString& modeLabel)
+    : wxDialog(parent, wxID_ANY, "Filter Tilesets - " + modeLabel, 
+               wxDefaultPosition, wxSize(350, 450),
+               wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER),
+      m_allTilesets(allTilesets)
+{
+    wxBoxSizer* mainSizer = new wxBoxSizer(wxVERTICAL);
+    
+    // Instructions
+    mainSizer->Add(new wxStaticText(this, wxID_ANY, 
+        "Select tilesets to show (click anywhere on row):"), 0, wxALL, 10);
+    
+    // Checklist
+    m_tilesetList = new wxCheckListBox(this, wxID_ANY, wxDefaultPosition, 
+                                        wxDefaultSize, allTilesets);
+    
+    // Check only items that ARE in the enabled set (whitelist)
+    // If whitelist is empty, all stay unchecked (default empty)
+    for (unsigned int i = 0; i < allTilesets.GetCount(); ++i) {
+        bool isEnabled = (enabledTilesets.find(allTilesets[i]) != enabledTilesets.end());
+        m_tilesetList->Check(i, isEnabled);
+    }
+    
+    // Bind click-anywhere toggle (clicking the label toggles the checkbox)
+    m_tilesetList->Bind(wxEVT_LISTBOX, &TilesetFilterDialog::OnListItemClick, this);
+    
+    mainSizer->Add(m_tilesetList, 1, wxEXPAND | wxLEFT | wxRIGHT, 10);
+    
+    // Select All / None buttons
+    wxBoxSizer* selectBtnSizer = new wxBoxSizer(wxHORIZONTAL);
+    wxButton* selectAllBtn = new wxButton(this, wxID_ANY, "Select All");
+    wxButton* selectNoneBtn = new wxButton(this, wxID_ANY, "Select None");
+    selectAllBtn->Bind(wxEVT_BUTTON, &TilesetFilterDialog::OnSelectAll, this);
+    selectNoneBtn->Bind(wxEVT_BUTTON, &TilesetFilterDialog::OnSelectNone, this);
+    selectBtnSizer->Add(selectAllBtn, 0, wxRIGHT, 5);
+    selectBtnSizer->Add(selectNoneBtn, 0);
+    mainSizer->Add(selectBtnSizer, 0, wxALL, 10);
+    
+    // Save / Cancel buttons
+    wxBoxSizer* btnSizer = new wxBoxSizer(wxHORIZONTAL);
+    btnSizer->AddStretchSpacer(1);
+    wxButton* saveBtn = new wxButton(this, wxID_OK, "Save");
+    wxButton* cancelBtn = new wxButton(this, wxID_CANCEL, "Cancel");
+    btnSizer->Add(saveBtn, 0, wxRIGHT, 5);
+    btnSizer->Add(cancelBtn, 0);
+    mainSizer->Add(btnSizer, 0, wxEXPAND | wxALL, 10);
+    
+    SetSizer(mainSizer);
+    CenterOnParent();
+}
+
+std::set<wxString> TilesetFilterDialog::GetEnabledTilesets() const {
+    std::set<wxString> enabled;
+    for (unsigned int i = 0; i < m_allTilesets.GetCount(); ++i) {
+        if (m_tilesetList->IsChecked(i)) {
+            enabled.insert(m_allTilesets[i]);
+        }
+    }
+    return enabled;
+}
+
+void TilesetFilterDialog::OnListItemClick(wxCommandEvent& event) {
+    // Toggle checkbox when clicking anywhere on the row
+    int sel = m_tilesetList->GetSelection();
+    if (sel != wxNOT_FOUND) {
+        m_tilesetList->Check(sel, !m_tilesetList->IsChecked(sel));
+    }
+}
+
+void TilesetFilterDialog::OnSelectAll(wxCommandEvent& event) {
+    for (unsigned int i = 0; i < m_tilesetList->GetCount(); ++i) {
+        m_tilesetList->Check(i, true);
+    }
+}
+
+void TilesetFilterDialog::OnSelectNone(wxCommandEvent& event) {
+    for (unsigned int i = 0; i < m_tilesetList->GetCount(); ++i) {
+        m_tilesetList->Check(i, false);
+    }
 }
 
 void BorderEditorDialog::LoadWallBrushByName(const wxString& name) {
@@ -1688,6 +1807,13 @@ void SimpleRawPalettePanel::OnLeftUp(wxMouseEvent& event) {
          // Force selection of the brush internally, bypassing the main palette's checks
          // which might fail if the item isn't in the main palette's current view.
          g_gui.SelectBrushInternal(newd RAWBrush(id));
+         
+         // Fire event so the dialog can handle it (e.g. for Ground tab)
+         wxCommandEvent evt(wxEVT_COMMAND_LISTBOX_SELECTED, GetId());
+         evt.SetEventObject(this);
+         evt.SetInt(id);
+         ProcessWindowEvent(evt);
+         
          Refresh();
     }
 }
@@ -2308,8 +2434,10 @@ void BorderEditorDialog::OnModeSwitch(wxCommandEvent& event) {
     m_groundModeBtn->SetValue(newTab == 1);
     m_wallModeBtn->SetValue(newTab == 2);
     
-    // Switch simplebook page
-    m_notebook->ChangeSelection(newTab);
+    // Switch the notebook page to show the correct editor panel for this mode
+    if (m_notebook) {
+        m_notebook->ChangeSelection(newTab);
+    }
     m_activeTab = newTab;
     
     // Clear search and repopulate sidebar
@@ -2611,12 +2739,13 @@ void BorderEditorDialog::LoadGroundBrushByName(const wxString& name) {
             }
             
             if (found) {
-                if (m_groundTilesetList) {
+                if (m_groundTilesetCombo) {
                     int idx = m_tilesetListData.Index(tilesetName);
                     if (idx != wxNOT_FOUND) {
-                        m_groundTilesetList->SetSelection(idx);
-                        wxCommandEvent ev(wxEVT_LISTBOX, m_groundTilesetList->GetId());
-                        OnGroundTilesetListSelect(ev);
+                        m_groundTilesetCombo->SetSelection(idx);
+                        wxCommandEvent ev(wxEVT_COMBOBOX, m_groundTilesetCombo->GetId());
+                        ev.SetEventObject(m_groundTilesetCombo);
+                        OnGroundTilesetSelect(ev);
                     }
                 }
             }
@@ -2776,7 +2905,7 @@ bool BorderEditorDialog::ValidateGroundBrush() {
         return false;
     }
     
-    if (m_groundTilesetList && m_groundTilesetList->GetSelection() == wxNOT_FOUND) {
+    if (m_groundTilesetCombo && m_groundTilesetCombo->GetSelection() == wxNOT_FOUND) {
         wxMessageBox("Please select a tileset for the ground brush.", "Validation Error", wxICON_ERROR);
         return false;
     }
@@ -2802,8 +2931,8 @@ void BorderEditorDialog::SaveGroundBrush() {
     int zOrder = m_zOrderCtrl->GetValue();
     int borderId = m_currentBorderId;
     wxString tilesetName;
-    if (m_groundTilesetList && m_groundTilesetList->GetSelection() != wxNOT_FOUND) {
-       tilesetName = m_groundTilesetList->GetStringSelection();
+    if (m_groundTilesetCombo && m_groundTilesetCombo->GetSelection() != wxNOT_FOUND) {
+       tilesetName = m_groundTilesetCombo->GetStringSelection();
     } else {
         wxMessageBox("Tileset not selected.", "Error", wxICON_ERROR);
         return;
@@ -3014,46 +3143,23 @@ void BorderEditorDialog::LoadTilesets() {
     m_tilesetListData.Clear();
     m_tilesets.clear();
     
-    // Find the tilesets.xml file
-    wxString dataDir = g_gui.GetDataDirectory();
+    // Get the appropriate whitelist for the current mode
+    const std::set<wxString>& whitelist = 
+        (m_activeTab == 0) ? m_borderEnabledTilesets :
+        (m_activeTab == 1) ? m_groundEnabledTilesets :
+                             m_wallEnabledTilesets;
     
-    // Get version string and convert to proper directory format
-    wxString tilesetsFile = dataDir + wxFileName::GetPathSeparator() + 
-                           "materials" + wxFileName::GetPathSeparator() + "tilesets.xml";
-    
-    if (!wxFileExists(tilesetsFile)) {
-        wxMessageBox("Cannot find tilesets.xml file in the data directory.", "Error", wxICON_ERROR);
-        return;
-    }
-    
-    // Load the XML file
-    pugi::xml_document doc;
-    pugi::xml_parse_result result = doc.load_file(nstr(tilesetsFile).c_str());
-    
-    if (!result) {
-        wxMessageBox("Failed to load tilesets.xml: " + wxString(result.description()), "Error", wxICON_ERROR);
-        return;
-    }
-    
-    pugi::xml_node materials = doc.child("materials");
-    if (!materials) {
-        wxMessageBox("Invalid tilesets.xml file: missing 'materials' node", "Error", wxICON_ERROR);
-        return;
-    }
-    
-    // Parse all tilesets
-    wxArrayString tilesetNames; // Store in sorted order
-    for (pugi::xml_node tilesetNode = materials.child("tileset"); tilesetNode; tilesetNode = tilesetNode.next_sibling("tileset")) {
-        pugi::xml_attribute nameAttr = tilesetNode.attribute("name");
-        
-        if (nameAttr) {
-            wxString tilesetName = wxString(nameAttr.as_string());
-            
-            // Add to our array of names
-            tilesetNames.Add(tilesetName);
-            
-            // Add to the map for later use
-            m_tilesets[tilesetName] = tilesetName;
+    // Use the already-loaded tilesets from g_materials
+    // (g_materials.tilesets is populated by the Materials loader at startup)
+    wxArrayString tilesetNames;
+    for (const auto& pair : g_materials.tilesets) {
+        if (pair.second) {
+            wxString tilesetName = wxString(pair.first);
+            // Only add if IN the whitelist (if whitelist is empty, show ALL for first-time users)
+            if (whitelist.empty() || whitelist.find(tilesetName) != whitelist.end()) {
+                tilesetNames.Add(tilesetName);
+                m_tilesets[tilesetName] = tilesetName;
+            }
         }
     }
     
@@ -3063,16 +3169,127 @@ void BorderEditorDialog::LoadTilesets() {
     // Add sorted names to the tileset list
     m_tilesetListData = tilesetNames;
     
-    if (m_groundTilesetList) {
-        m_groundTilesetList->Clear();
-        m_groundTilesetList->Append(m_tilesetListData);
+    // Update the appropriate ComboBox based on active tab
+    if (m_activeTab == 0 && m_rawCategoryCombo) {
+        // Border tab
+        m_rawCategoryCombo->Clear();
+        m_rawCategoryCombo->Append(m_tilesetListData);
         if (!m_tilesetListData.IsEmpty()) {
-            m_groundTilesetList->SetSelection(0);
-            wxCommandEvent ev(wxEVT_LISTBOX, m_groundTilesetList->GetId());
-            OnGroundTilesetListSelect(ev);
+            m_rawCategoryCombo->SetSelection(0);
+            wxCommandEvent ev(wxEVT_COMBOBOX, m_rawCategoryCombo->GetId());
+            ev.SetEventObject(m_rawCategoryCombo);
+            OnRawCategoryChange(ev);
+        }
+    } else if (m_activeTab == 1 && m_groundTilesetCombo) {
+        // Ground tab
+        m_groundTilesetCombo->Clear();
+        m_groundTilesetCombo->Append(m_tilesetListData);
+        if (!m_tilesetListData.IsEmpty()) {
+            m_groundTilesetCombo->SetSelection(0);
+            wxCommandEvent ev(wxEVT_COMBOBOX, m_groundTilesetCombo->GetId());
+            ev.SetEventObject(m_groundTilesetCombo);
+            OnGroundTilesetSelect(ev);
         }
     }
 } 
+
+// ============================================================================
+// Filter Config Persistence
+
+void BorderEditorDialog::SaveFilterConfig() {
+    // Save filter configuration to JSON file
+    wxString configDir = wxStandardPaths::Get().GetUserConfigDir() + wxFileName::GetPathSeparator() + ".rme";
+    if (!wxDirExists(configDir)) {
+        wxMkdir(configDir);
+    }
+    
+    wxString configFile = configDir + wxFileName::GetPathSeparator() + "border_editor_filters.json";
+    
+    // Build JSON manually (simple format)
+    wxString json = "{\n";
+    
+    // Border enabled tilesets
+    json += "  \"border_enabled\": [";
+    bool first = true;
+    for (const wxString& ts : m_borderEnabledTilesets) {
+        if (!first) json += ", ";
+        json += "\"" + ts + "\"";
+        first = false;
+    }
+    json += "],\n";
+    
+    // Ground enabled tilesets
+    json += "  \"ground_enabled\": [";
+    first = true;
+    for (const wxString& ts : m_groundEnabledTilesets) {
+        if (!first) json += ", ";
+        json += "\"" + ts + "\"";
+        first = false;
+    }
+    json += "],\n";
+    
+    // Wall enabled tilesets
+    json += "  \"wall_enabled\": [";
+    first = true;
+    for (const wxString& ts : m_wallEnabledTilesets) {
+        if (!first) json += ", ";
+        json += "\"" + ts + "\"";
+        first = false;
+    }
+    json += "]\n";
+    
+    json += "}\n";
+    
+    wxFile file(configFile, wxFile::write);
+    if (file.IsOpened()) {
+        file.Write(json);
+        file.Close();
+    }
+}
+
+void BorderEditorDialog::LoadFilterConfig() {
+    wxString configDir = wxStandardPaths::Get().GetUserConfigDir() + wxFileName::GetPathSeparator() + ".rme";
+    wxString configFile = configDir + wxFileName::GetPathSeparator() + "border_editor_filters.json";
+    
+    if (!wxFileExists(configFile)) {
+        // No config file - whitelists stay empty (default: no filter applied)
+        return;
+    }
+    
+    wxFile file(configFile, wxFile::read);
+    if (!file.IsOpened()) return;
+    
+    wxString content;
+    file.ReadAll(&content);
+    file.Close();
+    
+    // Simple JSON parsing for our specific format
+    auto parseArray = [&content](const wxString& key) -> std::set<wxString> {
+        std::set<wxString> result;
+        int startPos = content.Find("\"" + key + "\": [");
+        if (startPos == wxNOT_FOUND) return result;
+        
+        int arrayStart = content.find('[', startPos);
+        int arrayEnd = content.find(']', arrayStart);
+        if (arrayStart == wxNOT_FOUND || arrayEnd == wxNOT_FOUND) return result;
+        
+        wxString arrayContent = content.Mid(arrayStart + 1, arrayEnd - arrayStart - 1);
+        
+        // Parse quoted strings
+        int pos = 0;
+        while ((pos = arrayContent.find('"', pos)) != wxNOT_FOUND) {
+            int endQuote = arrayContent.find('"', pos + 1);
+            if (endQuote == wxNOT_FOUND) break;
+            result.insert(arrayContent.Mid(pos + 1, endQuote - pos - 1));
+            pos = endQuote + 1;
+        }
+        return result;
+    };
+    
+    m_borderEnabledTilesets = parseArray("border_enabled");
+    m_groundEnabledTilesets = parseArray("ground_enabled");
+    m_wallEnabledTilesets = parseArray("wall_enabled");
+}
 
 // ============================================================================
 // WallVisualPanel
