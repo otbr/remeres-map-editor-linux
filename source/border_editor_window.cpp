@@ -31,13 +31,14 @@
 #include "brush.h"
 #include "ground_brush.h"
 #include "client_assets.h"
+#include <wx/graphics.h>
 #include <wx/sizer.h>
 #include <wx/gbsizer.h>
 #include <wx/statline.h>
 #include <wx/tglbtn.h>
 #include <wx/dcbuffer.h>
 #include <wx/filename.h>
-#include <wx/filepicker.h>
+#include <wx/wrapsizer.h>
 #include <wx/settings.h>
 #include <pugixml.hpp>
 #include <wx/file.h>
@@ -390,34 +391,15 @@ void BorderEditorDialog::CreateGUIControls() {
     groundLeftSizer->Add(m_groundPalette, 1, wxEXPAND | wxALL, 5);
     groundContentSizer->Add(groundLeftSizer, 0, wxEXPAND);
     
-    // === Right Column: Editor Controls ===
+    // === Right Column: Editor Controls (Scrollable List) ===
+    // === Right Column: Editor (Static Visual Duplicate of Border Editor) ===
     wxBoxSizer* groundRightSizer = new wxBoxSizer(wxVERTICAL);
+    wxStaticBoxSizer* groundEditorBoxSizer = new wxStaticBoxSizer(wxVERTICAL, m_groundPanel, "Variations");
     
-    // Ground Items inside StaticBox
-    wxStaticBoxSizer* groundItemsBoxSizer = new wxStaticBoxSizer(wxVERTICAL, m_groundPanel, "Ground Items");
+    m_groundGridContainer = new GroundGridContainer(groundEditorBoxSizer->GetStaticBox());
+    groundEditorBoxSizer->Add(m_groundGridContainer, 1, wxEXPAND | wxALL, 5);
     
-    m_groundItemsList = new wxListBox(groundItemsBoxSizer->GetStaticBox(), ID_GROUND_ITEM_LIST, wxDefaultPosition, wxSize(-1, 100), 0, nullptr, wxLB_SINGLE);
-    groundItemsBoxSizer->Add(m_groundItemsList, 1, wxEXPAND | wxALL, 5);
-    
-    // Item controls row
-    wxBoxSizer* groundItemRowSizer = new wxBoxSizer(wxHORIZONTAL);
-    
-    groundItemRowSizer->Add(new wxStaticText(groundItemsBoxSizer->GetStaticBox(), wxID_ANY, "Item ID:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
-    m_groundItemIdCtrl = new wxSpinCtrl(groundItemsBoxSizer->GetStaticBox(), wxID_ANY, "0", wxDefaultPosition, wxSize(70, -1), wxSP_ARROW_KEYS, 0, 65535);
-    groundItemRowSizer->Add(m_groundItemIdCtrl, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 10);
-    
-    groundItemRowSizer->Add(new wxStaticText(groundItemsBoxSizer->GetStaticBox(), wxID_ANY, "Chance:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
-    m_groundItemChanceCtrl = new wxSpinCtrl(groundItemsBoxSizer->GetStaticBox(), wxID_ANY, "10", wxDefaultPosition, wxSize(60, -1), wxSP_ARROW_KEYS, 1, 10000);
-    groundItemRowSizer->Add(m_groundItemChanceCtrl, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 10);
-    
-    wxButton* addGroundItemButton = new wxButton(groundItemsBoxSizer->GetStaticBox(), wxID_ADD + 100, "Add", wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
-    groundItemRowSizer->Add(addGroundItemButton, 0, wxRIGHT, 5);
-    
-    wxButton* removeGroundItemButton = new wxButton(groundItemsBoxSizer->GetStaticBox(), wxID_REMOVE, "Remove", wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
-    groundItemRowSizer->Add(removeGroundItemButton, 0);
-    
-    groundItemsBoxSizer->Add(groundItemRowSizer, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 5);
-    groundRightSizer->Add(groundItemsBoxSizer, 1, wxEXPAND | wxALL, 5);
+    groundRightSizer->Add(groundEditorBoxSizer, 1, wxEXPAND | wxALL, 5);
     
     // Border Options inside StaticBox
     wxStaticBoxSizer* borderOptionsBoxSizer = new wxStaticBoxSizer(wxVERTICAL, m_groundPanel, "Border Options");
@@ -610,7 +592,7 @@ void BorderEditorDialog::CreateGUIControls() {
     m_browserSearchCtrl->Bind(wxEVT_TEXT, &BorderEditorDialog::OnBrowserSearch, this);
     browserSizer->Add(m_browserSearchCtrl, 0, wxEXPAND | wxLEFT | wxRIGHT, 5);
     
-    m_borderBrowserList = new wxListBox(this, wxID_ANY, wxDefaultPosition, wxSize(280, -1), 0, nullptr, wxLB_SINGLE);
+    m_borderBrowserList = new wxListBox(this, wxID_ANY, wxDefaultPosition, wxSize(280, -1), 0, nullptr, wxLB_SINGLE | wxBORDER_NONE);
     m_borderBrowserList->SetToolTip("Click an item to load it for editing");
     m_borderBrowserList->Bind(wxEVT_LISTBOX, &BorderEditorDialog::OnBorderBrowserSelection, this);
     browserSizer->Add(m_borderBrowserList, 1, wxEXPAND | wxALL, 5);
@@ -669,12 +651,7 @@ void BorderEditorDialog::OnGroundTilesetSelect(wxCommandEvent& event) {
     m_groundPalette->LoadTileset(tilesetName);
 }
 
-void BorderEditorDialog::OnGroundPaletteSelect(wxCommandEvent& event) {
-    int itemId = event.GetInt();
-    if (m_groundItemIdCtrl) {
-        m_groundItemIdCtrl->SetValue(itemId);
-    }
-}
+
 
 void BorderEditorDialog::OnOpenTilesetFilter(wxCommandEvent& event) {
     // Get all available tilesets
@@ -2709,466 +2686,6 @@ void BorderEditorDialog::OnGroundBrowse(wxCommandEvent& event) {
     }
 }
 
-void BorderEditorDialog::LoadGroundBrushByName(const wxString& name) {
-    if (name.IsEmpty()) {
-        ClearGroundItems();
-        return;
-    }
-    
-    // Find the grounds.xml file using the same version path conversion
-    wxString dataDir = g_gui.GetDataDirectory();
-    
-    wxString groundsFile = dataDir + wxFileName::GetPathSeparator() + 
-                          "materials" + wxFileName::GetPathSeparator() + "brushs" + wxFileName::GetPathSeparator() + "grounds.xml";
-    
-    if (!wxFileExists(groundsFile)) {
-        return;
-    }
-    
-    // Load the XML file
-    pugi::xml_document doc;
-    pugi::xml_parse_result result = doc.load_file(nstr(groundsFile).c_str());
-    
-    if (!result) {
-        return;
-    }
-    
-    // Clear existing items
-    ClearGroundItems();
-    
-    // Find the brush by name
-    pugi::xml_node materials = doc.child("materials");
-    if (!materials) {
-        return;
-    }
-    
-    for (pugi::xml_node brushNode = materials.child("brush"); brushNode; brushNode = brushNode.next_sibling("brush")) {
-        pugi::xml_attribute nameAttr = brushNode.attribute("name");
-        
-        if (nameAttr && wxString(nameAttr.as_string()) == name) {
-            // Found the brush, load its properties
-            // Load the name
-            if (m_groundNameCtrl) {
-                m_groundNameCtrl->SetValue(name);
-            }
-            
-            // Tileset selection
-            wxString tilesetName = "Nature"; // Default
-            bool found = false;
-            pugi::xml_node parent = brushNode.parent();
-            if (parent) {
-                pugi::xml_attribute parentName = parent.attribute("name");
-                if (parentName) {
-                    tilesetName = parentName.as_string();
-                    found = true;
-                }
-            }
-            
-            if (!found && !m_tilesetListData.IsEmpty()) {
-                tilesetName = m_tilesetListData[0];
-                found = true;
-            }
-            
-            if (found) {
-                if (m_groundTilesetCombo) {
-                    int idx = m_tilesetListData.Index(tilesetName);
-                    if (idx != wxNOT_FOUND) {
-                        m_groundTilesetCombo->SetSelection(idx);
-                        wxCommandEvent ev(wxEVT_COMBOBOX, m_groundTilesetCombo->GetId());
-                        ev.SetEventObject(m_groundTilesetCombo);
-                        OnGroundTilesetSelect(ev);
-                    }
-                }
-            }
-            
-            pugi::xml_attribute serverLookIdAttr = brushNode.attribute("server_lookid");
-            pugi::xml_attribute zOrderAttr = brushNode.attribute("z-order");
-            
-            if (serverLookIdAttr) {
-                m_serverLookIdCtrl->SetValue(serverLookIdAttr.as_int());
-            }
-            
-            if (zOrderAttr) {
-                m_zOrderCtrl->SetValue(zOrderAttr.as_int());
-            }
-            
-            // Load all item nodes
-            for (pugi::xml_node itemNode = brushNode.child("item"); itemNode; itemNode = itemNode.next_sibling("item")) {
-                pugi::xml_attribute idAttr = itemNode.attribute("id");
-                pugi::xml_attribute chanceAttr = itemNode.attribute("chance");
-                
-                if (idAttr) {
-                    uint16_t itemId = idAttr.as_uint();
-                    int chance = chanceAttr ? chanceAttr.as_int() : 10;
-                    
-                    m_groundItems.push_back(GroundItem(itemId, chance));
-                }
-            }
-            
-            // Load all border nodes and add to the border grid
-            m_borderItems.clear();
-            m_gridPanel->Clear();
-            
-            // Reset alignment options
-            m_borderAlignmentChoice->SetSelection(0); // Default to "outer"
-            m_includeToNoneCheck->SetValue(true);     // Default to checked
-            m_includeInnerCheck->SetValue(false);     // Default to unchecked
-            
-            bool hasToNoneBorder = false;
-            bool hasInnerBorder = false;
-            wxString alignment = "outer"; // Default
-            
-            for (pugi::xml_node borderNode = brushNode.child("border"); borderNode; borderNode = borderNode.next_sibling("border")) {
-                pugi::xml_attribute alignAttr = borderNode.attribute("align");
-                pugi::xml_attribute toAttr = borderNode.attribute("to");
-                pugi::xml_attribute idAttr = borderNode.attribute("id");
-                
-                if (idAttr) {
-                    int borderId = idAttr.as_int();
-                    m_currentBorderId = borderId;
-                    
-                    // Check border type and attributes
-                    if (alignAttr) {
-                        wxString alignVal = wxString(alignAttr.as_string());
-                        
-                        if (alignVal == "outer") {
-                            if (toAttr && wxString(toAttr.as_string()) == "none") {
-                                hasToNoneBorder = true;
-                            } else {
-                                alignment = "outer";
-                            }
-                        } else if (alignVal == "inner") {
-                            if (!(toAttr && wxString(toAttr.as_string()) == "none")) {
-                                hasInnerBorder = true;
-                            }
-                        }
-                    }
-                    
-                    // Load the border details from borders.xml
-                    wxString bordersFile = dataDir + wxFileName::GetPathSeparator() + 
-                                         "materials" + wxFileName::GetPathSeparator() + "borders.xml";
-                    
-                    if (!wxFileExists(bordersFile)) {
-                        continue;
-                    }
-                    
-                    pugi::xml_document bordersDoc;
-                    pugi::xml_parse_result bordersResult = bordersDoc.load_file(nstr(bordersFile).c_str());
-                    
-                    if (!bordersResult) {
-                        continue;
-                    }
-                    
-                    pugi::xml_node bordersMaterials = bordersDoc.child("materials");
-                    if (!bordersMaterials) {
-                        continue;
-                    }
-                    
-                    for (pugi::xml_node targetBorder = bordersMaterials.child("border"); targetBorder; targetBorder = targetBorder.next_sibling("border")) {
-                        pugi::xml_attribute targetIdAttr = targetBorder.attribute("id");
-                        
-                        if (targetIdAttr && targetIdAttr.as_int() == borderId) {
-                            // Found the border, load its items
-                            for (pugi::xml_node borderItemNode = targetBorder.child("borderitem"); borderItemNode; borderItemNode = borderItemNode.next_sibling("borderitem")) {
-                                pugi::xml_attribute edgeAttr = borderItemNode.attribute("edge");
-                                pugi::xml_attribute itemAttr = borderItemNode.attribute("item");
-                                
-                                if (!edgeAttr || !itemAttr) continue;
-                                
-                                BorderEdgePosition pos = edgeStringToPosition(edgeAttr.as_string());
-                                uint16_t borderItemId = itemAttr.as_uint();
-                                
-                                if (pos != EDGE_NONE && borderItemId > 0) {
-                                    m_borderItems.push_back(BorderItem(pos, borderItemId));
-                                    m_gridPanel->SetItemId(pos, borderItemId);
-                                }
-                            }
-                            
-                            break;
-                        }
-                    }
-                }
-            }
-            
-            // Update the ground items list and border preview
-            UpdateGroundItemsList();
-            UpdatePreview();
-            
-            // Apply the loaded border alignment settings
-            if (hasInnerBorder) {
-                m_includeInnerCheck->SetValue(true);
-            }
-            
-            if (!hasToNoneBorder) {
-                m_includeToNoneCheck->SetValue(false);
-            }
-            
-            int alignmentIndex = 0; // Default to outer
-            if (alignment == "inner") {
-                alignmentIndex = 1;
-            }
-            m_borderAlignmentChoice->SetSelection(alignmentIndex);
-            
-            break;
-        }
-    }
-}
-
-bool BorderEditorDialog::ValidateGroundBrush() {
-    // Check for empty name
-    if (m_groundNameCtrl->GetValue().IsEmpty()) {
-        wxMessageBox("Please enter a name for the ground brush.", "Validation Error", wxICON_ERROR);
-        return false;
-    }
-    
-    if (m_groundItems.empty()) {
-        wxMessageBox("The ground brush must have at least one item.", "Validation Error", wxICON_ERROR);
-        return false;
-    }
-    
-    if (m_serverLookIdCtrl->GetValue() <= 0) {
-        wxMessageBox("You must specify a valid server look ID.", "Validation Error", wxICON_ERROR);
-        return false;
-    }
-    
-    if (m_tilesetListData.IsEmpty()) {
-        wxMessageBox("No tileset available for the ground brush.", "Validation Error", wxICON_ERROR);
-        return false;
-    }
-    
-    if (m_groundTilesetCombo && m_groundTilesetCombo->GetSelection() == wxNOT_FOUND) {
-        wxMessageBox("Please select a tileset for the ground brush.", "Validation Error", wxICON_ERROR);
-        return false;
-    }
-    
-    return true;
-}
-
-void BorderEditorDialog::SaveGroundBrush() {
-    if (!ValidateGroundBrush()) {
-        return;
-    }
-    
-    // Get the ground brush properties
-    wxString name = m_groundNameCtrl->GetValue();
-    
-    // Double check that we have a name (it's also checked in ValidateGroundBrush)
-    if (name.IsEmpty()) {
-        wxMessageBox("You must provide a name for the ground brush.", "Error", wxICON_ERROR);
-        return;
-    }
-    
-    int serverId = m_serverLookIdCtrl->GetValue();
-    int zOrder = m_zOrderCtrl->GetValue();
-    int borderId = m_currentBorderId;
-    wxString tilesetName;
-    if (m_groundTilesetCombo && m_groundTilesetCombo->GetSelection() != wxNOT_FOUND) {
-       tilesetName = m_groundTilesetCombo->GetStringSelection();
-    } else {
-        wxMessageBox("Tileset not selected.", "Error", wxICON_ERROR);
-        return;
-    }
-    
-    // Find tilesets.xml ...
-    // using the same version path conversion
-    wxString dataDir = g_gui.GetDataDirectory();
-    
-    // Get version string and convert to proper directory format
-    wxString groundsFile = dataDir + wxFileName::GetPathSeparator() + 
-                          "materials" + wxFileName::GetPathSeparator() + "brushs" + wxFileName::GetPathSeparator() + "grounds.xml";
-    
-    if (!wxFileExists(groundsFile)) {
-        wxMessageBox("Cannot find grounds.xml file in the data directory.", "Error", wxICON_ERROR);
-        return;
-    }
-    
-    // Make sure the border is saved first if we have border items
-    if (!m_borderItems.empty()) {
-        SaveBorder();
-    }
-    
-    // Load the XML file
-    pugi::xml_document doc;
-    pugi::xml_parse_result result = doc.load_file(nstr(groundsFile).c_str());
-    
-    if (!result) {
-        wxMessageBox("Failed to load grounds.xml: " + wxString(result.description()), "Error", wxICON_ERROR);
-        return;
-    }
-    
-    pugi::xml_node materials = doc.child("materials");
-    if (!materials) {
-        wxMessageBox("Invalid grounds.xml file: missing 'materials' node", "Error", wxICON_ERROR);
-        return;
-    }
-    
-    // Check if a brush with this name already exists
-    bool brushExists = false;
-    pugi::xml_node existingBrush;
-    
-    for (pugi::xml_node brushNode = materials.child("brush"); brushNode; brushNode = brushNode.next_sibling("brush")) {
-        pugi::xml_attribute nameAttr = brushNode.attribute("name");
-        
-        if (nameAttr && wxString(nameAttr.as_string()) == name) {
-            brushExists = true;
-            existingBrush = brushNode;
-            break;
-        }
-    }
-    
-    if (brushExists) {
-        // Ask for confirmation to overwrite
-        if (wxMessageBox("A ground brush with name '" + name + "' already exists. Do you want to overwrite it?", 
-                        "Confirm Overwrite", wxYES_NO | wxICON_QUESTION) != wxYES) {
-            return;
-        }
-        
-        // Remove the existing brush
-        materials.remove_child(existingBrush);
-    }
-    
-    // Create the new brush node
-    pugi::xml_node brushNode = materials.append_child("brush");
-    if (brushNode) {
-            brushNode.append_attribute("name").set_value(nstr(name).c_str());
-            brushNode.append_attribute("server_lookid").set_value(serverId);
-            brushNode.append_attribute("z-order").set_value(zOrder);
-        } else {
-             wxMessageBox("Failed to create new brush node.", "Error", wxICON_ERROR);
-             return;
-        }
-    brushNode.append_attribute("type").set_value("ground");
-    
-    // Add all ground items
-    for (const GroundItem& item : m_groundItems) {
-        pugi::xml_node itemNode = brushNode.append_child("item");
-        itemNode.append_attribute("id").set_value(item.itemId);
-        itemNode.append_attribute("chance").set_value(item.chance);
-    }
-    
-    // Add border reference if we have border items, or if border ID is specified (even without items)
-    if (!m_borderItems.empty() || borderId > 0) {
-        // Get alignment type
-        wxString alignmentType = m_borderAlignmentChoice->GetStringSelection();
-        
-        // Main border
-        pugi::xml_node borderNode = brushNode.append_child("border");
-        borderNode.append_attribute("align").set_value(nstr(alignmentType).c_str());
-        borderNode.append_attribute("id").set_value(borderId);
-        
-        // "to none" border if checked
-        if (m_includeToNoneCheck->IsChecked()) {
-            pugi::xml_node borderToNoneNode = brushNode.append_child("border");
-            borderToNoneNode.append_attribute("align").set_value(nstr(alignmentType).c_str());
-            borderToNoneNode.append_attribute("to").set_value("none");
-            borderToNoneNode.append_attribute("id").set_value(borderId);
-        }
-        
-        // Inner border if checked
-        if (m_includeInnerCheck->IsChecked()) {
-            pugi::xml_node innerBorderNode = brushNode.append_child("border");
-            innerBorderNode.append_attribute("align").set_value("inner");
-            innerBorderNode.append_attribute("id").set_value(borderId);
-            
-            // Inner "to none" border if checked
-            if (m_includeToNoneCheck->IsChecked()) {
-                pugi::xml_node innerToNoneNode = brushNode.append_child("border");
-                innerToNoneNode.append_attribute("align").set_value("inner");
-                innerToNoneNode.append_attribute("to").set_value("none");
-                innerToNoneNode.append_attribute("id").set_value(borderId);
-            }
-        }
-    }
-    
-    // Save the file
-    if (!doc.save_file(nstr(groundsFile).c_str())) {
-        wxMessageBox("Failed to save changes to grounds.xml", "Error", wxICON_ERROR);
-        return;
-    }
-    
-    // Now also add this brush to the selected tileset
-    wxString tilesetsFile = dataDir + wxFileName::GetPathSeparator() + 
-                           "materials" + wxFileName::GetPathSeparator() + "tilesets.xml";
-    
-    if (!wxFileExists(tilesetsFile)) {
-        wxMessageBox("Cannot find tilesets.xml file in the data directory.", "Error", wxICON_ERROR);
-        return;
-    }
-    
-    // Load the tilesets XML file
-    pugi::xml_document tilesetsDoc;
-    pugi::xml_parse_result tilesetsResult = tilesetsDoc.load_file(nstr(tilesetsFile).c_str());
-    
-    if (!tilesetsResult) {
-        wxMessageBox("Failed to load tilesets.xml: " + wxString(tilesetsResult.description()), "Error", wxICON_ERROR);
-        return;
-    }
-    
-    pugi::xml_node tilesetsMaterials = tilesetsDoc.child("materials");
-    if (!tilesetsMaterials) {
-        wxMessageBox("Invalid tilesets.xml file: missing 'materials' node", "Error", wxICON_ERROR);
-        return;
-    }
-    
-    // Find the selected tileset
-    bool tilesetFound = false;
-    for (pugi::xml_node tilesetNode = tilesetsMaterials.child("tileset"); tilesetNode; tilesetNode = tilesetNode.next_sibling("tileset")) {
-        pugi::xml_attribute nameAttr = tilesetNode.attribute("name");
-        
-        if (nameAttr && wxString(nameAttr.as_string()) == tilesetName) {
-            // Find the terrain node
-            pugi::xml_node terrainNode = tilesetNode.child("terrain");
-            if (!terrainNode) {
-                // Create terrain node if it doesn't exist
-                terrainNode = tilesetNode.append_child("terrain");
-            }
-            
-            // Check if the brush is already in this tileset
-            bool brushFound = false;
-            for (pugi::xml_node brushNode = terrainNode.child("brush"); brushNode; brushNode = brushNode.next_sibling("brush")) {
-                pugi::xml_attribute brushNameAttr = brushNode.attribute("name");
-                
-                if (brushNameAttr && wxString(brushNameAttr.as_string()) == name) {
-                    brushFound = true;
-                    break;
-                }
-            }
-            
-            // If brush not found, add it
-            if (!brushFound) {
-                // Add a brush node directly under terrain - no empty attributes
-                pugi::xml_node newBrushNode = terrainNode.append_child("brush");
-                newBrushNode.append_attribute("name").set_value(nstr(name).c_str());
-            }
-            
-            tilesetFound = true;
-            break;
-        }
-    }
-    
-    if (!tilesetFound) {
-        wxMessageBox("Selected tileset not found in tilesets.xml", "Error", wxICON_ERROR);
-        return;
-    }
-    
-    // Save the tilesets.xml file
-    if (!tilesetsDoc.save_file(nstr(tilesetsFile).c_str())) {
-        wxMessageBox("Failed to save changes to tilesets.xml", "Error", wxICON_ERROR);
-        return;
-    }
-    
-    wxMessageBox("Ground brush saved successfully and added to the " + tilesetName + " tileset.", "Success", wxICON_INFORMATION);
-    
-    // Reload the existing ground brushes list
-    LoadExistingGroundBrushes();
-    
-    // Refresh the main palette view so changes appear immediately
-    g_gui.RefreshPalettes();
-    
-    // Update sidebar to reflect the newly added/modified ground brush
-    PopulateGroundList();
-}
-
 void BorderEditorDialog::LoadTilesets() {
     // Clear the choice control
     m_tilesetListData.Clear();
@@ -3414,3 +2931,484 @@ void WallVisualPanel::OnPaint(wxPaintEvent& event) {
     drawTypeAt("corner", 0, 1);     // Bottom Left
     drawTypeAt("pole", 1, 1);       // Bottom Right
 } 
+
+
+// ============================================================================
+// GroundGridPanel (Visual Copy of BorderGridPanel)
+// ============================================================================
+
+BEGIN_EVENT_TABLE(GroundGridPanel, wxPanel)
+    EVT_PAINT(GroundGridPanel::OnPaint)
+    EVT_LEFT_UP(GroundGridPanel::OnMouseClick)
+END_EVENT_TABLE()
+
+GroundGridPanel::GroundGridPanel(wxWindow* parent, wxWindowID id) :
+    wxPanel(parent, id, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE),
+    m_itemId(0)
+{
+    SetBackgroundStyle(wxBG_STYLE_PAINT);
+}
+
+GroundGridPanel::~GroundGridPanel() {}
+
+void GroundGridPanel::SetItemId(uint16_t id) {
+    m_itemId = id;
+    Refresh();
+}
+
+void GroundGridPanel::Clear() {
+    m_itemId = 0;
+    Refresh();
+}
+
+wxSize GroundGridPanel::DoGetBestSize() const {
+    // 64px cell + 5px margin on each side = 74x74
+    return wxSize(74, 74);
+}
+
+void GroundGridPanel::OnMouseClick(wxMouseEvent& event) {
+    wxSize size = GetClientSize();
+    int w = size.GetWidth();
+    int h = size.GetHeight();
+    int margin = 5;
+    
+    // Use fixed size for individual cells to avoid excessive spacing
+    int cellSize = 64;
+    
+    // Start at top-left with margin (documentation standard)
+    int gridX = margin;
+    int gridY = margin;
+    
+    int clickX = event.GetX();
+    int clickY = event.GetY();
+    
+    // Check if click is within the grid cell
+    if (clickX >= gridX && clickX < gridX + cellSize &&
+        clickY >= gridY && clickY < gridY + cellSize) {
+        
+        // Get the currently selected brush from the GUI
+        Brush* brush = g_gui.GetCurrentBrush();
+        if (brush && brush->isRaw()) {
+            RAWBrush* rawBrush = dynamic_cast<RAWBrush*>(brush);
+            if (rawBrush) {
+                m_itemId = rawBrush->getItemID();
+                Refresh();
+                
+                // Notify container that this cell was filled
+                wxWindow* parent = GetParent();
+                GroundGridContainer* container = dynamic_cast<GroundGridContainer*>(parent);
+                if (container) {
+                    container->EnsureEmptyCell();
+                }
+            }
+        }
+    }
+}
+
+void GroundGridPanel::OnPaint(wxPaintEvent& event) {
+    wxAutoBufferedPaintDC dc(this);
+    
+    // Use system background color like Border Editor
+    dc.SetBackground(wxBrush(wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE)));
+    dc.Clear();
+
+    wxSize size = GetClientSize();
+    int w = size.GetWidth();
+    int h = size.GetHeight();
+    int margin = 5;
+    
+    // Match sizing of individual grid cells (standard 64px)
+    int cellSize = 64;
+    
+    // Start at top-left with margin (documentation standard)
+    int x = margin;
+    int y = margin;
+    
+    // Use GraphicsContext for opacity (75% = 191 alpha)
+    std::unique_ptr<wxGraphicsContext> gc(wxGraphicsContext::Create(dc));
+    if (gc) {
+        gc->SetAntialiasMode(wxANTIALIAS_NONE);
+        
+        // Draw grid lines (like Border Editor) with 75% opacity
+        wxColour grayText = wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT);
+        gc->SetPen(wxPen(wxColour(grayText.Red(), grayText.Green(), grayText.Blue(), 191)));
+        gc->SetBrush(*wxTRANSPARENT_BRUSH);
+        
+        // Draw 1x1 grid (rectangle)
+        gc->DrawRectangle(x, y, cellSize, cellSize);
+        
+        // Draw the assigned item sprite if set
+        if (m_itemId > 0) {
+            const ItemType& type = g_items.getItemType(m_itemId);
+            if (type.id != 0) {
+                Sprite* sprite = g_gui.gfx.getSprite(type.clientID);
+                if (sprite) {
+                    // Sprite rendering with scaling to fit cell
+                    const int spritePadding = 2;
+                    const int spriteSize = cellSize - 2 * spritePadding;
+                    
+                    wxMemoryDC tempDC;
+                    wxBitmap tempBitmap(32, 32);
+                    tempDC.SelectObject(tempBitmap);
+                    tempDC.SetBackground(*wxTRANSPARENT_BRUSH);
+                    tempDC.Clear();
+                    
+                    sprite->DrawTo(&tempDC, SPRITE_SIZE_32x32, 0, 0);
+                    tempDC.SelectObject(wxNullBitmap);
+                    
+                    wxImage img = tempBitmap.ConvertToImage();
+                    if (img.IsOk()) {
+                        img.Rescale(spriteSize, spriteSize, wxIMAGE_QUALITY_NEAREST);
+                        wxBitmap scaledBmp(img);
+                        
+                        // Draw bitmap with 75% opacity
+                        gc->DrawBitmap(scaledBmp, x + spritePadding, y + spritePadding, spriteSize, spriteSize);
+                    }
+                }
+            }
+        }
+    } else {
+        // Fallback to normal DC if GC fails
+        dc.SetPen(wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT)));
+        dc.SetBrush(*wxTRANSPARENT_BRUSH);
+        dc.DrawRectangle(x, y, cellSize, cellSize);
+        
+        if (m_itemId > 0) {
+            const ItemType& type = g_items.getItemType(m_itemId);
+            if (type.id != 0) {
+                Sprite* sprite = g_gui.gfx.getSprite(type.clientID);
+                if (sprite) {
+                    const int spritePadding = 2;
+                    const int spriteSize = cellSize - 2 * spritePadding;
+                    
+                    wxMemoryDC tempDC;
+                    wxBitmap tempBitmap(32, 32);
+                    tempDC.SelectObject(tempBitmap);
+                    tempDC.SetBackground(*wxTRANSPARENT_BRUSH);
+                    tempDC.Clear();
+                    
+                    sprite->DrawTo(&tempDC, SPRITE_SIZE_32x32, 0, 0);
+                    tempDC.SelectObject(wxNullBitmap);
+                    
+                    wxImage img = tempBitmap.ConvertToImage();
+                    if (img.IsOk()) {
+                        img.Rescale(spriteSize, spriteSize, wxIMAGE_QUALITY_NEAREST);
+                        wxBitmap scaledBmp(img);
+                        dc.DrawBitmap(scaledBmp, x + spritePadding, y + spritePadding, true);
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ============================================================================
+// GroundGridContainer - Manages multiple GroundGridPanel cells with auto-expansion
+// ============================================================================
+
+GroundGridContainer::GroundGridContainer(wxWindow* parent, wxWindowID id) :
+    wxScrolledWindow(parent, id, wxDefaultPosition, wxDefaultSize, wxHSCROLL | wxBORDER_NONE),
+    m_gridSizer(nullptr)
+{
+    SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE));
+    
+    // Create horizontal sizer for the grid cells
+    m_gridSizer = new wxBoxSizer(wxHORIZONTAL);
+    SetSizer(m_gridSizer);
+    
+    // Set scroll rate
+    SetScrollRate(10, 0);  // Only horizontal scrolling
+    
+    // Create first empty cell
+    CreateNewCell();
+}
+
+GroundGridContainer::~GroundGridContainer() {
+    m_gridCells.clear();
+}
+
+void GroundGridContainer::CreateNewCell() {
+    GroundGridPanel* cell = new GroundGridPanel(this);
+    cell->SetMinSize(wxSize(74, 74));  // 64px cell + 10px margins
+    
+    m_gridSizer->Add(cell, 0, wxALL | wxALIGN_TOP, 1);
+    m_gridCells.push_back(cell);
+    
+    FitInside();
+    Layout();
+}
+
+void GroundGridContainer::EnsureEmptyCell() {
+    if (m_gridCells.empty()) {
+        CreateNewCell();
+        return;
+    }
+    
+    if (!m_gridCells.back()->IsEmpty()) {
+        CreateNewCell();
+    }
+}
+
+void GroundGridContainer::AddItem(uint16_t itemId) {
+    if (itemId == 0) return;
+    
+    for (GroundGridPanel* cell : m_gridCells) {
+        if (cell->IsEmpty()) {
+            cell->SetItemId(itemId);
+            EnsureEmptyCell();
+            return;
+        }
+    }
+    
+    CreateNewCell();
+    m_gridCells.back()->SetItemId(itemId);
+    EnsureEmptyCell();
+}
+
+void GroundGridContainer::Clear() {
+    while (m_gridCells.size() > 1) {
+        GroundGridPanel* cell = m_gridCells.back();
+        m_gridSizer->Detach(cell);
+        cell->Destroy();
+        m_gridCells.pop_back();
+    }
+    
+    if (!m_gridCells.empty()) {
+        m_gridCells[0]->Clear();
+    }
+    
+    FitInside();
+    Layout();
+}
+
+std::vector<uint16_t> GroundGridContainer::GetAllItems() const {
+    std::vector<uint16_t> items;
+    for (const GroundGridPanel* cell : m_gridCells) {
+        if (!cell->IsEmpty()) {
+            items.push_back(cell->GetItemId());
+        }
+    }
+    return items;
+}
+
+size_t GroundGridContainer::GetFilledCount() const {
+    size_t count = 0;
+    for (const GroundGridPanel* cell : m_gridCells) {
+        if (!cell->IsEmpty()) count++;
+    }
+    return count;
+}
+
+void GroundGridContainer::OnCellFilled(int index) {
+    EnsureEmptyCell();
+}
+
+void GroundGridContainer::RebuildGrids() {
+    FitInside();
+    Layout();
+    Refresh();
+}
+
+// DISABLE Old Event Handlers
+void BorderEditorDialog::OnAddVariation(wxCommandEvent& event) {}
+void BorderEditorDialog::OnRemoveVariationBtn(wxCommandEvent& event) {}
+void BorderEditorDialog::OnPreviewTimer(wxTimerEvent& event) {}
+void BorderEditorDialog::RebuildVariationsList() {}
+void BorderEditorDialog::AddVariationRow(GroundVariation& variation, int index) {}
+
+void BorderEditorDialog::OnGroundPaletteSelect(wxCommandEvent& event) {
+    // When an item is selected from the palette, add it to the container
+    uint16_t itemId = static_cast<uint16_t>(event.GetInt());
+    if (itemId > 0 && m_groundGridContainer) {
+        m_groundGridContainer->AddItem(itemId);
+    }
+}
+
+void BorderEditorDialog::SaveGroundBrush() {
+    // Validate input
+    wxString name = m_groundNameCtrl->GetValue().Trim();
+    if (name.IsEmpty()) {
+        wxMessageBox("Please enter a name for the ground brush.", "Validation Error", wxOK | wxICON_WARNING);
+        return;
+    }
+    
+    std::vector<uint16_t> items = m_groundGridContainer ? m_groundGridContainer->GetAllItems() : std::vector<uint16_t>();
+    if (items.empty()) {
+        wxMessageBox("Please add at least one item to the ground brush by clicking on tiles in the palette.", 
+                     "Validation Error", wxOK | wxICON_WARNING);
+        return;
+    }
+    
+    // Get form values
+    int serverLookId = m_serverLookIdCtrl->GetValue();
+    int zOrder = m_zOrderCtrl->GetValue();
+    wxString alignment = m_borderAlignmentChoice->GetStringSelection();
+    bool includeToNone = m_includeToNoneCheck->GetValue();
+    bool includeInner = m_includeInnerCheck->GetValue();
+    
+    // Build XML path
+    wxString dataDir = g_gui.GetDataDirectory();
+    wxString groundsFile = dataDir + wxFileName::GetPathSeparator() + 
+                          "materials" + wxFileName::GetPathSeparator() + 
+                          "brushs" + wxFileName::GetPathSeparator() + "grounds.xml";
+    
+    // Load existing file or create new structure
+    pugi::xml_document doc;
+    pugi::xml_node materials;
+    
+    if (wxFileExists(groundsFile)) {
+        pugi::xml_parse_result result = doc.load_file(nstr(groundsFile).c_str());
+        if (result) {
+            materials = doc.child("materials");
+        }
+    }
+    
+    if (!materials) {
+        materials = doc.append_child("materials");
+    }
+    
+    // Check if brush with this name already exists
+    pugi::xml_node existingBrush;
+    for (pugi::xml_node brushNode = materials.child("brush"); brushNode; brushNode = brushNode.next_sibling("brush")) {
+        if (wxString(brushNode.attribute("name").as_string()) == name) {
+            existingBrush = brushNode;
+            break;
+        }
+    }
+    
+    // Create or update brush node
+    pugi::xml_node brushNode = existingBrush ? existingBrush : materials.append_child("brush");
+    
+    if (!existingBrush) {
+        brushNode.append_attribute("type") = "ground";
+    }
+    brushNode.attribute("name") = nstr(name).c_str();
+    if (!brushNode.attribute("name")) {
+        brushNode.append_attribute("name") = nstr(name).c_str();
+    }
+    
+    // Set or update server_lookid
+    if (serverLookId > 0) {
+        if (brushNode.attribute("server_lookid")) {
+            brushNode.attribute("server_lookid") = serverLookId;
+        } else {
+            brushNode.append_attribute("server_lookid") = serverLookId;
+        }
+    }
+    
+    // Set z-order
+    if (brushNode.attribute("z-order")) {
+        brushNode.attribute("z-order") = zOrder;
+    } else {
+        brushNode.append_attribute("z-order") = zOrder;
+    }
+    
+    // Remove existing item children and add new ones
+    while (brushNode.child("item")) {
+        brushNode.remove_child("item");
+    }
+    
+    // Add all items from the container
+    int baseChance = 2500 / std::max(1, (int)items.size());  // Distribute chance
+    for (uint16_t itemId : items) {
+        pugi::xml_node itemNode = brushNode.append_child("item");
+        itemNode.append_attribute("id") = itemId;
+        itemNode.append_attribute("chance") = baseChance;
+    }
+    
+    // Add border node if not exists
+    pugi::xml_node borderNode = brushNode.child("border");
+    if (!borderNode) {
+        borderNode = brushNode.append_child("border");
+    }
+    
+    // Set border attributes
+    if (borderNode.attribute("align")) {
+        borderNode.attribute("align") = nstr(alignment).c_str();
+    } else {
+        borderNode.append_attribute("align") = nstr(alignment).c_str();
+    }
+    
+    if (includeToNone) {
+        if (!borderNode.attribute("to")) {
+            borderNode.append_attribute("to") = "none";
+        } else {
+            borderNode.attribute("to") = "none";
+        }
+    }
+    
+    // Save the file
+    if (doc.save_file(nstr(groundsFile).c_str())) {
+        wxMessageBox(wxString::Format("Ground brush '%s' saved successfully.", name), 
+                     "Success", wxOK | wxICON_INFORMATION);
+        // Refresh the browser list
+        PopulateGroundList();
+    } else {
+        wxMessageBox("Failed to save ground brush file.", "Error", wxOK | wxICON_ERROR);
+    }
+}
+
+void BorderEditorDialog::LoadGroundBrushByName(const wxString& name) {
+    if (name.IsEmpty()) return;
+    
+    wxString dataDir = g_gui.GetDataDirectory();
+    wxString groundsFile = dataDir + wxFileName::GetPathSeparator() + 
+                          "materials" + wxFileName::GetPathSeparator() + 
+                          "brushs" + wxFileName::GetPathSeparator() + "grounds.xml";
+    
+    if (!wxFileExists(groundsFile)) return;
+    
+    pugi::xml_document doc;
+    if (!doc.load_file(nstr(groundsFile).c_str())) return;
+    
+    pugi::xml_node materials = doc.child("materials");
+    if (!materials) return;
+    
+    // Find the brush by name
+    for (pugi::xml_node brushNode = materials.child("brush"); brushNode; brushNode = brushNode.next_sibling("brush")) {
+        pugi::xml_attribute typeAttr = brushNode.attribute("type");
+        if (!typeAttr || std::string(typeAttr.as_string()) != "ground") continue;
+        
+        pugi::xml_attribute nameAttr = brushNode.attribute("name");
+        if (!nameAttr || wxString(nameAttr.as_string()) != name) continue;
+        
+        // Found the brush - populate the form
+        m_groundNameCtrl->SetValue(name);
+        
+        // Server look ID
+        pugi::xml_attribute lookIdAttr = brushNode.attribute("server_lookid");
+        m_serverLookIdCtrl->SetValue(lookIdAttr ? lookIdAttr.as_int() : 0);
+        
+        // Z-order
+        pugi::xml_attribute zOrderAttr = brushNode.attribute("z-order");
+        m_zOrderCtrl->SetValue(zOrderAttr ? zOrderAttr.as_int() : 0);
+        
+        // Get first item ID and set in grid
+        // Load all items into the container
+        if (m_groundGridContainer) {
+            m_groundGridContainer->Clear();
+            for (pugi::xml_node itemNode = brushNode.child("item"); itemNode; itemNode = itemNode.next_sibling("item")) {
+                uint16_t itemId = itemNode.attribute("id").as_uint();
+                if (itemId > 0) {
+                    m_groundGridContainer->AddItem(itemId);
+                }
+            }
+        }
+        
+        // Border settings
+        pugi::xml_node borderNode = brushNode.child("border");
+        if (borderNode) {
+            wxString align = wxString(borderNode.attribute("align").as_string());
+            if (align == "inner") {
+                m_borderAlignmentChoice->SetSelection(1);
+            } else {
+                m_borderAlignmentChoice->SetSelection(0);  // outer
+            }
+            
+            wxString toValue = wxString(borderNode.attribute("to").as_string());
+            m_includeToNoneCheck->SetValue(toValue == "none");
+        }
+        
+        break;
+    }
+}

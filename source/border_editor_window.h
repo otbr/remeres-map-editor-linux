@@ -31,6 +31,8 @@
 // Forward declarations
 class BorderItemButton;
 class BorderGridPanel;
+class GroundGridPanel;
+class GroundGridContainer;
 class BorderPreviewPanel;
 class WallVisualPanel;
 class BrushPalettePanel;
@@ -138,6 +140,25 @@ private:
     wxString m_name;
 };
 
+// Represents a single tile in a composite variation
+struct CompositeTile {
+    int x, y;
+    uint16_t itemId;
+
+    bool operator<(const CompositeTile& other) const {
+        if (x != other.x) return x < other.x;
+        return y < other.y;
+    }
+};
+
+// Represents a variation (composite block)
+struct GroundVariation {
+    int chance;
+    std::vector<CompositeTile> tiles;
+    
+    GroundVariation() : chance(10) {}
+};
+
 class SimpleRawPalettePanel;
 
 // Dialog for filtering visible tilesets
@@ -243,6 +264,9 @@ private:
     // Storage for unfiltered browser list items
     wxArrayString m_fullBrowserList;
     wxArrayString m_fullBrowserIds;
+    
+    // Animation timer for preview
+    wxTimer* m_previewTimer;
 
     // ===== UI Controls =====
     wxSimplebook* m_notebook;
@@ -278,6 +302,7 @@ private:
     // Palette panels
     SimpleRawPalettePanel* m_itemPalettePanel;  // Changed from BrushPalettePanel*
     SimpleRawPalettePanel* m_groundPalette;     
+    GroundGridContainer* m_groundGridContainer;
     BrushPalettePanel* m_wallPalette;
     
     // Border items data
@@ -303,6 +328,31 @@ private:
     std::vector<GroundItem> m_groundItems;
     std::map<wxString, wxString> m_tilesets;
     long long m_lastInteractionTime;
+    
+    // Composite/Variation support
+    std::vector<GroundVariation> m_groundVariations;
+    int m_currentVariationIndex;
+    
+    void UpdateVariationControls();
+    void RenderCurrentVariation();
+    
+    // Composite/Variation support
+    // UI for Scrollable List of Variations
+    wxScrolledWindow* m_variationsScrolledWindow;
+    wxBoxSizer* m_variationsSizer;
+    class VariationPreviewPanel* m_variationPreview;
+    wxButton* m_addVariationBtn;
+
+    // Helper to rebuild the list UI from m_groundVariations
+    void RebuildVariationsList();
+    void OnRemoveVariationBtn(wxCommandEvent& event); // Handle removal from specific row
+    
+    // Internal helper to add one UI row
+    void AddVariationRow(GroundVariation& variation, int index);
+    
+    void OnPreviewTimer(wxTimerEvent& event);
+    
+    void OnAddVariation(wxCommandEvent& event);
     
     // Tileset filter whitelists (per-mode) - only enabled tilesets
     std::set<wxString> m_borderEnabledTilesets;
@@ -450,5 +500,68 @@ private:
     
     DECLARE_EVENT_TABLE()
 };
+
+
+
+// ============================================================================
+// GroundGridPanel (Visual Replica of BorderGridPanel)
+// ============================================================================
+class GroundGridPanel : public wxPanel {
+public:
+    GroundGridPanel(wxWindow* parent, wxWindowID id = wxID_ANY);
+    virtual ~GroundGridPanel();
+    
+    // Item management
+    void SetItemId(uint16_t id);
+    uint16_t GetItemId() const { return m_itemId; }
+    void Clear();
+    bool IsEmpty() const { return m_itemId == 0; }
+    
+    // Event handlers
+    void OnPaint(wxPaintEvent& event);
+    void OnMouseClick(wxMouseEvent& event);
+    
+    // Layout helper
+    wxSize DoGetBestSize() const override;
+
+private:
+    uint16_t m_itemId;  // Currently assigned item ID
+    
+    DECLARE_EVENT_TABLE()
+};
+
+// ============================================================================
+// GroundGridContainer - Manages multiple GroundGridPanel cells with auto-expansion
+// ============================================================================
+class GroundGridContainer : public wxScrolledWindow {
+public:
+    GroundGridContainer(wxWindow* parent, wxWindowID id = wxID_ANY);
+    virtual ~GroundGridContainer();
+    
+    // Item management
+    void AddItem(uint16_t itemId);
+    void Clear();
+    
+    // Get all filled items
+    std::vector<uint16_t> GetAllItems() const;
+    size_t GetFilledCount() const;
+    
+    // Called when a cell is filled - auto-adds new empty cell
+    // Called when a cell is filled - auto-adds new empty cell
+    void OnCellFilled(int index);
+    
+    // Make sure there's always one empty cell at the end
+    void EnsureEmptyCell();
+    
+    // Rebuild grid layout after changes
+    void RebuildGrids();
+
+private:
+    std::vector<GroundGridPanel*> m_gridCells;
+    wxBoxSizer* m_gridSizer;
+    
+    void CreateNewCell();          // Create a new grid cell
+};
+
 
 #endif // RME_BORDER_EDITOR_WINDOW_H_
