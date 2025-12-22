@@ -697,10 +697,12 @@ void GUI::NewMapView() {
 }
 
 void GUI::LoadPerspective() {
+	// Note: Window size/maximize is now handled after Show() to work correctly on Linux/GTK
+	// See FinishWelcomeDialog() and Application::OnInit() for the actual maximize logic
 	if (!ClientAssets::isLoaded()) {
-		if (g_settings.getInteger(Config::WINDOW_MAXIMIZED)) {
-			root->Maximize();
-		} else {
+		// Set initial size (non-maximized case) before Show()
+		// Maximize will be handled via CallAfter after Show()
+		if (!g_settings.getInteger(Config::WINDOW_MAXIMIZED)) {
 			root->SetSize(wxSize(
 				g_settings.getInteger(Config::WINDOW_WIDTH),
 				g_settings.getInteger(Config::WINDOW_HEIGHT)
@@ -814,7 +816,11 @@ void GUI::LoadPerspective() {
 			}
 		}
 
-		aui_manager->Update();
+		// Only update AUI manager if window is already shown (avoids GTK layout errors)
+		if (root->IsShownOnScreen()) {
+			aui_manager->Update();
+		}
+		// Note: If window is not shown yet, Update() will be called after Show()
 		root->UpdateMenubar();
 	}
 
@@ -1156,24 +1162,25 @@ void GUI::FinishWelcomeDialog() {
 		welcomeDialog->Hide();
 		root->Show();
 
-		// Maximize or restore size immediately to prevent "small window -> modal -> maximize" glitch
-		// This ensures the window covers the screen before any map loader errors appear
+		// Update AUI manager now that window is shown (deferred from MainFrame constructor)
+		aui_manager->Update();
+
+		// On Linux/GTK, Maximize() doesn't work reliably when called immediately after Show()
+		// because the window manager hasn't yet processed the window.
+		// Use CallAfter to defer maximization to the next event loop iteration.
 		if (g_settings.getInteger(Config::WINDOW_MAXIMIZED)) {
-			root->Maximize();
+			wxTheApp->CallAfter([this]() {
+				if (root) {
+					root->Maximize();
+					root->Raise();
+				}
+			});
 		} else {
 			root->SetSize(wxSize(
 				g_settings.getInteger(Config::WINDOW_WIDTH),
 				g_settings.getInteger(Config::WINDOW_HEIGHT)
 			));
 		}
-
-		// Force the window manager to process the Show/Maximize request immediately
-		// This prevents the "modal dialog appears while window is still resizing/hidden" issue
-		wxSafeYield();
-		
-		// Force an immediate repaint to ensure the window is drawn before proceeding
-		root->Refresh();
-		root->Update();
 
 		welcomeDialog->Destroy();
 		welcomeDialog = nullptr;

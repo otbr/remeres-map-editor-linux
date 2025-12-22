@@ -38,8 +38,12 @@ MapTabbook::MapTabbook(wxWindow* parent, wxWindowID id) :
 	wxPanel(parent, id, wxDefaultPosition, wxDefaultSize) {
 	wxSizer* wxz = newd wxBoxSizer(wxHORIZONTAL);
 	notebook = newd wxAuiNotebook(this, wxID_ANY, wxDefaultPosition, wxDefaultSize);
+	// Set minimum size to prevent GTK allocation errors when notebook is empty
+	notebook->SetMinSize(wxSize(100, 100));
 	wxz->Add(notebook, 1, wxEXPAND);
 	SetSizerAndFit(wxz);
+	// Ensure panel also has minimum size to avoid zero-allocation issues
+	SetMinSize(wxSize(100, 100));
 }
 
 void MapTabbook::CycleTab(bool forward) {

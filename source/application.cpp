@@ -184,6 +184,18 @@ bool Application::OnInit() {
 		g_gui.ShowWelcomeDialog(icon);
 	} else {
 		g_gui.root->Show();
+		// Update AUI manager now that window is shown (deferred from MainFrame constructor)
+		g_gui.aui_manager->Update();
+		// On Linux/GTK, Maximize() doesn't work reliably when called immediately after Show()
+		// Use CallAfter to defer maximization to the next event loop iteration
+		if (g_settings.getInteger(Config::WINDOW_MAXIMIZED)) {
+			CallAfter([]() {
+				if (g_gui.root) {
+					g_gui.root->Maximize();
+					g_gui.root->Raise();
+				}
+			});
+		}
 	}
 
 	// Set idle event handling mode
@@ -368,7 +380,7 @@ MainFrame::MainFrame(const wxString &title, const wxPoint &pos, const wxSize &si
 	tool_bar = newd MainToolBar(this, g_gui.aui_manager);
 
 	g_gui.aui_manager->AddPane(g_gui.tabbook, wxAuiPaneInfo().CenterPane().Floatable(false).CloseButton(false).PaneBorder(false));
-	g_gui.aui_manager->Update();
+	// Note: aui_manager->Update() is deferred until after Show() to avoid GTK layout errors
 
 	UpdateMenubar();
 }
