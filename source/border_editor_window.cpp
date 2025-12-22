@@ -1663,6 +1663,7 @@ void SimpleRawPalettePanel::LoadTileset(const wxString& categoryName) {
     if (it != g_materials.tilesets.end()) {
         Tileset* tileset = it->second;
         if (tileset) {
+            // Load from RAW category
             const TilesetCategory* rawCat = tileset->getCategory(TILESET_RAW);
             if (rawCat) {
                 for (Brush* brush : rawCat->brushlist) {
@@ -1671,11 +1672,34 @@ void SimpleRawPalettePanel::LoadTileset(const wxString& categoryName) {
                     }
                 }
             }
+            
+            // Also load from TERRAIN category (for Mountains, etc.)
+            const TilesetCategory* terrainCat = tileset->getCategory(TILESET_TERRAIN);
+            if (terrainCat) {
+                for (Brush* brush : terrainCat->brushlist) {
+                    int lookid = brush->getLookID();
+                    if (lookid > 0) {
+                        m_itemIds.push_back(lookid);
+                    }
+                }
+            }
+            
+            // Also load from DOODAD category
+            const TilesetCategory* doodadCat = tileset->getCategory(TILESET_DOODAD);
+            if (doodadCat) {
+                for (Brush* brush : doodadCat->brushlist) {
+                    int lookid = brush->getLookID();
+                    if (lookid > 0) {
+                        m_itemIds.push_back(lookid);
+                    }
+                }
+            }
         }
     }
     
-    // Sort items by ID to ensure stable order
+    // Remove duplicates and sort
     std::sort(m_itemIds.begin(), m_itemIds.end());
+    m_itemIds.erase(std::unique(m_itemIds.begin(), m_itemIds.end()), m_itemIds.end());
     
     // Reset hover to avoid stuck highlighting
     m_hoverIndex = -1;
@@ -2386,6 +2410,9 @@ void BorderEditorDialog::UpdateGroundItemsList() {
 void BorderEditorDialog::OnPageChanged(wxBookCtrlEvent& event) {
     m_activeTab = event.GetSelection();
     
+    // Refresh tileset list (and apply filters) for the new tab
+    LoadTilesets();
+    
     // Clear search and repopulate sidebar based on active tab
     if (m_browserSearchCtrl) {
         m_browserSearchCtrl->Clear();
@@ -2439,6 +2466,9 @@ void BorderEditorDialog::OnModeSwitch(wxCommandEvent& event) {
         m_notebook->ChangeSelection(newTab);
     }
     m_activeTab = newTab;
+    
+    // Refresh tileset list (and apply filters) for the new mode
+    LoadTilesets();
     
     // Clear search and repopulate sidebar
     if (m_browserSearchCtrl) {
@@ -3155,8 +3185,9 @@ void BorderEditorDialog::LoadTilesets() {
     for (const auto& pair : g_materials.tilesets) {
         if (pair.second) {
             wxString tilesetName = wxString(pair.first);
-            // Only add if IN the whitelist (if whitelist is empty, show ALL for first-time users)
-            if (whitelist.empty() || whitelist.find(tilesetName) != whitelist.end()) {
+            // Only add if IN the whitelist (strict filtering)
+            // If whitelist is empty, show NOTHING (user must explicitly select)
+            if (whitelist.find(tilesetName) != whitelist.end()) {
                 tilesetNames.Add(tilesetName);
                 m_tilesets[tilesetName] = tilesetName;
             }
@@ -3179,6 +3210,8 @@ void BorderEditorDialog::LoadTilesets() {
             wxCommandEvent ev(wxEVT_COMBOBOX, m_rawCategoryCombo->GetId());
             ev.SetEventObject(m_rawCategoryCombo);
             OnRawCategoryChange(ev);
+        } else {
+             if(m_itemPalettePanel) m_itemPalettePanel->LoadTileset("");
         }
     } else if (m_activeTab == 1 && m_groundTilesetCombo) {
         // Ground tab
@@ -3189,6 +3222,8 @@ void BorderEditorDialog::LoadTilesets() {
             wxCommandEvent ev(wxEVT_COMBOBOX, m_groundTilesetCombo->GetId());
             ev.SetEventObject(m_groundTilesetCombo);
             OnGroundTilesetSelect(ev);
+        } else {
+             if(m_groundPalette) m_groundPalette->LoadTileset("");
         }
     }
 } 
