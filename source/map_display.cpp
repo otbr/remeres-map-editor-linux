@@ -316,7 +316,9 @@ void MapCanvas::OnPaint(wxPaintEvent &event) {
 	}
 
 	// === Dear ImGui Rendering ===
-	// Lazy initialization of ImGui (done once per canvas)
+	// DISABLED: ImGui completely disabled for maximum performance
+	// All UI handled by native wxWidgets (menus, status bar, palettes)
+	/*
 	if (!imgui_initialized) {
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
@@ -325,29 +327,26 @@ void MapCanvas::OnPaint(wxPaintEvent &event) {
 		ImGuiPanels::Init();
 		imgui_initialized = true;
 	}
-	
-	// Render ImGui overlay
+
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGuiWx::NewFrame();
 	ImGui::NewFrame();
-	
-	// Get hover tile for overlay
+
 	Tile* hoverTile = nullptr;
 	if (last_cursor_map_x >= 0 && last_cursor_map_y >= 0) {
 		hoverTile = editor.getMap().getTile(last_cursor_map_x, last_cursor_map_y, floor);
 	}
-	
-	// Update RME metrics for performance monitor
+
 	int texBinds = GetTextureBindsLastFrame();
 	ImGuiPanels::UpdateRMEMetrics(texBinds, 0, 0);
-	
-	// Draw our panels
+
+	ImGuiPanels::DrawMainMenuBar(&editor);
 	ImGuiPanels::DrawDebugOverlay(&editor, cursor_x, cursor_y, hoverTile);
 	ImGuiPanels::DrawToolsPanel(&editor, floor, zoom);
-	
-	// Finalize ImGui frame
+
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+	*/
 
 	// Clean unused textures
 	g_gui.gfx.garbageCollection();
@@ -609,9 +608,9 @@ void MapCanvas::getLineTiles(int x0, int y0, int x1, int y1, int z, PositionVect
 }
 
 void MapCanvas::OnMouseMove(wxMouseEvent &event) {
-	// Process mouse event for Dear ImGui
-	ImGuiWx::ProcessMouseEvent(event);
-	
+	// ImGui disabled for performance
+	// ImGuiWx::ProcessMouseEvent(event);
+
 	if (screendragging) {
 		GetMapWindow()->ScrollRelative(int(g_settings.getFloat(Config::SCROLL_SPEED) * zoom * (event.GetX() - cursor_x)), int(g_settings.getFloat(Config::SCROLL_SPEED) * zoom * (event.GetY() - cursor_y)));
 		Refresh();
@@ -768,26 +767,18 @@ void MapCanvas::OnMouseMove(wxMouseEvent &event) {
 }
 
 void MapCanvas::OnMouseLeftRelease(wxMouseEvent &event) {
-	// Process mouse event for Dear ImGui
-	ImGuiWx::ProcessMouseEvent(event);
-	
-	// If ImGui wants the mouse, don't process in RME
-	if (ImGuiWx::WantCaptureMouse()) {
-		return;
-	}
-	
+	// ImGui disabled for performance
+	// ImGuiWx::ProcessMouseEvent(event);
+	// if (ImGuiWx::WantCaptureMouse()) { return; }
+
 	OnMouseActionRelease(event);
 }
 
 void MapCanvas::OnMouseLeftClick(wxMouseEvent &event) {
-	// Process mouse event for Dear ImGui
-	ImGuiWx::ProcessMouseEvent(event);
-	
-	// If ImGui wants the mouse, don't process in RME
-	if (ImGuiWx::WantCaptureMouse()) {
-		return;
-	}
-	
+	// ImGui disabled for performance
+	// ImGuiWx::ProcessMouseEvent(event);
+	// if (ImGuiWx::WantCaptureMouse()) { return; }
+
 	OnMouseActionClick(event);
 }
 
