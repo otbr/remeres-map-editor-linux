@@ -34,6 +34,7 @@ class BorderGridPanel;
 class GroundGridPanel;
 class GroundGridContainer;
 class BorderPreviewPanel;
+class GroundPreviewPanel;
 class WallVisualPanel;
 class BrushPalettePanel;
 
@@ -200,11 +201,14 @@ public:
     void OnRemoveGroundItem(wxCommandEvent& event);
     void OnGroundBrowse(wxCommandEvent& event);
     void OnGroundTilesetSelect(wxCommandEvent& event);
-    void OnGroundPaletteSelect(wxCommandEvent& event);
-    void OnOpenTilesetFilter(wxCommandEvent& event);
     
     // Wall events
     void OnWallBrowse(wxCommandEvent& event);
+    
+    // Restored Ground events
+    void OnGroundPaletteSelect(wxCommandEvent& event);
+    void OnOpenTilesetFilter(wxCommandEvent& event);
+    void OnGroundGridSelect(wxCommandEvent& event);
     void OnGroundTilesetListSelect(wxCommandEvent& event);
     void OnRawCategoryChange(wxCommandEvent& event);
     void OnAddWallItem(wxCommandEvent& event);
@@ -303,6 +307,7 @@ private:
     SimpleRawPalettePanel* m_itemPalettePanel;  // Changed from BrushPalettePanel*
     SimpleRawPalettePanel* m_groundPalette;     
     GroundGridContainer* m_groundGridContainer;
+    GroundPreviewPanel* m_groundPreviewPanel; // NEW
     BrushPalettePanel* m_wallPalette;
     
     // Border items data
@@ -313,9 +318,7 @@ private:
     wxPanel* m_groundPanel;
     wxSpinCtrl* m_serverLookIdCtrl;
     wxSpinCtrl* m_zOrderCtrl;
-    wxSpinCtrl* m_groundItemIdCtrl;
-    wxSpinCtrl* m_groundItemChanceCtrl;
-    wxListBox* m_groundItemsList;
+    // wxSpinCtrl* m_groundItemChanceCtrl; // REMOVED
     wxChoice* m_borderAlignmentChoice;
     wxCheckBox* m_includeToNoneCheck;
 
@@ -504,6 +507,30 @@ private:
 
 
 // ============================================================================
+// GroundPreviewPanel - Animates and cycles through selected items
+// ============================================================================
+class GroundPreviewPanel : public wxPanel {
+public:
+    GroundPreviewPanel(wxWindow* parent, wxWindowID id = wxID_ANY);
+    virtual ~GroundPreviewPanel();
+    
+    void SetWeightedItems(const std::vector<std::pair<uint16_t, int>>& items);
+    void UpdateFromContainer(GroundGridContainer* container);
+
+protected:
+    void OnPaint(wxPaintEvent& event);
+    void OnTimer(wxTimerEvent& event);
+
+private:
+    std::vector<uint16_t> m_displayItems;
+    size_t m_currentIndex;
+    wxTimer m_animationTimer;
+    long m_lastCycleTime;
+    
+    DECLARE_EVENT_TABLE()
+};
+
+// ============================================================================
 // GroundGridPanel (Visual Replica of BorderGridPanel)
 // ============================================================================
 class GroundGridPanel : public wxPanel {
@@ -521,12 +548,21 @@ public:
     void OnPaint(wxPaintEvent& event);
     void OnMouseClick(wxMouseEvent& event);
     void OnRightClick(wxMouseEvent& event);
+    void OnLeftDClick(wxMouseEvent& event);
     
     // Layout helper
     wxSize DoGetBestSize() const override;
 
+    // Selection & Chance
+    void SetSelected(bool selected);
+    bool IsSelected() const { return m_isSelected; }
+    void SetChance(int chance);
+    int GetChance() const { return m_chance; }
+
 private:
     uint16_t m_itemId;  // Currently assigned item ID
+    int m_chance;       // Spawn chance for this item
+    bool m_isSelected;  // Selection state
     
     DECLARE_EVENT_TABLE()
 };
@@ -540,13 +576,19 @@ public:
     virtual ~GroundGridContainer();
     
     // Item management
-    void AddItem(uint16_t itemId);
+    void AddItem(uint16_t itemId, int chance = 100);
     void RemoveCell(GroundGridPanel* cell);
     void Clear();
     
     // Get all filled items
     std::vector<uint16_t> GetAllItems() const;
+    // Get all items with their chances
+    std::vector<std::pair<uint16_t, int>> GetAllItemsWithChance() const;
     size_t GetFilledCount() const;
+
+    // Selection
+    void SetSelectedCell(GroundGridPanel* cell);
+    GroundGridPanel* GetSelectedCell() const { return m_selectedCell; }
     
     // Called when a cell is filled - auto-adds new empty cell
     // Called when a cell is filled - auto-adds new empty cell
@@ -561,6 +603,7 @@ public:
 private:
     std::vector<GroundGridPanel*> m_gridCells;
     wxBoxSizer* m_gridSizer;
+    GroundGridPanel* m_selectedCell;
     
     void CreateNewCell();          // Create a new grid cell
 };

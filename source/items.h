@@ -161,7 +161,8 @@ enum itemflags_t {
 	FLAG_ALLOWDISTREAD = 1 << 20,
 	FLAG_UNUSED = 1 << 21,
 	FLAG_CLIENTCHARGES = 1 << 22,
-	FLAG_IGNORE_LOOK = 1 << 23
+	FLAG_IGNORE_LOOK = 1 << 23,
+	FLAG_TRANSLUCENT = 1 << 24
 };
 
 enum slotsOTB_t {
@@ -413,6 +414,7 @@ public:
 	bool walkStack = false;
 	bool spriteInfo = false;
 	bool noMoveAnimation = false;
+	bool isTranslucent = false;
 
 	BorderType border_alignment = BORDER_NONE;
 	ItemGroup_t group = ITEM_GROUP_NONE;

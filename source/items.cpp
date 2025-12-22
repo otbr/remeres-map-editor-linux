@@ -121,10 +121,10 @@ bool ItemDatabase::loadFlagsByOtbVersion(const std::shared_ptr<ItemType> &item, 
 		item->allowDistRead = ((flags & FLAG_ALLOWDISTREAD) == FLAG_ALLOWDISTREAD);
 		item->rotable = ((flags & FLAG_ROTABLE) == FLAG_ROTABLE);
 		item->canReadText = ((flags & FLAG_READABLE) == FLAG_READABLE);
-		if (MajorVersion == 3) {
 			item->client_chargeable = ((flags & FLAG_CLIENTCHARGES) == FLAG_CLIENTCHARGES);
 			item->ignoreLook = ((flags & FLAG_IGNORE_LOOK) == FLAG_IGNORE_LOOK);
 		}
+		item->isTranslucent = ((flags & FLAG_TRANSLUCENT) == FLAG_TRANSLUCENT);
 	}
 
 	return true;

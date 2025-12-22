@@ -175,9 +175,6 @@ BEGIN_EVENT_TABLE(BorderEditorDialog, wxDialog)
     EVT_BUTTON(wxID_FIND, BorderEditorDialog::OnBrowse)
     EVT_COMBOBOX(wxID_ANY, BorderEditorDialog::OnLoadBorder)
     EVT_NOTEBOOK_PAGE_CHANGED(wxID_ANY, BorderEditorDialog::OnPageChanged)
-    EVT_BUTTON(wxID_ADD + 100, BorderEditorDialog::OnAddGroundItem)
-    EVT_BUTTON(wxID_REMOVE, BorderEditorDialog::OnRemoveGroundItem)
-    EVT_BUTTON(wxID_FIND + 100, BorderEditorDialog::OnGroundBrowse)
 END_EVENT_TABLE()
 
 // Event table for BorderItemButton
@@ -339,37 +336,41 @@ void BorderEditorDialog::CreateGUIControls() {
     m_groundPanel = new wxPanel(m_notebook);
     wxBoxSizer* groundSizer = new wxBoxSizer(wxVERTICAL);
     
-    // --- Header: Name + Tileset + ID + Z-Order (Single Row) ---
-    wxBoxSizer* groundHeaderSizer = new wxBoxSizer(wxHORIZONTAL);
+    // === Left Column: Form Controls ===
+    wxBoxSizer* groundLeftSizer = new wxBoxSizer(wxVERTICAL);
     
-    // Name Field (Expand)
-    groundHeaderSizer->Add(new wxStaticText(m_groundPanel, wxID_ANY, "Name:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
-    m_groundNameCtrl = new wxTextCtrl(m_groundPanel, wxID_ANY);
-    m_groundNameCtrl->SetToolTip("Name of the ground brush");
-    groundHeaderSizer->Add(m_groundNameCtrl, 1, wxALIGN_CENTER_VERTICAL | wxRIGHT, 15);
+    wxBoxSizer* row1 = new wxBoxSizer(wxHORIZONTAL);
+    row1->Add(new wxStaticText(m_groundPanel, wxID_ANY, "Name:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
+    m_groundNameCtrl = new wxTextCtrl(m_groundPanel, wxID_ANY, "");
+    row1->Add(m_groundNameCtrl, 1, wxEXPAND);
+    groundLeftSizer->Add(row1, 0, wxEXPAND | wxBOTTOM, 5);
     
-    // Server Look ID
-    groundHeaderSizer->Add(new wxStaticText(m_groundPanel, wxID_ANY, "ID:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
-    m_serverLookIdCtrl = new wxSpinCtrl(m_groundPanel, wxID_ANY, "0", wxDefaultPosition, wxSize(70, -1), wxSP_ARROW_KEYS, 0, 65535);
-    m_serverLookIdCtrl->SetToolTip("Server-side item ID");
-    groundHeaderSizer->Add(m_serverLookIdCtrl, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 10);
+    wxBoxSizer* row2 = new wxBoxSizer(wxHORIZONTAL);
+    row2->Add(new wxStaticText(m_groundPanel, wxID_ANY, "Server LookID:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
+    m_serverLookIdCtrl = new wxSpinCtrl(m_groundPanel, wxID_ANY, "", wxDefaultPosition, wxSize(80, -1));
+    m_serverLookIdCtrl->SetRange(0, 99999);
+    row2->Add(m_serverLookIdCtrl, 0, wxRIGHT, 15);
     
-    // Z-Order
-    groundHeaderSizer->Add(new wxStaticText(m_groundPanel, wxID_ANY, "Z-Order:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
-    m_zOrderCtrl = new wxSpinCtrl(m_groundPanel, wxID_ANY, "0", wxDefaultPosition, wxSize(70, -1), wxSP_ARROW_KEYS, 0, 10000);
-    m_zOrderCtrl->SetToolTip("Z-Order for display");
-    groundHeaderSizer->Add(m_zOrderCtrl, 0, wxALIGN_CENTER_VERTICAL);
+    row2->Add(new wxStaticText(m_groundPanel, wxID_ANY, "Z-Order:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
+    m_zOrderCtrl = new wxSpinCtrl(m_groundPanel, wxID_ANY, "0", wxDefaultPosition, wxSize(60, -1));
+    m_zOrderCtrl->SetRange(-100, 100);
+    row2->Add(m_zOrderCtrl, 0);
+    groundLeftSizer->Add(row2, 0, wxEXPAND | wxBOTTOM, 5);
     
-    groundSizer->Add(groundHeaderSizer, 0, wxEXPAND | wxALL, 5);
+    // Item Palette / Selection
+    wxBoxSizer* row3 = new wxBoxSizer(wxHORIZONTAL);
+    // Chance control removed
+    groundLeftSizer->Add(row3, 0, wxEXPAND | wxBOTTOM, 5);
+
+    // Preview Panel moved to right column
+    wxBoxSizer* tilesetRowSizer = new wxBoxSizer(wxHORIZONTAL);
+    tilesetRowSizer->Add(new wxStaticText(m_groundPanel, wxID_ANY, "Source:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
     
     // --- Main Body: Palette (Left) + Editor (Right) ---
     wxBoxSizer* groundContentSizer = new wxBoxSizer(wxHORIZONTAL);
     
     // === Left Column: Raw Item Palette ===
-    wxBoxSizer* groundLeftSizer = new wxBoxSizer(wxVERTICAL);
-
     // Tileset selector row (ComboBox + Gear button)
-    wxBoxSizer* tilesetRowSizer = new wxBoxSizer(wxHORIZONTAL);
     
     m_groundTilesetCombo = new wxComboBox(m_groundPanel, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_READONLY);
     m_groundTilesetCombo->SetToolTip("Select Tileset");
@@ -392,11 +393,18 @@ void BorderEditorDialog::CreateGUIControls() {
     groundContentSizer->Add(groundLeftSizer, 0, wxEXPAND);
     
     // === Right Column: Editor Controls (Scrollable List) ===
-    // === Right Column: Editor (Static Visual Duplicate of Border Editor) ===
+    // === Right Column: Editor Controls (Scrollable List) ===
     wxBoxSizer* groundRightSizer = new wxBoxSizer(wxVERTICAL);
+    
+    // Preview (Directly in sizer for seamless look)
+    m_groundPreviewPanel = new GroundPreviewPanel(m_groundPanel, wxID_ANY);
+    // m_groundPreviewPanel size is set in constructor (96x96)
+    groundRightSizer->Add(m_groundPreviewPanel, 0, wxALIGN_CENTER | wxALL, 10);
+
     wxStaticBoxSizer* groundEditorBoxSizer = new wxStaticBoxSizer(wxVERTICAL, m_groundPanel, "Variations");
     
-    m_groundGridContainer = new GroundGridContainer(groundEditorBoxSizer->GetStaticBox());
+    m_groundGridContainer = new GroundGridContainer(groundEditorBoxSizer->GetStaticBox(), wxID_ANY + 1); // Added ID
+    m_groundGridContainer->Bind(wxEVT_COMMAND_LISTBOX_SELECTED, &BorderEditorDialog::OnGroundGridSelect, this);
     groundEditorBoxSizer->Add(m_groundGridContainer, 1, wxEXPAND | wxALL, 5);
     
     groundRightSizer->Add(groundEditorBoxSizer, 1, wxEXPAND | wxALL, 5);
@@ -650,6 +658,7 @@ void BorderEditorDialog::OnGroundTilesetSelect(wxCommandEvent& event) {
     // This is the same approach used in the Border tab
     m_groundPalette->LoadTileset(tilesetName);
 }
+
 
 
 
@@ -2352,36 +2361,21 @@ void BorderEditorDialog::LoadExistingGroundBrushes() {
     // Legacy method - ground brushes are now populated via PopulateGroundList()
     // Called from constructor for compatibility, actual population happens on tab change
 }
-
 void BorderEditorDialog::ClearGroundItems() {
-    m_groundItems.clear();
-    if (m_groundItemsList) m_groundItemsList->Clear();
+    if (m_groundGridContainer) m_groundGridContainer->Clear();
     if (m_groundNameCtrl) m_groundNameCtrl->SetValue("");
     if (m_serverLookIdCtrl) m_serverLookIdCtrl->SetValue(0);
     if (m_zOrderCtrl) m_zOrderCtrl->SetValue(0);
-    if (m_borderAlignmentChoice) m_borderAlignmentChoice->SetSelection(0);
-    // m_currentBorderId = m_nextBorderId; // Usually kept same or reset? ClearGroundItems resets UI for new ground?
-    // Ground brushes don't really have numeric IDs in the same way borders do (they have names).
-    // So removing ID assignment is safe here.
     
     // Reset border alignment options
-    m_includeToNoneCheck->SetValue(true);     // Default to checked
-    m_includeInnerCheck->SetValue(false);     // Default to unchecked
-    
+    if (m_includeToNoneCheck) m_includeToNoneCheck->SetValue(true);
+    if (m_includeInnerCheck) m_includeInnerCheck->SetValue(false);
+    if (m_borderAlignmentChoice) m_borderAlignmentChoice->SetSelection(0);
+    if (m_groundPreviewPanel) m_groundPreviewPanel->SetWeightedItems({}); // Clear preview
+
     // Deselect browser list
     if (m_borderBrowserList) {
         m_borderBrowserList->SetSelection(wxNOT_FOUND);
-    }
-    
-    UpdateGroundItemsList();
-}
-
-void BorderEditorDialog::UpdateGroundItemsList() {
-    m_groundItemsList->Clear();
-    
-    for (const GroundItem& item : m_groundItems) {
-        wxString itemText = wxString::Format("Item ID: %d, Chance: %d", item.itemId, item.chance);
-        m_groundItemsList->Append(itemText);
     }
 }
 
@@ -2638,52 +2632,9 @@ void BorderEditorDialog::FilterBrowserList(const wxString& query) {
     }
 }
 
-void BorderEditorDialog::OnAddGroundItem(wxCommandEvent& event) {
-    uint16_t itemId = m_groundItemIdCtrl->GetValue();
-    int chance = m_groundItemChanceCtrl->GetValue();
-    
-    if (itemId > 0) {
-        // Check if this item already exists, if so update its chance
-        bool updated = false;
-        for (size_t i = 0; i < m_groundItems.size(); i++) {
-            if (m_groundItems[i].itemId == itemId) {
-                m_groundItems[i].chance = chance;
-                updated = true;
-                break;
-            }
-        }
-        
-        if (!updated) {
-            // Add new item
-            m_groundItems.push_back(GroundItem(itemId, chance));
-        }
-        
-        // Update the list
-        UpdateGroundItemsList();
-    }
-}
-
-void BorderEditorDialog::OnRemoveGroundItem(wxCommandEvent& event) {
-    int selection = m_groundItemsList->GetSelection();
-    if (selection != wxNOT_FOUND && selection < static_cast<int>(m_groundItems.size())) {
-        m_groundItems.erase(m_groundItems.begin() + selection);
-        UpdateGroundItemsList();
-    }
-}
-
-void BorderEditorDialog::OnGroundBrowse(wxCommandEvent& event) {
-    // Open the Find Item dialog to select a ground item
-    FindItemDialog dialog(this, "Select Ground Item");
-    
-    if (dialog.ShowModal() == wxID_OK) {
-        // Get the selected item ID
-        uint16_t itemId = dialog.getResultID();
-        
-        // Set the ground item ID field
-        if (itemId > 0) {
-            m_groundItemIdCtrl->SetValue(itemId);
-        }
-    }
+void BorderEditorDialog::OnGroundGridSelect(wxCommandEvent& event) {
+    // Selection logic logic is handled by container/cell highlighting
+    // No UI updates needed here anymore as editing is via double-click modal
 }
 
 void BorderEditorDialog::LoadTilesets() {
@@ -2939,15 +2890,171 @@ void WallVisualPanel::OnPaint(wxPaintEvent& event) {
 
 BEGIN_EVENT_TABLE(GroundGridPanel, wxPanel)
     EVT_PAINT(GroundGridPanel::OnPaint)
-    EVT_LEFT_UP(GroundGridPanel::OnMouseClick)
-    EVT_RIGHT_UP(GroundGridPanel::OnRightClick)
+    EVT_LEFT_DOWN(GroundGridPanel::OnMouseClick)
+    EVT_LEFT_DCLICK(GroundGridPanel::OnLeftDClick)
+    EVT_RIGHT_DOWN(GroundGridPanel::OnRightClick)
 END_EVENT_TABLE()
 
 GroundGridPanel::GroundGridPanel(wxWindow* parent, wxWindowID id) :
     wxPanel(parent, id, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE),
-    m_itemId(0)
+    m_itemId(0),
+    m_chance(100),
+    m_isSelected(false)
 {
     SetBackgroundStyle(wxBG_STYLE_PAINT);
+}
+
+// ============================================================================
+// ChanceEditDialog - Modal for editing item chance
+// ============================================================================
+class ChanceEditDialog : public wxDialog {
+public:
+    ChanceEditDialog(wxWindow* parent, int initialValue) : 
+        wxDialog(parent, wxID_ANY, "Chance", wxDefaultPosition, wxSize(200, 120)) 
+    {
+        wxBoxSizer* mainSizer = new wxBoxSizer(wxVERTICAL);
+
+        m_spinCtrl = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize(100, -1));
+        m_spinCtrl->SetRange(1, 1000000);
+        m_spinCtrl->SetValue(initialValue);
+        
+        // Center the spin control horizontally
+        wxBoxSizer* centerSizer = new wxBoxSizer(wxHORIZONTAL);
+        centerSizer->Add(m_spinCtrl, 1, wxALIGN_CENTER);
+        mainSizer->Add(centerSizer, 1, wxEXPAND | wxALL, 10);
+
+        // Buttons
+        wxStdDialogButtonSizer* btnSizer = new wxStdDialogButtonSizer();
+        btnSizer->AddButton(new wxButton(this, wxID_OK));
+        btnSizer->AddButton(new wxButton(this, wxID_CANCEL));
+        btnSizer->Realize();
+        mainSizer->Add(btnSizer, 0, wxALIGN_CENTER_HORIZONTAL | wxBOTTOM, 10);
+
+        SetSizer(mainSizer);
+        Layout();
+        CenterOnParent();
+        
+        m_spinCtrl->SetFocus();
+        m_spinCtrl->SetSelection(-1, -1); // Select all text
+    }
+
+    int GetValue() const { return m_spinCtrl->GetValue(); }
+
+private:
+    wxSpinCtrl* m_spinCtrl;
+};
+
+// ============================================================================
+// GroundPreviewPanel
+// ============================================================================
+
+BEGIN_EVENT_TABLE(GroundPreviewPanel, wxPanel)
+    EVT_PAINT(GroundPreviewPanel::OnPaint)
+    EVT_TIMER(wxID_ANY, GroundPreviewPanel::OnTimer)
+END_EVENT_TABLE()
+
+GroundPreviewPanel::GroundPreviewPanel(wxWindow* parent, wxWindowID id) :
+    wxPanel(parent, id, wxDefaultPosition, wxSize(110, 110), wxNO_BORDER),
+    m_currentIndex(0),
+    m_animationTimer(this),
+    m_lastCycleTime(0)
+{
+    // Use system default background
+    m_animationTimer.Start(50); // 20 FPS
+}
+
+GroundPreviewPanel::~GroundPreviewPanel() {
+    if (m_animationTimer.IsRunning()) {
+        m_animationTimer.Stop();
+    }
+}
+
+void GroundPreviewPanel::SetWeightedItems(const std::vector<std::pair<uint16_t, int>>& items) {
+    m_displayItems.clear();
+    for (const auto& pair : items) {
+        if (pair.first != 0) {
+            m_displayItems.push_back(pair.first);
+        }
+    }
+    m_currentIndex = 0;
+    Refresh();
+}
+
+void GroundPreviewPanel::UpdateFromContainer(GroundGridContainer* container) {
+    if (container) {
+        SetWeightedItems(container->GetAllItemsWithChance());
+    }
+}
+
+void GroundPreviewPanel::OnTimer(wxTimerEvent& event) {
+    // 1. Handle Animation Refresh (Redraw every tick)
+    Refresh();
+
+    // 2. Handle Item Cycling (Every 1000ms)
+    long currentTime = wxGetLocalTimeMillis().GetValue();
+    if (currentTime - m_lastCycleTime >= 1000) {
+        if (!m_displayItems.empty()) {
+            m_currentIndex = (m_currentIndex + 1) % m_displayItems.size();
+        }
+        m_lastCycleTime = currentTime;
+    }
+}
+
+void GroundPreviewPanel::OnPaint(wxPaintEvent& event) {
+    wxBufferedPaintDC dc(this);
+    // Use parent's background to be seamless
+    if (GetParent()) {
+        dc.SetBackground(wxBrush(GetParent()->GetBackgroundColour()));
+    } else {
+        dc.SetBackground(wxBrush(GetBackgroundColour()));
+    }
+    dc.Clear();
+
+    if (m_displayItems.empty()) return;
+
+    // Safety check for index
+    if (m_currentIndex >= m_displayItems.size()) m_currentIndex = 0;
+
+    uint16_t itemId = m_displayItems[m_currentIndex];
+    if (itemId == 0) return;
+
+    const ItemType& itemType = g_items.getItemType(itemId);
+    if (itemType.id == 0) return;
+
+    Sprite* sprite = g_gui.gfx.getSprite(itemType.clientID);
+    if (!sprite) return;
+
+    int panelW, panelH;
+    GetSize(&panelW, &panelH);
+    
+    // Draw scaled sprite
+    // Create temp bitmap 32x32
+    wxMemoryDC tempDC;
+    wxBitmap tempBitmap(32, 32);
+    tempDC.SelectObject(tempBitmap);
+    tempDC.SetBackground(*wxTRANSPARENT_BRUSH); // Transparent background
+    tempDC.Clear();
+    
+    // Draw sprite to temp DC (0,0)
+    sprite->DrawTo(&tempDC, SPRITE_SIZE_32x32, 0, 0, 32, 32);
+    tempDC.SelectObject(wxNullBitmap);
+    
+    // Convert to image and rescale
+    wxImage img = tempBitmap.ConvertToImage();
+    if (img.IsOk()) {
+        // Scale to fit panel minus padding
+        int padding = 4;
+        int targetSize = std::min(panelW, panelH) - (2 * padding);
+        if (targetSize < 32) targetSize = 32;
+
+        img.Rescale(targetSize, targetSize, wxIMAGE_QUALITY_NEAREST);
+        wxBitmap scaledBmp(img);
+        
+        // Center draw
+        int x = (panelW - targetSize) / 2;
+        int y = (panelH - targetSize) / 2;
+        dc.DrawBitmap(scaledBmp, x, y, true);
+    }
 }
 
 GroundGridPanel::~GroundGridPanel() {}
@@ -2959,12 +3066,40 @@ void GroundGridPanel::SetItemId(uint16_t id) {
 
 void GroundGridPanel::Clear() {
     m_itemId = 0;
+    m_chance = 100;
+    SetSelected(false);
     Refresh();
+}
+
+void GroundGridPanel::SetSelected(bool selected) {
+    if (m_isSelected != selected) {
+        m_isSelected = selected;
+        Refresh();
+    }
+}
+
+void GroundGridPanel::SetChance(int chance) {
+    m_chance = chance;
 }
 
 wxSize GroundGridPanel::DoGetBestSize() const {
     // 64px cell + 5px margin on each side = 74x74
     return wxSize(74, 74);
+}
+
+void GroundGridPanel::OnLeftDClick(wxMouseEvent& event) {
+    if (m_itemId == 0) return; // Ignore empty cells
+
+    ChanceEditDialog dlg(this, m_chance);
+    if (dlg.ShowModal() == wxID_OK) {
+        int newChance = dlg.GetValue();
+        if (newChance != m_chance) {
+            m_chance = newChance;
+            Refresh(); // Redraw (maybe show tooltip with chance?)
+            // We could refresh tooltip if we had one
+            SetToolTip(wxString::Format("Item ID: %d\nChance: %d", m_itemId, m_chance));
+        }
+    }
 }
 
 void GroundGridPanel::OnMouseClick(wxMouseEvent& event) {
@@ -3130,6 +3265,33 @@ void GroundGridPanel::OnPaint(wxPaintEvent& event) {
             }
         }
     }
+
+    // Draw Chance Value Overlay (if item exists)
+    if (m_itemId > 0) {
+        wxString chanceText = wxString::Format("%d", m_chance);
+        wxFont font(8, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD);
+        dc.SetFont(font);
+        
+        wxSize textSize = dc.GetTextExtent(chanceText);
+        // Position at bottom-right of the cell
+        int textX = x + cellSize - textSize.GetWidth() - 4;
+        int textY = y + cellSize - textSize.GetHeight() - 4;
+        
+        // Draw shadow (black)
+        dc.SetTextForeground(*wxBLACK);
+        dc.DrawText(chanceText, textX + 1, textY + 1);
+        
+        // Draw text (white)
+        dc.SetTextForeground(*wxWHITE);
+        dc.DrawText(chanceText, textX, textY);
+    }
+
+    // Draw selection border if selected
+    if (m_isSelected) {
+        dc.SetPen(wxPen(*wxBLUE, 3)); // Thick blue border
+        dc.SetBrush(*wxTRANSPARENT_BRUSH);
+        dc.DrawRectangle(x, y, cellSize, cellSize);
+    }
 }
 
 // ============================================================================
@@ -3138,7 +3300,8 @@ void GroundGridPanel::OnPaint(wxPaintEvent& event) {
 
 GroundGridContainer::GroundGridContainer(wxWindow* parent, wxWindowID id) :
     wxScrolledWindow(parent, id, wxDefaultPosition, wxDefaultSize, wxHSCROLL | wxBORDER_NONE),
-    m_gridSizer(nullptr)
+    m_gridSizer(nullptr),
+    m_selectedCell(nullptr)
 {
     SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE));
     
@@ -3193,6 +3356,11 @@ void GroundGridContainer::RemoveCell(GroundGridPanel* cell) {
         // Remove from sizer
         m_gridSizer->Detach(cell);
         
+        if (m_selectedCell == cell) {
+            m_selectedCell = nullptr;
+             // Notify dialog validation?
+        }
+        
         // Remove from our list
         m_gridCells.erase(it);
         
@@ -3209,19 +3377,22 @@ void GroundGridContainer::RemoveCell(GroundGridPanel* cell) {
     }
 }
 
-void GroundGridContainer::AddItem(uint16_t itemId) {
+void GroundGridContainer::AddItem(uint16_t itemId, int chance) {
     if (itemId == 0) return;
     
     for (GroundGridPanel* cell : m_gridCells) {
         if (cell->IsEmpty()) {
             cell->SetItemId(itemId);
+            cell->SetChance(chance);
             EnsureEmptyCell();
             return;
         }
     }
     
     CreateNewCell();
-    m_gridCells.back()->SetItemId(itemId);
+    GroundGridPanel* last = m_gridCells.back();
+    last->SetItemId(itemId);
+    last->SetChance(chance);
     EnsureEmptyCell();
 }
 
@@ -3251,6 +3422,16 @@ std::vector<uint16_t> GroundGridContainer::GetAllItems() const {
     return items;
 }
 
+std::vector<std::pair<uint16_t, int>> GroundGridContainer::GetAllItemsWithChance() const {
+    std::vector<std::pair<uint16_t, int>> items;
+    for (const GroundGridPanel* cell : m_gridCells) {
+        if (!cell->IsEmpty()) {
+            items.push_back({cell->GetItemId(), cell->GetChance()});
+        }
+    }
+    return items;
+}
+
 size_t GroundGridContainer::GetFilledCount() const {
     size_t count = 0;
     for (const GroundGridPanel* cell : m_gridCells) {
@@ -3269,6 +3450,51 @@ void GroundGridContainer::RebuildGrids() {
     Refresh();
 }
 
+void GroundGridContainer::SetSelectedCell(GroundGridPanel* cell) {
+    if (m_selectedCell != cell) {
+        if (m_selectedCell) {
+            m_selectedCell->SetSelected(false);
+        }
+        m_selectedCell = cell;
+        if (m_selectedCell) {
+            m_selectedCell->SetSelected(true);
+            
+            // Try to notify the dialog to update chance control
+            // We need to walk up to find the dialog
+            wxWindow* win = GetParent();
+            while (win) {
+                BorderEditorDialog* dialog = dynamic_cast<BorderEditorDialog*>(win);
+                if (dialog) {
+                    wxCommandEvent evt(wxEVT_NULL); // Just update UI call
+                    // We can't easily fire an event to dialog from here without ID. 
+                    // Let's assume the dialog will poll or we can implement a callback system later if needed.
+                    // For now, let's just make sure m_groundItemChanceCtrl updates when user interacts.
+                    // Actually, simpler: Fire a custom event or reuse an existing one.
+                    // We can reuse wxEVT_COMMAND_LISTBOX_SELECTED on the container? No.
+                    
+                    // Direct update is easiest if we can access public method.
+                    // But we don't have public access.
+                    // Let's use a dummy event to trigger UI update.
+                    wxCommandEvent event(wxEVT_BUTTON, wxID_ANY); 
+                    event.SetEventObject(this); 
+                    // dialog->OnGridSelectionChanged(event); // If we had it.
+                    
+                    // Let's implement OnGridCellClicked properly in Dialog to handle this.
+                    // But Wait, GroundGridPanel::OnMouseClick is calling SetSelectedCell.
+                    // We should dispatch an event from container to parent.
+                    
+                    wxCommandEvent selEvent(wxEVT_COMMAND_LISTBOX_SELECTED, GetId());
+                    selEvent.SetEventObject(this);
+                    selEvent.SetInt(cell->GetChance()); // Pass chance as int
+                    win->GetEventHandler()->ProcessEvent(selEvent); // Send to parent (StaticBox) -> then to Dialog
+                    break;
+                }
+                win = win->GetParent();
+            }
+        }
+    }
+}
+
 // DISABLE Old Event Handlers
 void BorderEditorDialog::OnAddVariation(wxCommandEvent& event) {}
 void BorderEditorDialog::OnRemoveVariationBtn(wxCommandEvent& event) {}
@@ -3281,6 +3507,9 @@ void BorderEditorDialog::OnGroundPaletteSelect(wxCommandEvent& event) {
     uint16_t itemId = static_cast<uint16_t>(event.GetInt());
     if (itemId > 0 && m_groundGridContainer) {
         m_groundGridContainer->AddItem(itemId);
+        if (m_groundPreviewPanel) {
+            m_groundPreviewPanel->UpdateFromContainer(m_groundGridContainer);
+        }
     }
 }
 
@@ -3292,7 +3521,7 @@ void BorderEditorDialog::SaveGroundBrush() {
         return;
     }
     
-    std::vector<uint16_t> items = m_groundGridContainer ? m_groundGridContainer->GetAllItems() : std::vector<uint16_t>();
+    std::vector<std::pair<uint16_t, int>> items = m_groundGridContainer ? m_groundGridContainer->GetAllItemsWithChance() : std::vector<std::pair<uint16_t, int>>();
     if (items.empty()) {
         wxMessageBox("Please add at least one item to the ground brush by clicking on tiles in the palette.", 
                      "Validation Error", wxOK | wxICON_WARNING);
@@ -3369,11 +3598,20 @@ void BorderEditorDialog::SaveGroundBrush() {
     }
     
     // Add all items from the container
-    int baseChance = 2500 / std::max(1, (int)items.size());  // Distribute chance
-    for (uint16_t itemId : items) {
+    int totalScale = 0;
+    
+    // First pass: Calculate total weight if needed, though we save raw values usually
+    // Canary format usually expects 'chance' as a relative weight or specific probability?
+    // Looking at brush loading code: total_chance += chance;
+    // So it's cumulative weight. We can save the raw int values user entered.
+    
+    for (const auto& itemPair : items) {
+        uint16_t itemId = itemPair.first;
+        int chance = itemPair.second;
+        
         pugi::xml_node itemNode = brushNode.append_child("item");
         itemNode.append_attribute("id") = itemId;
-        itemNode.append_attribute("chance") = baseChance;
+        itemNode.append_attribute("chance") = chance;
     }
     
     // Add border node if not exists
@@ -3449,8 +3687,11 @@ void BorderEditorDialog::LoadGroundBrushByName(const wxString& name) {
             m_groundGridContainer->Clear();
             for (pugi::xml_node itemNode = brushNode.child("item"); itemNode; itemNode = itemNode.next_sibling("item")) {
                 uint16_t itemId = itemNode.attribute("id").as_uint();
+                int chance = itemNode.attribute("chance").as_int();
+                if (chance <= 0) chance = 100; // Default
+                
                 if (itemId > 0) {
-                    m_groundGridContainer->AddItem(itemId);
+                    m_groundGridContainer->AddItem(itemId, chance);
                 }
             }
         }
@@ -3469,6 +3710,9 @@ void BorderEditorDialog::LoadGroundBrushByName(const wxString& name) {
             m_includeToNoneCheck->SetValue(toValue == "none");
         }
         
+        if (m_groundPreviewPanel && m_groundGridContainer) {
+            m_groundPreviewPanel->UpdateFromContainer(m_groundGridContainer);
+        }
         break;
     }
 }

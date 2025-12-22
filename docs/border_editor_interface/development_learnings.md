@@ -50,8 +50,42 @@ Config location: `~/.rme/border_editor_filters_v2.json` (Versioned to avoid lega
    - If using custom navigation (buttons), ensure data refresh (`LoadTilesets`) is called explicitly.
    - Do not rely on `OnPageChanged` if using `ChangeSelection`.
 
+4. **wxSizer Crashes & Layout Issues** (Critical!)
+   
+   | Problem | Symptom | Cause | Solution |
+   |---------|---------|-------|----------|
+   | `SetSizer()` called twice | Segfault in `wxSizerItem::Free()` | Old sizer destroyed incorrectly | Call `SetSizer()` only once per panel |
+   | Same sizer added twice to parent | UI elements duplicated/spaced wrong | `Add(sizer, ...)` called multiple times | Add sizer only once after all children are configured |
+   | Orphan initialization code | Crash accessing removed members | Refactoring removed UI but left calls like `RebuildList()` | Search for ALL references when removing UI elements |
+
+   **Debugging Tip**: Use `gdb -batch -ex "run" -ex "bt" ./executable` to get crash backtrace. Look for `wxSizer::~wxSizer()` or `wxSizerItem::Free()` in the trace.
+
 ## Files Modified
 
 - `border_editor_window.h` - TilesetFilterDialog class, whitelists, persistence methods
 - `border_editor_window.cpp` - Filter dialog implementation, LoadTilesets fixes, OnModeSwitch fixes
 - Config saved to: `~/.rme/border_editor_filters_v2.json`
+
+## Grid Sizing (Border & Ground)
+
+### Standard Grid Cell Size Calculation
+All editor grids (Border, Ground) must use the same formula for visual consistency:
+
+```cpp
+int cellSize = std::min((width - 2 * margin) / 7, (height - 2 * margin) / 2);
+if (cellSize < 16) cellSize = 16; // Minimum size
+```
+
+**Parameters:**
+- `margin = 5` (pixels)
+- Minimum cell size: **16px**
+- This formula is derived from Border Editor which fits **3 blocks of 2x2 grids** = 7 width units
+
+### Layout Positioning
+- Grids should start at **top-left with margin** (not centered)
+- Use system colors for consistency:
+  - Background: `wxSYS_COLOUR_3DFACE`
+  - Grid lines: `wxSYS_COLOUR_GRAYTEXT`
+
+### Implementation Reference
+See `GridMetrics` struct in `border_editor_window.cpp` (around line 1868) for the complete calculation.

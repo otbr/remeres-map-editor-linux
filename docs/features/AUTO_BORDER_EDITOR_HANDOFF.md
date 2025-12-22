@@ -206,5 +206,78 @@ Example `borders.xml` structure:
 
 ---
 
+# Session Handoff (2025-12-22)
+
+## Current State
+
+### Ground Tab Implementation Status (COMPLETE)
+The **Ground Tab** is now fully implemented and functional, featuring a robust variation editor and a realistic preview.
+    
+**Completed Features:**
+- ✅ **GroundGridPanel**: Interactive 5x5 grid for variation editing.
+- ✅ **Chance Editing**: Double-click any cell to set its spawn chance via a modal dialog.
+- ✅ **Visual Feedback**: Chance values are overlaid on the grid slots.
+- ✅ **GroundPreviewPanel**: A large (110x110) preview in the right column.
+    - Shows a single tile filled with the ground sprite.
+    - Cycles through the active variations every 1 second.
+    - Matches the precise parent background color for a seamless look.
+- ✅ **Full Integration**:
+    - Palette Selection -> Updates Grid & Preview.
+    - Save/Load Brushes -> Fully functional using XML.
+    - Legacy Code Cleanup -> All old list-based code removed.
+
+### Key Files to Read
+
+| File | What to Look For |
+|------|------------------|
+| `source/border_editor_window.cpp` (lines 2935-3000) | `GroundGridPanel` implementation |
+| `source/border_editor_window.cpp` (lines 1868-1906) | `GridMetrics` struct - sizing formula |
+| `source/border_editor_window.cpp` (lines 395-445) | Ground Tab UI layout in `CreateGUIControls` |
+| `source/border_editor_window.h` (lines 500-520) | `GroundGridPanel` class declaration |
+| `docs/border_editor_interface/development_learnings.md` | Critical wxWidgets patterns and grid sizing |
+
+### Critical Learnings (MUST READ)
+
+**File**: `docs/border_editor_interface/development_learnings.md`
+
+Read sections:
+1. **Grid Sizing (Border & Ground)** - The formula for consistent grid cell sizes
+2. **wxSizer Crashes & Layout Issues** - Avoid these common crashes
+3. **wxWidgets Event Gotchas** - Event handling traps
+
+### Project Structure
+
+```
+/home/user/Documentos/rme/rme_canary/
+├── source/
+│   ├── border_editor_window.h      # Main header with all classes
+│   └── border_editor_window.cpp    # Implementation (~3000 lines)
+├── docs/
+│   ├── border_editor_interface/
+│   │   └── development_learnings.md  # ** IMPORTANT: Patterns & Gotchas **
+│   └── features/
+│       └── AUTO_BORDER_EDITOR_HANDOFF.md  # This file
+└── build/                           # Build directory
+```
+
+### Build Commands
+
+```bash
+cd /home/user/Documentos/rme/rme_canary/build
+cmake .. && make -j$(nproc)
+```
+
+Executable: `/home/user/Documentos/rme/rme_canary/canary-map-editor`
+
+### Common Issues & Solutions
+
+| Issue | Solution |
+|-------|----------|
+| Segfault on dialog open | Check for duplicate `SetSizer()` calls or orphan code |
+| UI elements spaced wrong | Check for duplicate `Add()` calls to same sizer |
+| Grid too small/large | Use `GridMetrics` formula: `min((w-10)/7, (h-10)/2)` |
+
+---
+
 **End of Handoff**  
-For questions or clarifications, review the source files listed above or consult the IdlersMapEditor repository.
+For questions or clarifications, review the source files listed above or consult the documentation.

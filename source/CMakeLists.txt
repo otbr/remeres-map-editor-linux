@@ -78,8 +78,34 @@ find_package(pugixml CONFIG REQUIRED)
 find_package(LibLZMA REQUIRED)
 find_package(Protobuf REQUIRED)
 
-# Dear ImGui for modern UI overlay
-find_package(imgui CONFIG REQUIRED)
+# 4. imgui
+find_package(imgui CONFIG QUIET)
+if(NOT imgui_FOUND)
+    message(STATUS "imgui not found, fetching...")
+    include(FetchContent)
+    FetchContent_Declare(
+        imgui
+        GIT_REPOSITORY https://github.com/ocornut/imgui.git
+        GIT_TAG v1.91.5
+    )
+    FetchContent_MakeAvailable(imgui)
+
+    if(NOT TARGET imgui::imgui)
+        add_library(imgui STATIC
+            ${imgui_SOURCE_DIR}/imgui.cpp
+            ${imgui_SOURCE_DIR}/imgui_demo.cpp
+            ${imgui_SOURCE_DIR}/imgui_draw.cpp
+            ${imgui_SOURCE_DIR}/imgui_tables.cpp
+            ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+            ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
+        )
+        target_include_directories(imgui PUBLIC 
+            ${imgui_SOURCE_DIR}
+            ${imgui_SOURCE_DIR}/backends
+        )
+        add_library(imgui::imgui ALIAS imgui)
+    endif()
+endif()
 
 # *****************************************************************************
 # Options
