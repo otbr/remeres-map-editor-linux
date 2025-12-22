@@ -8,6 +8,7 @@
 
 #include <imgui.h>
 #include <string>
+#include <vector>
 
 // Forward declarations
 class Tile;
@@ -22,12 +23,21 @@ void Init();
 // Shutdown the panels system
 void Shutdown();
 
+// Draw the Welcome Screen (startup dialog)
+// Returns true if an action was taken (map opened, etc)
+bool DrawWelcomeScreen(const std::vector<std::string>& recentFiles);
+bool IsWelcomeScreenVisible();
+void ShowWelcomeScreen();
+void HideWelcomeScreen();
+
 // Draw the performance monitor (FPS, graphics stats, input latency)
-// Expanded version with RME-specific metrics
 void DrawDebugOverlay(Editor* editor, int mouseX, int mouseY, Tile* hoverTile);
 
 // Draw the tools panel (brush selection, zoom, floor)
 void DrawToolsPanel(Editor* editor, int currentFloor, double currentZoom);
+
+// Draw the main menu bar (File, Edit, View, Floor menus)
+void DrawMainMenuBar(Editor* editor);
 
 // Update RME-specific metrics (call from render loop)
 void UpdateRMEMetrics(int textureBinds, int tilesRendered, int visibleTiles);

@@ -173,7 +173,7 @@ bool WantCaptureKeyboard() {
 void ApplyDarkTheme() {
     ImGuiStyle& style = ImGui::GetStyle();
     
-    // VS Code inspired monocromatic dark theme - slim and elegant
+    // VS Code inspired monocromatic dark theme
     style.WindowRounding = 0.0f;
     style.FrameRounding = 2.0f;
     style.ScrollbarRounding = 2.0f;
@@ -181,13 +181,10 @@ void ApplyDarkTheme() {
     style.WindowBorderSize = 1.0f;
     style.FrameBorderSize = 0.0f;
     style.PopupBorderSize = 1.0f;
-    
-    // Slim title bar (reduced padding for menu-like appearance)
-    style.WindowTitleAlign = ImVec2(0.0f, 0.5f);  // Left-aligned title
-    style.WindowPadding = ImVec2(6, 4);  // Slimmer padding
-    style.FramePadding = ImVec2(4, 2);   // Slimmer frame
-    style.ItemSpacing = ImVec2(6, 3);    // Compact spacing
-    style.ItemInnerSpacing = ImVec2(4, 2);
+    style.WindowPadding = ImVec2(8, 8);
+    style.FramePadding = ImVec2(4, 3);
+    style.ItemSpacing = ImVec2(8, 4);
+    style.ItemInnerSpacing = ImVec2(4, 4);
     
     ImVec4* colors = style.Colors;
     

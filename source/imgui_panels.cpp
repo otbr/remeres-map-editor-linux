@@ -9,6 +9,9 @@
 #include "item.h"
 #include "position.h"
 #include "map.h"
+#include "gui.h"
+#include "settings.h"
+#include "brush.h"
 
 #include <imgui.h>
 #include <chrono>
@@ -16,6 +19,13 @@
 #include <cmath>
 
 namespace ImGuiPanels {
+
+// Forward declarations for GUI callbacks
+static void DoNewMap();
+static void DoOpenMap();
+static void DoSaveMap();
+static void DoUndo();
+static void DoRedo();
 
 // === Panel State ===
 static bool g_ShowToolsPanel = true;
@@ -78,6 +88,201 @@ void Init() {
 }
 
 void Shutdown() {}
+
+// === Welcome Screen State ===
+static bool g_ShowWelcomeScreen = true;
+static int g_SelectedRecentFile = -1;
+
+bool DrawWelcomeScreen(const std::vector<std::string>& recentFiles) {
+    if (!g_ShowWelcomeScreen) {
+        return false;
+    }
+    
+    bool actionTaken = false;
+    
+    // Get viewport size for fullscreen centered window
+    ImVec2 viewportSize = ImGui::GetMainViewport()->Size;
+    ImVec2 viewportPos = ImGui::GetMainViewport()->Pos;
+    
+    // Window size - 80% of viewport
+    float windowWidth = viewportSize.x * 0.8f;
+    float windowHeight = viewportSize.y * 0.8f;
+    
+    // Center position
+    ImVec2 windowPos(
+        viewportPos.x + (viewportSize.x - windowWidth) * 0.5f,
+        viewportPos.y + (viewportSize.y - windowHeight) * 0.5f
+    );
+    
+    ImGui::SetNextWindowPos(windowPos, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(windowWidth, windowHeight), ImGuiCond_Always);
+    ImGui::SetNextWindowBgAlpha(0.98f);
+    
+    ImGuiWindowFlags welcomeFlags = 
+        ImGuiWindowFlags_NoTitleBar |
+        ImGuiWindowFlags_NoResize |
+        ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoCollapse |
+        ImGuiWindowFlags_NoSavedSettings;
+    
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    
+    if (ImGui::Begin("##WelcomeScreen", nullptr, welcomeFlags)) {
+        float leftColumnWidth = windowWidth * 0.55f;
+        float rightColumnWidth = windowWidth * 0.45f;
+        
+        // Left Column - Title and Buttons
+        ImGui::BeginChild("##LeftColumn", ImVec2(leftColumnWidth, windowHeight), false);
+        {
+            ImGui::Dummy(ImVec2(0, windowHeight * 0.15f));
+            
+            // Title - Centered
+            ImGui::PushFont(nullptr);  // Default font
+            const char* title = "Canary's Map Editor";
+            float titleWidth = ImGui::CalcTextSize(title).x;
+            ImGui::SetCursorPosX((leftColumnWidth - titleWidth) * 0.5f);
+            ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "%s", title);
+            
+            // Version
+            const char* version = "Version 4.0.0";
+            float versionWidth = ImGui::CalcTextSize(version).x;
+            ImGui::SetCursorPosX((leftColumnWidth - versionWidth) * 0.5f);
+            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "%s", version);
+            ImGui::PopFont();
+            
+            ImGui::Dummy(ImVec2(0, windowHeight * 0.1f));
+            
+            // Buttons - Centered, monochromatic dark theme
+            float buttonWidth = 180.0f;
+            float buttonHeight = 40.0f;
+            float buttonX = (leftColumnWidth - buttonWidth) * 0.5f;
+            
+            // Primary button - Open Map (Blue accent)
+            ImGui::SetCursorPosX(buttonX);
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.16f, 0.47f, 0.71f, 1.0f));  // Blue
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.55f, 0.80f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.12f, 0.40f, 0.60f, 1.0f));
+            if (ImGui::Button("Open Map", ImVec2(buttonWidth, buttonHeight))) {
+                g_ShowWelcomeScreen = false;
+                g_gui.OpenMap();
+                actionTaken = true;
+            }
+            ImGui::PopStyleColor(3);
+            
+            ImGui::Dummy(ImVec2(0, 8));
+            
+            // Secondary buttons - Dark gray
+            ImGui::SetCursorPosX(buttonX);
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.22f, 0.22f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.28f, 0.28f, 0.28f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.18f, 0.18f, 0.18f, 1.0f));
+            if (ImGui::Button("New Map", ImVec2(buttonWidth, buttonHeight))) {
+                g_ShowWelcomeScreen = false;
+                g_gui.NewMap();
+                actionTaken = true;
+            }
+            ImGui::PopStyleColor(3);
+            
+            ImGui::Dummy(ImVec2(0, 8));
+            
+            ImGui::SetCursorPosX(buttonX);
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.22f, 0.22f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.28f, 0.28f, 0.28f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.18f, 0.18f, 0.18f, 1.0f));
+            if (ImGui::Button("Preferences", ImVec2(buttonWidth, buttonHeight))) {
+                // TODO: Open preferences
+            }
+            ImGui::PopStyleColor(3);
+            
+            // Bottom - Checkbox and credits
+            ImGui::SetCursorPosY(windowHeight - 60);
+            ImGui::SetCursorPosX(20);
+            static bool showOnStartup = true;
+            ImGui::Checkbox("Show this on startup", &showOnStartup);
+            
+            ImGui::SetCursorPosX(20);
+            ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "Linux by Habdel-Edenfield");
+        }
+        ImGui::EndChild();
+        
+        ImGui::SameLine();
+        
+        // Right Column - Recent Files
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.08f, 0.08f, 0.08f, 1.0f));
+        ImGui::BeginChild("##RightColumn", ImVec2(rightColumnWidth, windowHeight), false);
+        {
+            ImGui::Dummy(ImVec2(0, 20));
+            ImGui::SetCursorPosX(20);
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Recent Maps");
+            ImGui::Separator();
+            ImGui::Dummy(ImVec2(0, 10));
+            
+            // List recent files
+            for (size_t i = 0; i < recentFiles.size(); ++i) {
+                ImGui::SetCursorPosX(10);
+                
+                // Get just filename
+                std::string fullPath = recentFiles[i];
+                std::string filename = fullPath;
+                size_t lastSlash = fullPath.find_last_of("/\\");
+                if (lastSlash != std::string::npos) {
+                    filename = fullPath.substr(lastSlash + 1);
+                }
+                
+                // Selectable item
+                bool isSelected = (g_SelectedRecentFile == (int)i);
+                ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.2f, 0.3f, 0.4f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.25f, 0.35f, 0.45f, 1.0f));
+                
+                if (ImGui::Selectable(("##recent" + std::to_string(i)).c_str(), isSelected, 
+                                      ImGuiSelectableFlags_AllowDoubleClick, 
+                                      ImVec2(rightColumnWidth - 30, 50))) {
+                    g_SelectedRecentFile = (int)i;
+                    if (ImGui::IsMouseDoubleClicked(0)) {
+                        g_ShowWelcomeScreen = false;
+                        g_gui.LoadMap(wxString(fullPath));
+                        actionTaken = true;
+                    }
+                }
+                
+                // Draw text over selectable
+                ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 48);
+                ImGui::SetCursorPosX(20);
+                ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "%s", filename.c_str());
+                ImGui::SetCursorPosX(20);
+                ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "%s", fullPath.c_str());
+                ImGui::Dummy(ImVec2(0, 6));
+                
+                ImGui::PopStyleColor(2);
+            }
+            
+            if (recentFiles.empty()) {
+                ImGui::SetCursorPosX(20);
+                ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "No recent maps");
+            }
+        }
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
+    }
+    ImGui::End();
+    
+    ImGui::PopStyleVar(2);
+    
+    return actionTaken;
+}
+
+bool IsWelcomeScreenVisible() {
+    return g_ShowWelcomeScreen;
+}
+
+void ShowWelcomeScreen() {
+    g_ShowWelcomeScreen = true;
+}
+
+void HideWelcomeScreen() {
+    g_ShowWelcomeScreen = false;
+}
 
 void UpdateRMEMetrics(int textureBinds, int tilesRendered, int visibleTiles) {
     g_TextureBinds = textureBinds;
@@ -288,4 +493,99 @@ void SetOverlayOpacity(float opacity) {
     g_OverlayOpacity = (opacity < 0.0f) ? 0.0f : (opacity > 1.0f) ? 1.0f : opacity;
 }
 
+// === GUI Callbacks ===
+static void DoNewMap() { g_gui.NewMap(); }
+static void DoOpenMap() { g_gui.OpenMap(); }
+static void DoSaveMap() { g_gui.SaveMap(); }
+static void DoUndo() { g_gui.DoUndo(); }
+static void DoRedo() { g_gui.DoRedo(); }
+
+// === ImGui Main Menu Bar ===
+void DrawMainMenuBar(Editor* editor) {
+    if (ImGui::BeginMainMenuBar()) {
+        // File Menu
+        if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("New", "Ctrl+N")) { DoNewMap(); }
+            if (ImGui::MenuItem("Open", "Ctrl+O")) { DoOpenMap(); }
+            ImGui::Separator();
+            if (ImGui::MenuItem("Save", "Ctrl+S", false, editor != nullptr)) { DoSaveMap(); }
+            if (ImGui::MenuItem("Save As..", "Ctrl+Shift+S", false, editor != nullptr)) { g_gui.SaveMapAs(); }
+            ImGui::Separator();
+            if (ImGui::MenuItem("Exit", "Ctrl+Q")) { g_gui.root->Close(); }
+            ImGui::EndMenu();
+        }
+        
+        // Edit Menu
+        if (ImGui::BeginMenu("Edit")) {
+            bool canUndo = editor && editor->canUndo();
+            bool canRedo = editor && editor->canRedo();
+            bool canPaste = editor && editor->copybuffer.canPaste();
+            
+            if (ImGui::MenuItem("Undo", "Ctrl+Z", false, canUndo)) { DoUndo(); }
+            if (ImGui::MenuItem("Redo", "Ctrl+Shift+Z", false, canRedo)) { DoRedo(); }
+            ImGui::Separator();
+            if (ImGui::MenuItem("Cut", "Ctrl+X", false, editor != nullptr)) { g_gui.DoCut(); }
+            if (ImGui::MenuItem("Copy", "Ctrl+C", false, editor != nullptr)) { g_gui.DoCopy(); }
+            if (ImGui::MenuItem("Paste", "Ctrl+V", false, canPaste)) { g_gui.PreparePaste(); }
+            ImGui::EndMenu();
+        }
+        
+        // View Menu
+        if (ImGui::BeginMenu("View")) {
+            bool showGrid = g_settings.getBoolean(Config::SHOW_GRID);
+            bool showShade = g_settings.getBoolean(Config::SHOW_SHADE);
+            bool showHouses = g_settings.getBoolean(Config::SHOW_HOUSES);
+            bool showMonsters = g_settings.getBoolean(Config::SHOW_MONSTERS);
+            bool showNpcs = g_settings.getBoolean(Config::SHOW_NPCS);
+            
+            if (ImGui::MenuItem("Grid", "Shift+G", &showGrid)) {
+                g_settings.setInteger(Config::SHOW_GRID, showGrid);
+                g_gui.RefreshView();
+            }
+            if (ImGui::MenuItem("Shade", "Q", &showShade)) {
+                g_settings.setInteger(Config::SHOW_SHADE, showShade);
+                g_gui.RefreshView();
+            }
+            ImGui::Separator();
+            if (ImGui::MenuItem("Houses", "Ctrl+H", &showHouses)) {
+                g_settings.setInteger(Config::SHOW_HOUSES, showHouses);
+                g_gui.RefreshView();
+            }
+            if (ImGui::MenuItem("Monsters", "F", &showMonsters)) {
+                g_settings.setInteger(Config::SHOW_MONSTERS, showMonsters);
+                g_gui.RefreshView();
+            }
+            if (ImGui::MenuItem("NPCs", "X", &showNpcs)) {
+                g_settings.setInteger(Config::SHOW_NPCS, showNpcs);
+                g_gui.RefreshView();
+            }
+            ImGui::Separator();
+            ImGui::MenuItem("Performance", nullptr, &g_ShowPerformancePanel);
+            ImGui::MenuItem("Tools Panel", nullptr, &g_ShowToolsPanel);
+            ImGui::EndMenu();
+        }
+        
+        // Floor Menu
+        if (ImGui::BeginMenu("Floor")) {
+            int currentFloor = g_gui.GetCurrentFloor();
+            for (int f = 0; f <= 15; ++f) {
+                char label[16];
+                snprintf(label, sizeof(label), "Floor %d", f);
+                if (ImGui::MenuItem(label, nullptr, f == currentFloor, editor != nullptr)) {
+                    g_gui.ChangeFloor(f);
+                }
+            }
+            ImGui::EndMenu();
+        }
+        
+        // Right-aligned status
+        float rightPad = 150.0f;
+        ImGui::SameLine(ImGui::GetWindowWidth() - rightPad);
+        ImGui::TextDisabled("RME 4.0");
+        
+        ImGui::EndMainMenuBar();
+    }
+}
+
 } // namespace ImGuiPanels
+
