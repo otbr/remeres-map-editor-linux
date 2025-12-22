@@ -181,6 +181,12 @@ private:
     void OnListItemClick(wxCommandEvent& event);
 };
 
+wxDECLARE_EVENT(wxEVT_GROUND_CONTAINER_CHANGE, wxCommandEvent);
+
+// Forward declarations
+class WallGridPanel;
+class WallVisualPanel;
+
 class BorderEditorDialog : public wxDialog {
 public:
     BorderEditorDialog(wxWindow* parent, const wxString& title);
@@ -196,6 +202,7 @@ public:
     void OnBrowse(wxCommandEvent& event);
     void OnLoadBorder(wxCommandEvent& event);
     void OnGridCellClicked(wxMouseEvent& event);
+    void OnWallGridSelect(wxCommandEvent& event);
     void OnPageChanged(wxBookCtrlEvent& event);
     void OnAddGroundItem(wxCommandEvent& event);
     void OnRemoveGroundItem(wxCommandEvent& event);
@@ -308,7 +315,8 @@ private:
     SimpleRawPalettePanel* m_groundPalette;     
     GroundGridContainer* m_groundGridContainer;
     GroundPreviewPanel* m_groundPreviewPanel; // NEW
-    BrushPalettePanel* m_wallPalette;
+    SimpleRawPalettePanel* m_wallPalette;
+    wxComboBox* m_wallTilesetCombo;
     
     // Border items data
     std::vector<BorderItem> m_borderItems;
@@ -371,6 +379,7 @@ private:
     
     // ===== Wall Tab =====
     wxPanel* m_wallPanel;
+    wxTextCtrl* m_wallNameCtrl; // Added name control for walls
     wxSpinCtrl* m_wallServerLookIdCtrl;
     wxSpinCtrl* m_wallGroupCtrl;
     wxSpinCtrl* m_wallZOrderCtrl;
@@ -380,14 +389,18 @@ private:
     wxCheckBox* m_wallIsOptionalCheck;
     wxCheckBox* m_wallIsGroundCheck;
     WallVisualPanel* m_wallVisualPanel;
+    WallGridPanel* m_wallGridPanel; // Visual selector for wall types
     wxChoice* m_wallTypeChoice;
     
     // Wall items data
     // Wall items data
     std::map<std::string, WallTypeData> m_wallTypes;
     wxString m_currentWallType;
-    // BrushPalettePanel* m_wallPalette;  // Removed duplicate
-    
+    int m_currentWallItemId = 0; // Stores currently selected palette item ID
+    void OnWallTilesetSelect(wxCommandEvent& event);
+    void OnWallPaletteSelect(wxCommandEvent& event);
+    void OnGroundContainerChange(wxCommandEvent& event);
+
     DECLARE_EVENT_TABLE()
 };
 
@@ -410,13 +423,20 @@ private:
     DECLARE_EVENT_TABLE()
 };
 
+// Palette Filtering
+enum PaletteFilterMode {
+    FILTER_NONE = 0,
+    FILTER_GROUND = 1,
+    FILTER_WALL = 2
+};
+
 // Grid panel to visually show border item positions
 class SimpleRawPalettePanel : public wxScrolledWindow {
 public:
     SimpleRawPalettePanel(wxWindow* parent, wxWindowID id = wxID_ANY);
     virtual ~SimpleRawPalettePanel();
 
-    void LoadTileset(const wxString& categoryName);
+    void LoadTileset(const wxString& categoryName, PaletteFilterMode filterMode = FILTER_NONE);
     void SetItemIds(const std::vector<uint16_t>& ids);
     void OnPaint(wxPaintEvent& event);
     void OnLeftUp(wxMouseEvent& event);
@@ -483,6 +503,26 @@ public:
     
 private:
     std::vector<BorderItem> m_borderItems;
+    
+    DECLARE_EVENT_TABLE()
+};
+
+// Panel to select wall types (Visual Grid)
+class WallGridPanel : public wxPanel {
+public:
+    WallGridPanel(wxWindow* parent, wxWindowID id = wxID_ANY);
+    virtual ~WallGridPanel();
+    
+    void SetWallTypes(const std::map<std::string, WallTypeData>& types);
+    void SetSelectedType(const std::string& type);
+    std::string GetSelectedType() const { return m_selectedType; }
+    
+    void OnPaint(wxPaintEvent& event);
+    void OnMouseClick(wxMouseEvent& event);
+    
+private:
+    std::map<std::string, WallTypeData> m_types;
+    std::string m_selectedType;
     
     DECLARE_EVENT_TABLE()
 };

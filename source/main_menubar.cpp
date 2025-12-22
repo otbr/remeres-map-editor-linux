@@ -847,6 +847,13 @@ void MainMenuBar::OnBorderEditor(wxCommandEvent &WXUNUSED(event)) {
 		border_editor_dialog->SetFocus();
 	} else {
 		border_editor_dialog = new BorderEditorDialog(g_gui.root, "Auto Border Editor");
+		// Clean up pointer when dialog is destroyed
+		border_editor_dialog->Bind(wxEVT_DESTROY, [this](wxWindowDestroyEvent& event) {
+			if (event.GetEventObject() == border_editor_dialog) {
+				border_editor_dialog = nullptr;
+			}
+			event.Skip();
+		});
 		border_editor_dialog->Show();
 	}
 }

@@ -43,6 +43,48 @@
 #include <pugixml.hpp>
 #include <wx/file.h>
 #include <wx/stdpaths.h>
+#include <wx/stdpaths.h>
+
+// Helper to calculate grid metrics (Shared between BorderGridPanel and WallGridPanel)
+struct GridMetrics {
+    int cellSize;
+    int spacing;
+    int startX;
+    int startY;
+    int normalX, normalY;
+    int cornerX, cornerY;
+    int diagX, diagY;
+    
+    GridMetrics(const wxSize& size) {
+        int w = size.GetWidth();
+        int h = size.GetHeight();
+        int margin = 5;
+        
+        // We have 3 blocks of 2x2. 
+        // Width = 6 * cell + 2 * spacing. 
+        // Let spacing = cell / 2.
+        // Total width units = 7.
+        // Height = 2 * cell.
+        
+        cellSize = std::min((w - 2 * margin) / 7, (h - 2 * margin) / 2);
+        if (cellSize < 16) cellSize = 16; // Minimum size
+        
+        spacing = cellSize / 2;
+        int totalWidth = (2 * cellSize) * 3 + 2 * spacing;
+        
+        startX = (w - totalWidth) / 2;
+        startY = (h - 2 * cellSize) / 2;
+        
+        normalX = startX;
+        normalY = startY;
+        
+        cornerX = normalX + 2 * cellSize + spacing;
+        cornerY = startY;
+        
+        diagX = cornerX + 2 * cellSize + spacing;
+        diagY = startY;
+    }
+};
 
 #define BORDER_GRID_SIZE 32
 #define BORDER_PREVIEW_SIZE 192
@@ -167,6 +209,8 @@ uint16_t GetItemIDFromBrush(Brush* brush) {
 }
 
 // Event table for BorderEditorDialog
+wxDEFINE_EVENT(wxEVT_GROUND_CONTAINER_CHANGE, wxCommandEvent);
+
 BEGIN_EVENT_TABLE(BorderEditorDialog, wxDialog)
     EVT_BUTTON(wxID_ADD, BorderEditorDialog::OnAddItem)
     EVT_BUTTON(wxID_CLEAR, BorderEditorDialog::OnClear)
@@ -405,6 +449,9 @@ void BorderEditorDialog::CreateGUIControls() {
     
     m_groundGridContainer = new GroundGridContainer(groundEditorBoxSizer->GetStaticBox(), wxID_ANY + 1); // Added ID
     m_groundGridContainer->Bind(wxEVT_COMMAND_LISTBOX_SELECTED, &BorderEditorDialog::OnGroundGridSelect, this);
+    // Bind change event to update preview
+    Bind(wxEVT_GROUND_CONTAINER_CHANGE, &BorderEditorDialog::OnGroundContainerChange, this);
+    
     groundEditorBoxSizer->Add(m_groundGridContainer, 1, wxEXPAND | wxALL, 5);
     
     groundRightSizer->Add(groundEditorBoxSizer, 1, wxEXPAND | wxALL, 5);
@@ -463,11 +510,12 @@ void BorderEditorDialog::CreateGUIControls() {
     // --- Header: Name + ID (Single Row) ---
     wxBoxSizer* wallHeaderSizer = new wxBoxSizer(wxHORIZONTAL);
     
-    // Name Field (Expand) - note: m_nameCtrl is shared across tabs
+    // Name Field (Expand)
     wallHeaderSizer->Add(new wxStaticText(m_wallPanel, wxID_ANY, "Name:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
-    // Note: m_nameCtrl is shared across tabs, created in Border tab
+    m_wallNameCtrl = new wxTextCtrl(m_wallPanel, wxID_ANY);
+    wallHeaderSizer->Add(m_wallNameCtrl, 1, wxALIGN_CENTER_VERTICAL | wxRIGHT, 15);
     
-    wallHeaderSizer->AddStretchSpacer(1);
+    // wallHeaderSizer->AddStretchSpacer(1); // Spacer usage adjustments if needed, but 1 expand on Name is good.
     
     // Server Look ID
     wallHeaderSizer->Add(new wxStaticText(m_wallPanel, wxID_ANY, "ID:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
@@ -481,11 +529,32 @@ void BorderEditorDialog::CreateGUIControls() {
     wxBoxSizer* wallContentSizer = new wxBoxSizer(wxHORIZONTAL);
     
     // === Left Column: Raw Item Palette ===
+    // === Left Column: Raw Item Palette ===
     wxBoxSizer* wallLeftSizer = new wxBoxSizer(wxVERTICAL);
-    m_wallPalette = new BrushPalettePanel(m_wallPanel, g_materials.tilesets, TILESET_RAW);
-    // m_wallPalette->SetListType(BRUSHLIST_LARGE_ICONS);
+    
+    // Tileset selector row (ComboBox + Filter button)
+    wxBoxSizer* wallTilesetRowSizer = new wxBoxSizer(wxHORIZONTAL);
+    wallTilesetRowSizer->Add(new wxStaticText(m_wallPanel, wxID_ANY, "Source:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
+    
+    m_wallTilesetCombo = new wxComboBox(m_wallPanel, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_READONLY);
+    m_wallTilesetCombo->SetToolTip("Select Tileset");
+    m_wallTilesetCombo->Bind(wxEVT_COMBOBOX, &BorderEditorDialog::OnWallTilesetSelect, this);
+    wallTilesetRowSizer->Add(m_wallTilesetCombo, 1, wxEXPAND | wxRIGHT, 2);
+    
+    // Filter button
+    wxBitmapButton* wallFilterBtn = new wxBitmapButton(m_wallPanel, wxID_ANY, 
+        wxArtProvider::GetBitmap(wxART_CUT, wxART_BUTTON, wxSize(16, 16)));
+    wallFilterBtn->SetToolTip("Filter visible tilesets");
+    wallFilterBtn->Bind(wxEVT_BUTTON, &BorderEditorDialog::OnOpenTilesetFilter, this);
+    wallTilesetRowSizer->Add(wallFilterBtn, 0, wxALIGN_CENTER_VERTICAL);
+    
+    wallLeftSizer->Add(wallTilesetRowSizer, 0, wxEXPAND | wxBOTTOM, 5);
+
+    m_wallPalette = new SimpleRawPalettePanel(m_wallPanel);
     m_wallPalette->SetMinSize(wxSize(220, 300));
+    m_wallPalette->Bind(wxEVT_COMMAND_LISTBOX_SELECTED, &BorderEditorDialog::OnWallPaletteSelect, this);
     wallLeftSizer->Add(m_wallPalette, 1, wxEXPAND | wxALL, 5);
+    
     wallContentSizer->Add(wallLeftSizer, 0, wxEXPAND);
     
     // === Right Column: Editor Controls ===
@@ -494,42 +563,41 @@ void BorderEditorDialog::CreateGUIControls() {
     // Wall Structure inside StaticBox
     wxStaticBoxSizer* structureSizer = new wxStaticBoxSizer(wxVERTICAL, m_wallPanel, "Wall Structure");
     
-    // Type Selector
-    wxBoxSizer* wallTypeSizer = new wxBoxSizer(wxHORIZONTAL);
-    wallTypeSizer->Add(new wxStaticText(structureSizer->GetStaticBox(), wxID_ANY, "Logic Type:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
+    // Logic Type Selector (Visual Grid)
+    wxBoxSizer* wallTypeSizer = new wxBoxSizer(wxVERTICAL);
+    // wallTypeSizer->Add(new wxStaticText(structureSizer->GetStaticBox(), wxID_ANY, "Select Type to Edit:"), 0, wxALIGN_LEFT | wxBOTTOM, 5); // Removed to save space
     
-    wxArrayString wallTypes;
-    wallTypes.Add("vertical");
-    wallTypes.Add("horizontal");
-    wallTypes.Add("corner");
-    wallTypes.Add("pole");
-    m_wallTypeChoice = new wxChoice(structureSizer->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxSize(100, -1), wallTypes);
-    m_wallTypeChoice->SetSelection(0);
-    m_wallTypeChoice->Bind(wxEVT_CHOICE, [this](wxCommandEvent& ev) { UpdateWallItemsList(); });
-    wallTypeSizer->Add(m_wallTypeChoice, 0, wxALIGN_CENTER_VERTICAL);
+    m_wallGridPanel = new WallGridPanel(structureSizer->GetStaticBox(), wxID_ANY);
+    m_wallGridPanel->SetMinSize(wxSize(280, 200)); // Increased height for 3x3 grid
     
+    // Bind click event (reusing BUTTON_CLICKED)
+    m_wallGridPanel->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &BorderEditorDialog::OnWallGridSelect, this);
+    
+    wallTypeSizer->Add(m_wallGridPanel, 0, wxEXPAND | wxBOTTOM, 5);
     structureSizer->Add(wallTypeSizer, 0, wxEXPAND | wxALL, 5);
     
-    // List of items for this type
-    m_wallItemsList = new wxListBox(structureSizer->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxSize(-1, 80));
-    structureSizer->Add(m_wallItemsList, 1, wxEXPAND | wxLEFT | wxRIGHT, 5);
+    // List of items for this type (REMOVED per user request)
+    // m_wallItemsList = new wxListBox(structureSizer->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxSize(-1, 80));
+    // structureSizer->Add(m_wallItemsList, 1, wxEXPAND | wxLEFT | wxRIGHT, 5);
+    m_wallItemsList = nullptr;
     
-    // Add Item Controls row
-    wxBoxSizer* wallItemInputSizer = new wxBoxSizer(wxHORIZONTAL);
+    // Add Item Controls row (REMOVED per user request)
+    // wxBoxSizer* wallItemInputSizer = new wxBoxSizer(wxHORIZONTAL);
     
-    wallItemInputSizer->Add(new wxStaticText(structureSizer->GetStaticBox(), wxID_ANY, "Item ID:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
-    m_wallItemIdCtrl = new wxSpinCtrl(structureSizer->GetStaticBox(), wxID_ANY, "0", wxDefaultPosition, wxSize(70, -1), wxSP_ARROW_KEYS, 0, 65535);
-    wallItemInputSizer->Add(m_wallItemIdCtrl, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 10);
+    // wallItemInputSizer->Add(new wxStaticText(structureSizer->GetStaticBox(), wxID_ANY, "Item ID:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
+    // m_wallItemIdCtrl = new wxSpinCtrl(structureSizer->GetStaticBox(), wxID_ANY, "0", wxDefaultPosition, wxSize(70, -1), wxSP_ARROW_KEYS, 0, 65535);
+    // wallItemInputSizer->Add(m_wallItemIdCtrl, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 10);
+    m_wallItemIdCtrl = nullptr;
     
-    wxButton* addWallItemBtn = new wxButton(structureSizer->GetStaticBox(), wxID_ANY, "Add", wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
-    addWallItemBtn->Bind(wxEVT_BUTTON, &BorderEditorDialog::OnAddWallItem, this);
-    wallItemInputSizer->Add(addWallItemBtn, 0, wxRIGHT, 5);
+    // wxButton* addWallItemBtn = new wxButton(structureSizer->GetStaticBox(), wxID_ANY, "Add", wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
+    // addWallItemBtn->Bind(wxEVT_BUTTON, &BorderEditorDialog::OnAddWallItem, this);
+    // wallItemInputSizer->Add(addWallItemBtn, 0, wxRIGHT, 5);
     
-    wxButton* remWallItemBtn = new wxButton(structureSizer->GetStaticBox(), wxID_ANY, "Remove", wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
-    remWallItemBtn->Bind(wxEVT_BUTTON, &BorderEditorDialog::OnRemoveWallItem, this);
-    wallItemInputSizer->Add(remWallItemBtn, 0);
+    // wxButton* remWallItemBtn = new wxButton(structureSizer->GetStaticBox(), wxID_ANY, "Remove", wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
+    // remWallItemBtn->Bind(wxEVT_BUTTON, &BorderEditorDialog::OnRemoveWallItem, this);
+    // wallItemInputSizer->Add(remWallItemBtn, 0);
     
-    structureSizer->Add(wallItemInputSizer, 0, wxEXPAND | wxALL, 5);
+    // structureSizer->Add(wallItemInputSizer, 0, wxEXPAND | wxALL, 5);
     wallRightSizer->Add(structureSizer, 1, wxEXPAND | wxALL, 5);
     
     // Preview inside StaticBox
@@ -656,7 +724,59 @@ void BorderEditorDialog::OnGroundTilesetSelect(wxCommandEvent& event) {
 
     // Use LoadTileset which loads all RAW items from the tileset
     // This is the same approach used in the Border tab
-    m_groundPalette->LoadTileset(tilesetName);
+    m_groundPalette->LoadTileset(tilesetName, FILTER_GROUND);
+}
+
+void BorderEditorDialog::OnWallTilesetSelect(wxCommandEvent& event) {
+    int sel = m_wallTilesetCombo->GetSelection();
+    if (sel == wxNOT_FOUND || sel >= (int)m_tilesetListData.GetCount()) return;
+    
+    wxString tilesetName = m_tilesetListData[sel];
+    if (!m_wallPalette) return;
+
+    m_wallPalette->LoadTileset(tilesetName, FILTER_WALL);
+}
+
+void BorderEditorDialog::OnWallPaletteSelect(wxCommandEvent& event) {
+    int itemId = event.GetInt();
+    if (itemId > 0) {
+        m_currentWallItemId = itemId;
+        // if (m_wallItemIdCtrl) m_wallItemIdCtrl->SetValue(itemId); // Ctrl removed
+    }
+}
+
+
+void BorderEditorDialog::OnWallGridSelect(wxCommandEvent& event) {
+    std::string type = event.GetString().ToStdString();
+    if (type.empty()) return;
+
+    // Select the type
+    m_wallGridPanel->SetSelectedType(type);
+    
+    // If we have a valid item selected in palette, add it to this type!
+    if (m_currentWallItemId > 0) {
+        WallTypeData& data = m_wallTypes[type];
+        data.typeName = type;
+        
+        // Check if item already exists to avoid duplicates (optional, but good UX)
+        bool exists = false;
+        for (const auto& item : data.items) {
+            if (item.itemId == m_currentWallItemId) {
+                exists = true;
+                break;
+            }
+        }
+        
+        if (!exists) {
+            data.items.push_back(GroundItem(m_currentWallItemId, 10)); // Default chance
+            
+            // Refresh previews
+            m_wallVisualPanel->SetWallItems(m_wallTypes);
+            m_wallGridPanel->SetWallTypes(m_wallTypes); // Updates the grid icons
+        }
+    }
+    
+    UpdateWallItemsList(); // Keeps internal logic sync if needed (pointer null checked inside)
 }
 
 
@@ -805,7 +925,7 @@ void BorderEditorDialog::LoadWallBrushByName(const wxString& name) {
         pugi::xml_attribute nameAttr = brushNode.attribute("name");
         if (nameAttr && wxString(nameAttr.as_string()) == name) {
             // Found it! Load properties
-            m_nameCtrl->SetValue(name);
+            if (m_wallNameCtrl) m_wallNameCtrl->SetValue(name);
             
             // Server look ID
             pugi::xml_attribute lookIdAttr = brushNode.attribute("server_lookid");
@@ -825,16 +945,26 @@ void BorderEditorDialog::LoadWallBrushByName(const wxString& name) {
                     WallTypeData typeData;
                     typeData.typeName = typeName;
                     
-                    // Parse items within this wall node
-                    for (pugi::xml_node itemNode = wallNode.child("item"); itemNode; itemNode = itemNode.next_sibling("item")) {
-                        pugi::xml_attribute idAttr = itemNode.attribute("id");
-                        pugi::xml_attribute chanceAttr = itemNode.attribute("chance");
-                        
-                        if (idAttr) {
-                            uint16_t itemId = idAttr.as_uint();
-                            int chance = chanceAttr ? chanceAttr.as_int() : 10;
-                            typeData.items.push_back(GroundItem(itemId, chance));
+                    // Helper to parse items from a node
+                    auto parseItems = [&](pugi::xml_node parentNode) {
+                        for (pugi::xml_node itemNode = parentNode.child("item"); itemNode; itemNode = itemNode.next_sibling("item")) {
+                            pugi::xml_attribute idAttr = itemNode.attribute("id");
+                            pugi::xml_attribute chanceAttr = itemNode.attribute("chance");
+                            
+                            if (idAttr) {
+                                uint16_t itemId = idAttr.as_uint();
+                                int chance = chanceAttr ? chanceAttr.as_int() : 10;
+                                typeData.items.push_back(GroundItem(itemId, chance));
+                            }
                         }
+                    };
+                    
+                    // Parse direct items
+                    parseItems(wallNode);
+                    
+                    // Parse items inside <alternate>
+                    for (pugi::xml_node altNode = wallNode.child("alternate"); altNode; altNode = altNode.next_sibling("alternate")) {
+                         parseItems(altNode);
                     }
                     
                     m_wallTypes[typeName] = typeData;
@@ -842,17 +972,22 @@ void BorderEditorDialog::LoadWallBrushByName(const wxString& name) {
             }
             
             // Update UI to reflect loaded data
-            m_wallTypeChoice->SetSelection(0);
+            m_wallGridPanel->SetWallTypes(m_wallTypes);
+            m_wallGridPanel->SetSelectedType("vertical"); // Default
             UpdateWallItemsList();
             m_wallVisualPanel->SetWallItems(m_wallTypes);
             
             break;
         }
     }
-}
+} 
+
+
 
 void BorderEditorDialog::SaveWallBrush() {
-    wxString name = m_nameCtrl->GetValue();
+    wxString name;
+    if (m_wallNameCtrl) name = m_wallNameCtrl->GetValue();
+    
     if (name.IsEmpty()) {
         wxMessageBox("Please enter a name for the wall brush.", "Error", wxICON_ERROR);
         return;
@@ -955,10 +1090,11 @@ void BorderEditorDialog::ClearWallItems() {
 }
 
 void BorderEditorDialog::UpdateWallItemsList() {
-    if (!m_wallItemsList || !m_wallTypeChoice) return;
+    if (!m_wallItemsList || !m_wallGridPanel) return;
     
     m_wallItemsList->Clear();
-    std::string type = GetCurrentWallType(m_wallTypeChoice).ToStdString();
+    std::string type = m_wallGridPanel->GetSelectedType();
+    if (type.empty()) type = "vertical"; // Fallback
     
     if (m_wallTypes.find(type) != m_wallTypes.end()) {
         const WallTypeData& data = m_wallTypes[type];
@@ -978,14 +1114,16 @@ void BorderEditorDialog::OnAddWallItem(wxCommandEvent& event) {
     int id = m_wallItemIdCtrl->GetValue();
     if (id <= 0) return;
     
-    std::string type = GetCurrentWallType(m_wallTypeChoice).ToStdString();
+    std::string type = m_wallGridPanel->GetSelectedType();
+    if (type.empty()) type = "vertical";
     
     WallTypeData& data = m_wallTypes[type];
     data.typeName = type;
     data.items.push_back(GroundItem(id, 10)); // Default chance 10
     
-    UpdateWallItemsList();
-    m_wallVisualPanel->SetWallItems(m_wallTypes);
+    m_wallItemsList->Append(wxString::Format("Item ID: %d", id));
+    m_wallVisualPanel->SetWallItems(m_wallTypes); // Update preview
+    m_wallGridPanel->SetWallTypes(m_wallTypes); // Update visual selector
 }
 
 void BorderEditorDialog::OnRemoveWallItem(wxCommandEvent& event) {
@@ -993,15 +1131,20 @@ void BorderEditorDialog::OnRemoveWallItem(wxCommandEvent& event) {
     int sel = m_wallItemsList->GetSelection();
     if (sel == wxNOT_FOUND) return;
     
-    std::string type = GetCurrentWallType(m_wallTypeChoice).ToStdString();
-    WallTypeData& data = m_wallTypes[type];
+    std::string type = m_wallGridPanel->GetSelectedType();
+    if (type.empty()) type = "vertical";
     
-    if (sel < (int)data.items.size()) {
-        data.items.erase(data.items.begin() + sel);
-        UpdateWallItemsList();
-        m_wallVisualPanel->SetWallItems(m_wallTypes);
+    if (m_wallTypes.find(type) != m_wallTypes.end()) {
+         WallTypeData& data = m_wallTypes[type];
+         if (sel >= 0 && sel < (int)data.items.size()) {
+             data.items.erase(data.items.begin() + sel);
+             UpdateWallItemsList();
+             m_wallVisualPanel->SetWallItems(m_wallTypes);
+             m_wallGridPanel->SetWallTypes(m_wallTypes);
+         }
     }
 }
+
 
 void BorderEditorDialog::LoadExistingBorders() {
     // Clear the browser list
@@ -1642,42 +1785,32 @@ void SimpleRawPalettePanel::SetItemIds(const std::vector<uint16_t>& ids) {
     Refresh();
 }
 
-void SimpleRawPalettePanel::LoadTileset(const wxString& categoryName) {
+void SimpleRawPalettePanel::LoadTileset(const wxString& categoryName, PaletteFilterMode filterMode) {
     m_itemIds.clear();
     
-    // Find the specifics tileset by name
+    // Find the specific tileset by name
     auto it = g_materials.tilesets.find(nstr(categoryName).c_str());
     if (it != g_materials.tilesets.end()) {
         Tileset* tileset = it->second;
         if (tileset) {
-            // Load from RAW category
+            // Load ONLY from RAW category
             const TilesetCategory* rawCat = tileset->getCategory(TILESET_RAW);
             if (rawCat) {
                 for (Brush* brush : rawCat->brushlist) {
                     if (RAWBrush* rb = dynamic_cast<RAWBrush*>(brush)) {
-                         m_itemIds.push_back(rb->getItemID());
-                    }
-                }
-            }
-            
-            // Also load from TERRAIN category (for Mountains, etc.)
-            const TilesetCategory* terrainCat = tileset->getCategory(TILESET_TERRAIN);
-            if (terrainCat) {
-                for (Brush* brush : terrainCat->brushlist) {
-                    int lookid = brush->getLookID();
-                    if (lookid > 0) {
-                        m_itemIds.push_back(lookid);
-                    }
-                }
-            }
-            
-            // Also load from DOODAD category
-            const TilesetCategory* doodadCat = tileset->getCategory(TILESET_DOODAD);
-            if (doodadCat) {
-                for (Brush* brush : doodadCat->brushlist) {
-                    int lookid = brush->getLookID();
-                    if (lookid > 0) {
-                        m_itemIds.push_back(lookid);
+                        uint16_t id = rb->getItemID();
+                        
+                        // Apply filter
+                        bool include = true;
+                        if (filterMode == FILTER_GROUND) {
+                            include = g_items[id].isGroundTile();
+                        } else if (filterMode == FILTER_WALL) {
+                            include = g_items[id].isWall;
+                        }
+                        
+                        if (include) {
+                            m_itemIds.push_back(id);
+                        }
                     }
                 }
             }
@@ -1725,7 +1858,8 @@ void SimpleRawPalettePanel::OnSize(wxSizeEvent& event) {
 void SimpleRawPalettePanel::OnPaint(wxPaintEvent& event) {
     wxAutoBufferedPaintDC dc(this);
     DoPrepareDC(dc);
-    dc.SetBackground(wxBrush(wxSystemSettings::GetColour(wxSYS_COLOUR_LISTBOX)));
+    dc.SetBackground(wxBrush(wxColour(0, 0, 0)));
+    dc.SetTextForeground(wxColour(255, 255, 255)); // Ensure text is visible on black (if any)
     dc.Clear();
     
     int startUnitX, startUnitY;
@@ -1875,45 +2009,7 @@ void BorderGridPanel::SetSelectedPosition(BorderEdgePosition pos) {
 }
 
 // Helper to calculate grid metrics
-struct GridMetrics {
-    int cellSize;
-    int spacing;
-    int startX;
-    int startY;
-    int normalX, normalY;
-    int cornerX, cornerY;
-    int diagX, diagY;
-    
-    GridMetrics(const wxSize& size) {
-        int w = size.GetWidth();
-        int h = size.GetHeight();
-        int margin = 5;
-        
-        // We have 3 blocks of 2x2. 
-        // Width = 6 * cell + 2 * spacing. 
-        // Let spacing = cell / 2.
-        // Total width units = 7.
-        // Height = 2 * cell.
-        
-        cellSize = std::min((w - 2 * margin) / 7, (h - 2 * margin) / 2);
-        if (cellSize < 16) cellSize = 16; // Minimum size
-        
-        spacing = cellSize / 2;
-        int totalWidth = (2 * cellSize) * 3 + 2 * spacing;
-        
-        startX = (w - totalWidth) / 2;
-        startY = (h - 2 * cellSize) / 2;
-        
-        normalX = startX;
-        normalY = startY;
-        
-        cornerX = normalX + 2 * cellSize + spacing;
-        cornerY = startY;
-        
-        diagX = cornerX + 2 * cellSize + spacing;
-        diagY = startY;
-    }
-};
+// struct GridMetrics { ... } // MOVED TO TOP OF FILE
 
 void BorderGridPanel::OnPaint(wxPaintEvent& event) {
     wxAutoBufferedPaintDC dc(this);
@@ -1932,7 +2028,6 @@ void BorderGridPanel::OnPaint(wxPaintEvent& event) {
     // Helper function to draw a grid
     auto drawGrid = [&](int offsetX, int offsetY, int gridSize, int cellSize) {
         for (int i = 0; i <= gridSize; i++) {
-            // Vertical lines
             dc.DrawLine(
                 offsetX + i * cellSize, 
                 offsetY, 
@@ -2692,7 +2787,19 @@ void BorderEditorDialog::LoadTilesets() {
             ev.SetEventObject(m_groundTilesetCombo);
             OnGroundTilesetSelect(ev);
         } else {
-             if(m_groundPalette) m_groundPalette->LoadTileset("");
+             if(m_groundPalette) m_groundPalette->LoadTileset("", FILTER_GROUND);
+        }
+    } else if (m_activeTab == 2 && m_wallTilesetCombo) {
+        // Wall tab
+        m_wallTilesetCombo->Clear();
+        m_wallTilesetCombo->Append(m_tilesetListData);
+        if (!m_tilesetListData.IsEmpty()) {
+            m_wallTilesetCombo->SetSelection(0);
+            wxCommandEvent ev(wxEVT_COMBOBOX, m_wallTilesetCombo->GetId());
+            ev.SetEventObject(m_wallTilesetCombo);
+            OnWallTilesetSelect(ev);
+        } else {
+             if(m_wallPalette) m_wallPalette->LoadTileset("", FILTER_WALL);
         }
     }
 } 
@@ -2805,6 +2912,175 @@ void BorderEditorDialog::LoadFilterConfig() {
 }
 
 // ============================================================================
+// WallGridPanel - Visual Selector for Wall Types
+// ============================================================================
+
+BEGIN_EVENT_TABLE(WallGridPanel, wxPanel)
+    EVT_PAINT(WallGridPanel::OnPaint)
+    EVT_LEFT_DOWN(WallGridPanel::OnMouseClick)
+END_EVENT_TABLE()
+
+WallGridPanel::WallGridPanel(wxWindow* parent, wxWindowID id) :
+    wxPanel(parent, id, wxDefaultPosition, wxDefaultSize)
+{
+    SetBackgroundStyle(wxBG_STYLE_PAINT);
+}
+
+WallGridPanel::~WallGridPanel() {
+}
+
+void WallGridPanel::SetWallTypes(const std::map<std::string, WallTypeData>& types) {
+    m_types = types;
+    Refresh();
+}
+
+void WallGridPanel::SetSelectedType(const std::string& type) {
+    m_selectedType = type;
+    Refresh();
+}
+
+void WallGridPanel::OnPaint(wxPaintEvent& event) {
+    wxAutoBufferedPaintDC dc(this);
+    
+    // Background
+    dc.SetBackground(wxBrush(wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE)));
+    dc.Clear();
+    
+    wxRect rect = GetClientRect();
+    int w = rect.GetWidth();
+    int h = rect.GetHeight();
+    
+    // Calculate 3x3 grid metrics centered
+    int padding = 2;
+    int cellSize = std::min((w - 2 * 5) / 3, (h - 2 * 5) / 3);
+    if (cellSize < 32) cellSize = 32;
+    
+    int startX = (w - (cellSize * 3)) / 2;
+    int startY = (h - (cellSize * 3)) / 2;
+    
+    dc.SetPen(wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT)));
+    dc.SetBrush(*wxTRANSPARENT_BRUSH);
+    
+    // Draw Grid (3x3)
+    for (int i = 0; i <= 3; i++) {
+        dc.DrawLine(startX + i * cellSize, startY, startX + i * cellSize, startY + 3 * cellSize);
+        dc.DrawLine(startX, startY + i * cellSize, startX + 3 * cellSize, startY + i * cellSize);
+    }
+    
+    auto drawTypeAt = [&](const std::string& type, int gridX, int gridY) {
+        int x = startX + gridX * cellSize + padding;
+        int y = startY + gridY * cellSize + padding;
+        int size = cellSize - 2 * padding;
+        
+        bool isSelected = (m_selectedType == type);
+        
+        if (isSelected) {
+            dc.SetPen(wxPen(wxColour(0, 120, 215), 2));
+            dc.DrawRectangle(x - padding, y - padding, cellSize, cellSize);
+        }
+        
+        if (m_types.find(type) != m_types.end() && !m_types[type].items.empty()) {
+            uint16_t itemId = m_types[type].items[0].itemId;
+            if (itemId > 0) {
+                const ItemType& it = g_items.getItemType(itemId);
+                if (it.id != 0) {
+                    Sprite* s = g_gui.gfx.getSprite(it.clientID);
+                    if (s) {
+                        wxMemoryDC tempDC;
+                        wxBitmap tempBitmap(32, 32);
+                        tempDC.SelectObject(tempBitmap);
+                        tempDC.SetBackground(*wxTRANSPARENT_BRUSH);
+                        tempDC.Clear();
+                        s->DrawTo(&tempDC, SPRITE_SIZE_32x32, 0, 0);
+                        tempDC.SelectObject(wxNullBitmap);
+                        
+                        wxImage img = tempBitmap.ConvertToImage();
+                        if (img.IsOk()) {
+                            img.Rescale(size, size, wxIMAGE_QUALITY_NEAREST);
+                            dc.DrawBitmap(wxBitmap(img), x, y, true);
+                        }
+                    }
+                }
+            }
+        }
+    };
+    
+    // 3x3 Mapping (User configured)
+    // Row 0: Pole, horizontal, horizontal (Swapped Corner/Pole)
+    drawTypeAt("pole", 0, 0); 
+    drawTypeAt("horizontal", 1, 0);
+    drawTypeAt("horizontal", 2, 0);
+    
+    // Row 1: vertical, (empty), vertical
+    drawTypeAt("vertical", 0, 1);
+    // (1,1) is empty/vazio
+    drawTypeAt("vertical", 2, 1);
+    
+    // Row 2: vertical, horizontal, Corner (Swapped Corner/Pole)
+    drawTypeAt("vertical", 0, 2);
+    drawTypeAt("horizontal", 1, 2);
+    drawTypeAt("corner", 2, 2);
+}
+
+void WallGridPanel::OnMouseClick(wxMouseEvent& event) {
+    wxRect rect = GetClientRect();
+    int w = rect.GetWidth();
+    int h = rect.GetHeight();
+    
+    int cellSize = std::min((w - 2 * 5) / 3, (h - 2 * 5) / 3);
+    if (cellSize < 32) cellSize = 32;
+    
+    int startX = (w - (cellSize * 3)) / 2;
+    int startY = (h - (cellSize * 3)) / 2;
+    
+    int mouseX = event.GetX();
+    int mouseY = event.GetY();
+    
+    if (mouseX >= startX && mouseX < startX + 3 * cellSize &&
+        mouseY >= startY && mouseY < startY + 3 * cellSize) {
+        
+        int gridX = (mouseX - startX) / cellSize;
+        int gridY = (mouseY - startY) / cellSize;
+        
+        std::string clickedType = "";
+        
+        // Row 0
+        if (gridX == 0 && gridY == 0) clickedType = "pole"; // Swapped
+        else if (gridX == 1 && gridY == 0) clickedType = "horizontal";
+        else if (gridX == 2 && gridY == 0) clickedType = "horizontal";
+        
+        // Row 1
+        else if (gridX == 0 && gridY == 1) clickedType = "vertical";
+        // (1,1) is empty
+        else if (gridX == 2 && gridY == 1) clickedType = "vertical";
+        
+        // Row 2
+        else if (gridX == 0 && gridY == 2) clickedType = "vertical";
+        else if (gridX == 1 && gridY == 2) clickedType = "horizontal";
+        else if (gridX == 2 && gridY == 2) clickedType = "corner"; // Swapped
+        
+        if (!clickedType.empty()) {
+            m_selectedType = clickedType;
+            Refresh();
+            
+            wxCommandEvent evt(wxEVT_COMMAND_BUTTON_CLICKED, GetId());
+            evt.SetString(clickedType);
+            evt.SetEventObject(this);
+            
+            // Find parent dialog and call callback directly
+            wxWindow* parent = GetParent();
+            while (parent && !dynamic_cast<BorderEditorDialog*>(parent)) {
+                parent = parent->GetParent();
+            }
+            
+            if (BorderEditorDialog* dialog = dynamic_cast<BorderEditorDialog*>(parent)) {
+                dialog->OnWallGridSelect(evt);
+            }
+        }
+    }
+}
+
+// ============================================================================
 // WallVisualPanel
 
 BEGIN_EVENT_TABLE(WallVisualPanel, wxPanel)
@@ -2812,9 +3088,10 @@ BEGIN_EVENT_TABLE(WallVisualPanel, wxPanel)
 END_EVENT_TABLE()
 
 WallVisualPanel::WallVisualPanel(wxWindow* parent, wxWindowID id) :
-    wxPanel(parent, id, wxDefaultPosition, wxSize(128, 128))    // 2x 64px tiles
+    wxPanel(parent, id, wxDefaultPosition, wxDefaultSize)
 {
     SetBackgroundStyle(wxBG_STYLE_PAINT);
+    SetWindowStyle(GetWindowStyle() | wxFULL_REPAINT_ON_RESIZE);
 }
 
 WallVisualPanel::~WallVisualPanel() {
@@ -2833,54 +3110,137 @@ void WallVisualPanel::Clear() {
 void WallVisualPanel::OnPaint(wxPaintEvent& event) {
     wxAutoBufferedPaintDC dc(this);
     
-    // Draw background
-    dc.SetBackground(wxBrush(wxColour(240, 240, 240)));
+    // Get panel dimensions
+    wxRect rect = GetClientRect();
+    int panelWidth = rect.GetWidth();
+    int panelHeight = rect.GetHeight();
+    
+    // Use parent's background
+    if (GetParent()) {
+        dc.SetBackground(wxBrush(GetParent()->GetBackgroundColour()));
+    } else {
+        dc.SetBackground(wxBrush(wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE)));
+    }
     dc.Clear();
     
-    // Draw grid (2x2)
-    int width = GetClientSize().GetWidth();
-    int height = GetClientSize().GetHeight();
-    int cellWidth = width / 2;
-    int cellHeight = height / 2;
+    // 5x5 Test Pattern
+    const int GRID_SIZE = 5;
+    const int TITLE_HEIGHT = 20;
+    const int MARGIN = 5;
     
-    dc.SetPen(wxPen(wxColour(200, 200, 200)));
+    int availableWidth = panelWidth - 2 * MARGIN;
+    int availableHeight = panelHeight - TITLE_HEIGHT - 2 * MARGIN;
     
-    // Vertical line
-    dc.DrawLine(cellWidth, 0, cellWidth, height);
+    if (availableWidth <= 0 || availableHeight <= 0) return;
     
-    // Horizontal line
-    dc.DrawLine(0, cellHeight, width, cellHeight);
+    // Calculate cell size
+    int cellSize = std::min(availableWidth, availableHeight) / GRID_SIZE;
+    if (cellSize < 16) cellSize = 16;
     
-    // Helper to draw the FIRST item of a type at a specific grid position (2x2)
-    auto drawTypeAt = [&](const std::string& type, int gridX, int gridY) {
-        if (m_items.find(type) != m_items.end() && !m_items[type].items.empty()) {
-            uint16_t itemId = m_items[type].items[0].itemId; // Draw first item as preview
-            if (itemId > 0) {
-                int x = gridX * cellWidth;
-                int y = gridY * cellHeight;
-                
-                const ItemType& itemType = g_items.getItemType(itemId);
-                if (itemType.id != 0) {
-                    Sprite* sprite = g_gui.gfx.getSprite(itemType.clientID);
-                    if (sprite) {
-                        sprite->DrawTo(&dc, SPRITE_SIZE_32x32, x, y, cellWidth, cellHeight);
+    // Limits
+    if (cellSize > 64) cellSize = 64; 
+    
+    int totalGridSize = GRID_SIZE * cellSize;
+    
+    // Center grid
+    int startX = (panelWidth - totalGridSize) / 2;
+    int startY = TITLE_HEIGHT + (availableHeight - totalGridSize) / 2;
+    if (startY < TITLE_HEIGHT) startY = TITLE_HEIGHT;
+    
+    // Draw "Preview" label
+    dc.SetTextForeground(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
+    wxFont font = wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT);
+    font.MakeBold();
+    dc.SetFont(font);
+    
+    wxString label = "Preview";
+    wxSize textSize = dc.GetTextExtent(label);
+    dc.DrawText(label, (panelWidth - textSize.GetWidth()) / 2, 2);
+    
+    // Background border
+    const int BORDER_WIDTH = 1;
+    wxRect gridBgRect(startX - BORDER_WIDTH, startY - BORDER_WIDTH, totalGridSize + 2 * BORDER_WIDTH, totalGridSize + 2 * BORDER_WIDTH);
+    dc.SetBrush(wxBrush(wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE)));
+    dc.SetPen(wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT)));
+    dc.DrawRectangle(gridBgRect);
+    
+    // Draw 5x5 grid lines
+    dc.SetPen(wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT)));
+    for (int i = 0; i <= GRID_SIZE; i++) {
+        dc.DrawLine(startX + i * cellSize, startY, startX + i * cellSize, startY + totalGridSize);
+        dc.DrawLine(startX, startY + i * cellSize, startX + totalGridSize, startY + i * cellSize);
+    }
+    
+    // Mapping Logic: Grid Position -> Wall Type
+    auto getWallTypeAt = [](int x, int y) -> std::string {
+        // Layout Configured by User:
+        // R0: Pole, H, H, H, H
+        // R1: V, ., ., ., V
+        // R2: V, ., ., ., V
+        // R3: V, ., ., ., V
+        // R4: V, ., ., ., Corner
+        
+        if (y == 0) {
+            if (x == 0) return "pole";
+            return "horizontal"; // x=1..4
+        }
+        else if (y >= 1 && y <= 3) {
+            if (x == 0) return "vertical";
+            if (x == 4) return "vertical";
+            return ""; // Middle is empty
+        }
+        else if (y == 4) {
+            if (x == 0) return "vertical";
+            if (x == 4) return "corner";
+            return "horizontal"; // Middle is horizontal
+        }
+        return "";
+    };
+
+    const int spritePadding = 2;
+    
+    for (int y = 0; y < GRID_SIZE; y++) {
+        for (int x = 0; x < GRID_SIZE; x++) {
+            std::string typeName = getWallTypeAt(x, y);
+            if (typeName.empty()) continue;
+            
+            // Draw item
+            if (m_items.find(typeName) != m_items.end() && !m_items[typeName].items.empty()) {
+                uint16_t itemId = m_items[typeName].items[0].itemId;
+                if (itemId > 0) {
+                    int drawX = startX + x * cellSize;
+                    int drawY = startY + y * cellSize;
+                    
+                    const ItemType& itemType = g_items.getItemType(itemId);
+                    if (itemType.id != 0) {
+                        Sprite* sprite = g_gui.gfx.getSprite(itemType.clientID);
+                        if (sprite) {
+                             // Correctly scale 32x32 sprite to cell size
+                             int targetW = cellSize - 2 * spritePadding;
+                             int targetH = cellSize - 2 * spritePadding;
+                             
+                             // Draw internal uses raw coordinates, we can use DrawTo with scaling if supported
+                             // Or render to bitmap and scale.
+                             // Using the previous method: render to bitmap then draw
+                            wxMemoryDC tempDC;
+                            wxBitmap tempBitmap(32, 32);
+                            tempDC.SelectObject(tempBitmap);
+                            tempDC.SetBackground(*wxTRANSPARENT_BRUSH);
+                            tempDC.Clear();
+                            sprite->DrawTo(&tempDC, SPRITE_SIZE_32x32, 0, 0);
+                            tempDC.SelectObject(wxNullBitmap);
+                            
+                            wxImage img = tempBitmap.ConvertToImage();
+                            if (img.IsOk()) {
+                                img.Rescale(targetW, targetH, wxIMAGE_QUALITY_NEAREST);
+                                dc.DrawBitmap(wxBitmap(img), drawX + spritePadding, drawY + spritePadding, true);
+                            }
+                        }
                     }
                 }
-                
-                // Draw label
-                wxString label = wxString(type);
-                wxSize textSize = dc.GetTextExtent(label);
-                dc.SetTextForeground(*wxBLACK);
-                dc.DrawText(label, x + 2, y + 2);
             }
         }
-    };
-    
-    // Draw types in representative positions
-    drawTypeAt("vertical", 0, 0);   // Top Left
-    drawTypeAt("horizontal", 1, 0); // Top Right
-    drawTypeAt("corner", 0, 1);     // Bottom Left
-    drawTypeAt("pole", 1, 1);       // Bottom Right
+    }
 } 
 
 
@@ -3374,6 +3734,11 @@ void GroundGridContainer::RemoveCell(GroundGridPanel* cell) {
         FitInside();
         Layout();
         Refresh();
+        
+        // Notify parent that content changed
+        wxCommandEvent event(wxEVT_GROUND_CONTAINER_CHANGE, GetId());
+        event.SetEventObject(this);
+        wxPostEvent(GetParent(), event);
     }
 }
 
@@ -3510,6 +3875,12 @@ void BorderEditorDialog::OnGroundPaletteSelect(wxCommandEvent& event) {
         if (m_groundPreviewPanel) {
             m_groundPreviewPanel->UpdateFromContainer(m_groundGridContainer);
         }
+    }
+}
+
+void BorderEditorDialog::OnGroundContainerChange(wxCommandEvent& event) {
+    if (m_groundPreviewPanel && m_groundGridContainer) {
+        m_groundPreviewPanel->UpdateFromContainer(m_groundGridContainer);
     }
 }
 
