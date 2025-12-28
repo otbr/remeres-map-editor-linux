@@ -1,10 +1,5 @@
 <materials>
 	<tileset name="Natural Products">
-		<doodad>
-			<brush name="carrot sprouts"/>
-			<brush name="sand trickle (east)"/>
-			<brush name="sand trickle (south)"/>
-		</doodad>
 		<items>
 			<item id="181"/>
 			<item id="211"/>

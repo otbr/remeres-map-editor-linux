@@ -1,5 +1,6 @@
 <materials>
 	<tileset name="Corpses">
+		<!-- HIDDEN: Doodad palette entry commented out per user request
 		<doodad_and_raw>
 			<item fromid="656" toid="659"/>
 			<item id="269"/>
@@ -289,5 +290,6 @@
 			<item fromid="34244" toid="34247"/>
 			<item fromid="34173" toid="34208"/>
 		</doodad_and_raw>
+		-->
 	</tileset>
 </materials>

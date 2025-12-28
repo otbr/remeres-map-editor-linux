@@ -1,8 +1,5 @@
 <materials>
 	<tileset name="Decorations">
-		<doodad>
-			<brush name="vase plant"/>
-		</doodad>
 		<items>
 			<item id="895"/>
 			<item id="2393"/>
