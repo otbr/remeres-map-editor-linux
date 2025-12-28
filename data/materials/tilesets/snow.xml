@@ -50,7 +50,9 @@
 			<item id="24357"/>
 			<item fromid="29971" toid="29974"/>
 			<item id="30336"/>
-			<item fromid="32775" toid="32785"/>
+		<item id="32776"/>
+		<item id="32779"/>
+		<item fromid="32781" toid="32785"/>
 		</doodad>
 	</tileset>
 </materials>
