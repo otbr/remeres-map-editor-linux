@@ -37,8 +37,7 @@
 // Palette window
 
 BEGIN_EVENT_TABLE(PaletteWindow, wxPanel)
-EVT_CHOICEBOOK_PAGE_CHANGING(PALETTE_CHOICEBOOK, PaletteWindow::OnSwitchingPage)
-EVT_CHOICEBOOK_PAGE_CHANGED(PALETTE_CHOICEBOOK, PaletteWindow::OnPageChanged)
+EVT_CHOICE(PALETTE_MAIN_CHOICE, PaletteWindow::OnPaletteChoiceChanged)
 EVT_CLOSE(PaletteWindow::OnClose)
 
 EVT_KEY_DOWN(PaletteWindow::OnKey)
@@ -48,37 +47,56 @@ PaletteWindow::PaletteWindow(wxWindow* parent, const TilesetContainer &tilesets)
 	wxPanel(parent, wxID_ANY, wxDefaultPosition, wxSize(230, 250)) {
 	SetMinSize(wxSize(225, 250));
 
-	terrainPalette = static_cast<BrushPalettePanel*>(CreateTerrainPalette(choicebook, tilesets));
-	choicebook->AddPage(terrainPalette, terrainPalette->GetName());
+	// Create separate wxChoice and wxSimplebook for better GTK3 dropdown positioning
+	paletteChoice = newd wxChoice(this, PALETTE_MAIN_CHOICE, wxDefaultPosition, wxDefaultSize);
+	paletteBook = newd wxSimplebook(this, wxID_ANY);
 
-	doodadPalette = static_cast<BrushPalettePanel*>(CreateDoodadPalette(choicebook, tilesets));
-	choicebook->AddPage(doodadPalette, doodadPalette->GetName());
+	// Create and add palettes
+	terrainPalette = static_cast<BrushPalettePanel*>(CreateTerrainPalette(paletteBook, tilesets));
+	paletteChoice->Append(terrainPalette->GetName());
+	paletteBook->AddPage(terrainPalette, terrainPalette->GetName());
 
-	itemPalette = static_cast<BrushPalettePanel*>(CreateItemPalette(choicebook, tilesets));
-	choicebook->AddPage(itemPalette, itemPalette->GetName());
+	doodadPalette = static_cast<BrushPalettePanel*>(CreateDoodadPalette(paletteBook, tilesets));
+	paletteChoice->Append(doodadPalette->GetName());
+	paletteBook->AddPage(doodadPalette, doodadPalette->GetName());
 
-	housePalette = static_cast<HousePalettePanel*>(CreateHousePalette(choicebook, tilesets));
-	choicebook->AddPage(housePalette, housePalette->GetName());
+	itemPalette = static_cast<BrushPalettePanel*>(CreateItemPalette(paletteBook, tilesets));
+	paletteChoice->Append(itemPalette->GetName());
+	paletteBook->AddPage(itemPalette, itemPalette->GetName());
 
-	waypointPalette = static_cast<WaypointPalettePanel*>(CreateWaypointPalette(choicebook, tilesets));
-	choicebook->AddPage(waypointPalette, waypointPalette->GetName());
+	housePalette = static_cast<HousePalettePanel*>(CreateHousePalette(paletteBook, tilesets));
+	paletteChoice->Append(housePalette->GetName());
+	paletteBook->AddPage(housePalette, housePalette->GetName());
 
-	zonesPalette = static_cast<ZonesPalettePanel*>(CreateZonesPalette(choicebook, tilesets));
-	choicebook->AddPage(zonesPalette, zonesPalette->GetName());
+	waypointPalette = static_cast<WaypointPalettePanel*>(CreateWaypointPalette(paletteBook, tilesets));
+	paletteChoice->Append(waypointPalette->GetName());
+	paletteBook->AddPage(waypointPalette, waypointPalette->GetName());
 
-	monsterPalette = static_cast<MonsterPalettePanel*>(CreateMonsterPalette(choicebook, tilesets));
-	choicebook->AddPage(monsterPalette, monsterPalette->GetName());
+	zonesPalette = static_cast<ZonesPalettePanel*>(CreateZonesPalette(paletteBook, tilesets));
+	paletteChoice->Append(zonesPalette->GetName());
+	paletteBook->AddPage(zonesPalette, zonesPalette->GetName());
 
-	npcPalette = static_cast<NpcPalettePanel*>(CreateNpcPalette(choicebook, tilesets));
-	choicebook->AddPage(npcPalette, npcPalette->GetName());
+	monsterPalette = static_cast<MonsterPalettePanel*>(CreateMonsterPalette(paletteBook, tilesets));
+	paletteChoice->Append(monsterPalette->GetName());
+	paletteBook->AddPage(monsterPalette, monsterPalette->GetName());
 
-	rawPalette = static_cast<BrushPalettePanel*>(CreateRAWPalette(choicebook, tilesets));
-	choicebook->AddPage(rawPalette, rawPalette->GetName());
+	npcPalette = static_cast<NpcPalettePanel*>(CreateNpcPalette(paletteBook, tilesets));
+	paletteChoice->Append(npcPalette->GetName());
+	paletteBook->AddPage(npcPalette, npcPalette->GetName());
+
+	rawPalette = static_cast<BrushPalettePanel*>(CreateRAWPalette(paletteBook, tilesets));
+	paletteChoice->Append(rawPalette->GetName());
+	paletteBook->AddPage(rawPalette, rawPalette->GetName());
+
+	// Select first item
+	paletteChoice->SetSelection(0);
+	paletteBook->SetSelection(0);
 
 	// Setup sizers
 	const auto sizer = newd wxBoxSizer(wxVERTICAL);
-	choicebook->SetMinSize(wxSize(225, 300));
-	sizer->Add(choicebook, 1, wxEXPAND);
+	sizer->Add(paletteChoice, 0, wxEXPAND | wxALL, 2);
+	paletteBook->SetMinSize(wxSize(225, 280));
+	sizer->Add(paletteBook, 1, wxEXPAND);
 	SetSizer(sizer);
 
 	// Load first page
@@ -214,11 +232,11 @@ void PaletteWindow::ReloadSettings(Map* map) {
 }
 
 void PaletteWindow::LoadCurrentContents() const {
-	if (!choicebook) {
+	if (!paletteBook) {
 		return;
 	}
 
-	const auto panel = dynamic_cast<PalettePanel*>(choicebook->GetCurrentPage());
+	const auto panel = dynamic_cast<PalettePanel*>(paletteBook->GetCurrentPage());
 
 	if (panel == nullptr) {
 		return;
@@ -233,11 +251,11 @@ void PaletteWindow::LoadCurrentContents() const {
 }
 
 void PaletteWindow::InvalidateContents() {
-	if (!choicebook) {
+	if (!paletteBook) {
 		return;
 	}
-	for (auto pageIndex = 0; pageIndex < choicebook->GetPageCount(); ++pageIndex) {
-		const auto panel = dynamic_cast<PalettePanel*>(choicebook->GetPage(pageIndex));
+	for (auto pageIndex = 0; pageIndex < paletteBook->GetPageCount(); ++pageIndex) {
+		const auto panel = dynamic_cast<PalettePanel*>(paletteBook->GetPage(pageIndex));
 		if (panel != nullptr) {
 			panel->InvalidateContents();
 		}
@@ -261,33 +279,36 @@ void PaletteWindow::InvalidateContents() {
 }
 
 void PaletteWindow::SelectPage(PaletteType id) {
-	if (!choicebook) {
+	if (!paletteBook || !paletteChoice) {
 		return;
 	}
 	if (id == GetSelectedPage()) {
 		return;
 	}
 
-	for (auto pageIndex = 0; pageIndex < choicebook->GetPageCount(); ++pageIndex) {
-		const auto panel = dynamic_cast<PalettePanel*>(choicebook->GetPage(pageIndex));
+	for (auto pageIndex = 0; pageIndex < paletteBook->GetPageCount(); ++pageIndex) {
+		const auto panel = dynamic_cast<PalettePanel*>(paletteBook->GetPage(pageIndex));
 		if (panel == nullptr) {
 			return;
 		}
 
 		if (panel->GetType() == id) {
-			choicebook->SetSelection(pageIndex);
-			// LoadCurrentContents();
+			int oldSelection = paletteBook->GetSelection();
+			OnSwitchingPage(oldSelection, pageIndex);
+			paletteBook->SetSelection(pageIndex);
+			paletteChoice->SetSelection(pageIndex);
+			g_gui.SelectBrush();
 			break;
 		}
 	}
 }
 
 Brush* PaletteWindow::GetSelectedBrush() const {
-	if (!choicebook) {
+	if (!paletteBook) {
 		return nullptr;
 	}
 
-	const auto panel = dynamic_cast<PalettePanel*>(choicebook->GetCurrentPage());
+	const auto panel = dynamic_cast<PalettePanel*>(paletteBook->GetCurrentPage());
 
 	if (panel == nullptr) {
 		return nullptr;
@@ -297,10 +318,10 @@ Brush* PaletteWindow::GetSelectedBrush() const {
 }
 
 int PaletteWindow::GetSelectedBrushSize() const {
-	if (!choicebook) {
+	if (!paletteBook) {
 		return 0;
 	}
-	const auto panel = dynamic_cast<PalettePanel*>(choicebook->GetCurrentPage());
+	const auto panel = dynamic_cast<PalettePanel*>(paletteBook->GetCurrentPage());
 
 	if (panel == nullptr) {
 		return 0;
@@ -310,10 +331,10 @@ int PaletteWindow::GetSelectedBrushSize() const {
 }
 
 PaletteType PaletteWindow::GetSelectedPage() const {
-	if (!choicebook) {
+	if (!paletteBook) {
 		return TILESET_UNKNOWN;
 	}
-	const auto panel = dynamic_cast<PalettePanel*>(choicebook->GetCurrentPage());
+	const auto panel = dynamic_cast<PalettePanel*>(paletteBook->GetCurrentPage());
 
 	ASSERT(panel);
 	if (panel == nullptr) {
@@ -324,7 +345,7 @@ PaletteType PaletteWindow::GetSelectedPage() const {
 }
 
 bool PaletteWindow::OnSelectBrush(const Brush* whatBrush, PaletteType primary) {
-	if (!choicebook || !whatBrush) {
+	if (!paletteBook || !whatBrush) {
 		return false;
 	}
 
@@ -418,37 +439,48 @@ bool PaletteWindow::OnSelectBrush(const Brush* whatBrush, PaletteType primary) {
 	return false;
 }
 
-void PaletteWindow::OnSwitchingPage(wxChoicebookEvent &event) {
-	event.Skip();
-	if (!choicebook) {
+void PaletteWindow::OnPaletteChoiceChanged(wxCommandEvent& event) {
+	if (!paletteBook || !paletteChoice) {
 		return;
 	}
 
-	const auto oldPage = choicebook->GetPage(choicebook->GetSelection());
-	const auto oldPanel = dynamic_cast<PalettePanel*>(oldPage);
-	if (oldPanel) {
-		oldPanel->OnSwitchOut();
-	}
-
-	const auto selectedPage = choicebook->GetPage(event.GetSelection());
-	const auto selectedPanel = dynamic_cast<PalettePanel*>(selectedPage);
-	if (selectedPanel) {
-		selectedPanel->OnSwitchIn();
+	int newSelection = event.GetSelection();
+	int oldSelection = paletteBook->GetSelection();
+	
+	if (newSelection != oldSelection) {
+		OnSwitchingPage(oldSelection, newSelection);
+		paletteBook->SetSelection(newSelection);
+		g_gui.SelectBrush();
 	}
 }
 
-void PaletteWindow::OnPageChanged(wxChoicebookEvent &event) {
-	if (!choicebook) {
+void PaletteWindow::OnSwitchingPage(int oldSelection, int newSelection) {
+	if (!paletteBook) {
 		return;
 	}
-	g_gui.SelectBrush();
+
+	if (oldSelection >= 0 && oldSelection < static_cast<int>(paletteBook->GetPageCount())) {
+		const auto oldPage = paletteBook->GetPage(oldSelection);
+		const auto oldPanel = dynamic_cast<PalettePanel*>(oldPage);
+		if (oldPanel) {
+			oldPanel->OnSwitchOut();
+		}
+	}
+
+	if (newSelection >= 0 && newSelection < static_cast<int>(paletteBook->GetPageCount())) {
+		const auto selectedPage = paletteBook->GetPage(newSelection);
+		const auto selectedPanel = dynamic_cast<PalettePanel*>(selectedPage);
+		if (selectedPanel) {
+			selectedPanel->OnSwitchIn();
+		}
+	}
 }
 
 void PaletteWindow::OnUpdateBrushSize(BrushShape shape, int size) {
-	if (!choicebook) {
+	if (!paletteBook) {
 		return;
 	}
-	const auto page = dynamic_cast<PalettePanel*>(choicebook->GetCurrentPage());
+	const auto page = dynamic_cast<PalettePanel*>(paletteBook->GetCurrentPage());
 
 	ASSERT(page);
 

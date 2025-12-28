@@ -19,6 +19,7 @@
 #define RME_PALETTE_H_
 
 #include "palette_common.h"
+#include <wx/simplebook.h>
 
 class BrushPalettePanel;
 class MonsterPalettePanel;
@@ -58,8 +59,8 @@ public:
 	virtual void OnUpdate(Map* map);
 
 	// wxWidgets Event Handlers
-	void OnSwitchingPage(wxChoicebookEvent &event);
-	void OnPageChanged(wxChoicebookEvent &event);
+	void OnPaletteChoiceChanged(wxCommandEvent& event);
+	void OnSwitchingPage(int oldSelection, int newSelection);
 	// Forward key events to the parent window (The Map Window)
 	void OnKey(wxKeyEvent &event);
 	void OnClose(wxCloseEvent &);
@@ -81,7 +82,9 @@ protected:
 	static bool CanSelectHouseBrush(PalettePanel* palette, const Brush* whatBrush);
 	static bool CanSelectBrush(PalettePanel* palette, const Brush* whatBrush);
 
-	wxChoicebook* choicebook = newd wxChoicebook(this, PALETTE_CHOICEBOOK, wxDefaultPosition, wxSize(230, 250));
+	// Replaced wxChoicebook with separate controls for better GTK3 dropdown positioning
+	wxChoice* paletteChoice = nullptr;
+	wxSimplebook* paletteBook = nullptr;
 
 	BrushPalettePanel* terrainPalette = nullptr;
 	BrushPalettePanel* doodadPalette = nullptr;
