@@ -602,7 +602,7 @@ BrushIconBox::BrushIconBox(wxWindow* parent, const TilesetCategory* tileset, Ren
 	ASSERT(tileset->getType() >= TILESET_UNKNOWN && tileset->getType() <= TILESET_HOUSE);
 	
 	SetBackgroundStyle(wxBG_STYLE_PAINT);
-	SetBackgroundColour(*wxWHITE);
+	SetBackgroundColour(wxColor(45, 45, 48)); // Dark theme background
 
 	m_cellWidth = (iconSize == RENDER_SIZE_32x32) ? 36 : 20; // 32+4 padding
 	m_cellHeight = (iconSize == RENDER_SIZE_32x32) ? 36 : 20;
