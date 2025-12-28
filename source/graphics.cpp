@@ -595,6 +595,8 @@ bool GraphicManager::loadSpriteMetadataFlags(FileReadHandle &file, GameSprite* s
 	uint8_t prev_flag = 0;
 	uint8_t flag = DatFlagLast;
 
+	for (int i = 0; i < SPRITE_SIZE_COUNT; ++i)
+		sType->m_wxMemoryDc[i] = nullptr;
 	for (int i = 0; i < DatFlagLast; ++i) {
 		prev_flag = flag;
 		file.getU8(flag);
@@ -988,6 +990,9 @@ void GraphicManager::garbageCollection() {
 }
 
 EditorSprite::EditorSprite(wxBitmap* b16x16, wxBitmap* b32x32) {
+	for(int i = 0; i < SPRITE_SIZE_COUNT; ++i) {
+		bm[i] = nullptr;
+	}
 	bm[SPRITE_SIZE_16x16] = b16x16;
 	bm[SPRITE_SIZE_32x32] = b32x32;
 }
@@ -997,6 +1002,10 @@ EditorSprite::~EditorSprite() {
 }
 
 void EditorSprite::DrawTo(wxDC* dc, SpriteSize sz, int start_x, int start_y, int width, int height) {
+	// Map SCALED to standard 32x32 for EditorSprite (which usually just has icon)
+	if (sz == SPRITE_SIZE_32x32_SCALED) {
+		sz = SPRITE_SIZE_32x32;
+	}
 	wxBitmap* sp = bm[sz];
 	if (sp) {
 		dc->DrawBitmap(*sp, start_x, start_y, true);
@@ -1004,10 +1013,10 @@ void EditorSprite::DrawTo(wxDC* dc, SpriteSize sz, int start_x, int start_y, int
 }
 
 void EditorSprite::unloadDC() {
-	delete bm[SPRITE_SIZE_16x16];
-	delete bm[SPRITE_SIZE_32x32];
-	bm[SPRITE_SIZE_16x16] = nullptr;
-	bm[SPRITE_SIZE_32x32] = nullptr;
+	for(int i = 0; i < SPRITE_SIZE_COUNT; ++i) {
+		delete bm[i];
+		bm[i] = nullptr;
+	}
 }
 
 GameSprite::GameSprite() :
@@ -1023,8 +1032,9 @@ GameSprite::GameSprite() :
 	animator(nullptr),
 	draw_height(0),
 	minimap_color(0) {
-	m_wxMemoryDc[SPRITE_SIZE_16x16] = nullptr;
-	m_wxMemoryDc[SPRITE_SIZE_32x32] = nullptr;
+	for (int i = 0; i < SPRITE_SIZE_COUNT; ++i) {
+		m_wxMemoryDc[i] = nullptr;
+	}
 }
 
 GameSprite::~GameSprite() {
@@ -1079,8 +1089,10 @@ uint8_t GameSprite::getHeight() {
 void GameSprite::unloadDC() {
 	delete m_wxMemoryDc[SPRITE_SIZE_16x16];
 	delete m_wxMemoryDc[SPRITE_SIZE_32x32];
+	delete m_wxMemoryDc[SPRITE_SIZE_32x32_SCALED];
 	m_wxMemoryDc[SPRITE_SIZE_16x16] = nullptr;
 	m_wxMemoryDc[SPRITE_SIZE_32x32] = nullptr;
+	m_wxMemoryDc[SPRITE_SIZE_32x32_SCALED] = nullptr;
 }
 
 uint8_t GameSprite::getMiniMapColor() const {
@@ -1134,7 +1146,7 @@ std::shared_ptr<GameSprite::OutfitImage> GameSprite::getOutfitImage(int spriteId
 }
 
 wxMemoryDC* GameSprite::getDC(SpriteSize spriteSize) {
-	ASSERT(spriteSize == SPRITE_SIZE_16x16 || spriteSize == SPRITE_SIZE_32x32);
+	ASSERT(spriteSize == SPRITE_SIZE_16x16 || spriteSize == SPRITE_SIZE_32x32 || spriteSize == SPRITE_SIZE_32x32_SCALED);
 
 	if (!width && !height) {
 		// Initialize default draw offset
@@ -1156,9 +1168,13 @@ wxMemoryDC* GameSprite::getDC(SpriteSize spriteSize) {
 		auto spriteId = spriteList[0]->getHardwareID();
 		wxImage wxImage = g_spriteAppearances.getWxImageBySpriteId(spriteId);
 
-		// Resize the image to rme::SpritePixels x rme::SpritePixels, if necessary
+		// Size adjustment if necessary
 		if (getWidth() > rme::SpritePixels || getHeight() > rme::SpritePixels) {
-			wxImage.Resize(wxSize(rme::SpritePixels, rme::SpritePixels), wxPoint(0, 0));
+			if (spriteSize == SPRITE_SIZE_32x32_SCALED) {
+				wxImage.Rescale(rme::SpritePixels, rme::SpritePixels, wxIMAGE_QUALITY_HIGH);
+			} else {
+				wxImage.Resize(wxSize(rme::SpritePixels, rme::SpritePixels), wxPoint(0, 0));
+			}
 		}
 
 		// Create a bitmap with the sprite image

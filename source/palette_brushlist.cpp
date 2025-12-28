@@ -688,13 +688,12 @@ void BrushIconBox::OnPaint(wxPaintEvent& event) {
 			int offY = (m_cellHeight - spriteSize) / 2;
 			
 			// Use proper enum for size if available, or just raw numbers? 
-			// BrushListBox uses SPRITE_SIZE_32x32. We trust it maps to ints or enum correctly.
-			// Actually DrawTo takes SpriteSize enum for implementation but maybe int is fine?
-			// BrushListBox calls `sprite->DrawTo(&dc, SPRITE_SIZE_32x32, ...)`
-			// We should match that.
-			SpriteSize sz = (iconSize == RENDER_SIZE_32x32) ? SPRITE_SIZE_32x32 : SPRITE_SIZE_32x32; // Assuming small also draws at 32 or scale?
-			// Actually raw palette is usually 32x32. If small is requested, we might need SPRITE_SIZE_32x32 scaled?
-			// Let's stick to 32x32 for now as that's the main request.
+			// Use standard 32x32 (cropped) for Grounds and Walls (tiling).
+			// Use SCALED 32x32 for everything else (Doodads, Monsters, RAW, etc.) to show full asset.
+			SpriteSize sz = SPRITE_SIZE_32x32_SCALED;
+			if (iconSize == RENDER_SIZE_32x32 && (brush->isGround() || brush->isWall())) {
+				sz = SPRITE_SIZE_32x32;
+			}
 			
 			sprite->DrawTo(&dc, sz, x + offX, y + offY, spriteSize, spriteSize);
 		}
