@@ -763,7 +763,14 @@ void BrushIconBox::OnRightUp(wxMouseEvent& event) {
 	int index = HitTest(pos);
 	if (index >= 0 && index < (int)tileset->brushlist.size()) {
 		const auto brush = tileset->brushlist[index];
-		const std::string idStr = brush->getAssetIdString();
+		std::string idStr = brush->getAssetIdString();
+		
+		if (idStr.empty()) {
+			int lookID = brush->getLookID();
+			if (lookID != 0) {
+				idStr = std::to_string(lookID);
+			}
+		}
 
 		if (!idStr.empty()) {
 			if (wxTheClipboard->Open()) {
@@ -955,7 +962,14 @@ void BrushListBox::OnRightUp(wxMouseEvent &event) {
 	int index = HitTest(event.GetPosition());
 	if (index != wxNOT_FOUND && index < (int)tileset->brushlist.size()) {
 		const auto brush = tileset->brushlist[index];
-		const std::string idStr = brush->getAssetIdString();
+		std::string idStr = brush->getAssetIdString();
+		
+		if (idStr.empty()) {
+			int lookID = brush->getLookID();
+			if (lookID != 0) {
+				idStr = std::to_string(lookID);
+			}
+		}
 
 		if (!idStr.empty()) {
 			if (wxTheClipboard->Open()) {
