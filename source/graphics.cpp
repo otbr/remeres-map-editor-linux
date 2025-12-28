@@ -1158,7 +1158,7 @@ wxMemoryDC* GameSprite::getDC(SpriteSize spriteSize) {
 
 		// Resize the image to rme::SpritePixels x rme::SpritePixels, if necessary
 		if (getWidth() > rme::SpritePixels || getHeight() > rme::SpritePixels) {
-			wxImage.Rescale(rme::SpritePixels, rme::SpritePixels);
+			wxImage.Resize(wxSize(rme::SpritePixels, rme::SpritePixels), wxPoint(0, 0));
 		}
 
 		// Create a bitmap with the sprite image
