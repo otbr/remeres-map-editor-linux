@@ -33,7 +33,8 @@ EVT_BUTTON(wxID_ADD, BrushPalettePanel::OnClickAddItemToTileset)
 EVT_BUTTON(wxID_NEW, BrushPalettePanel::OnClickAddTileset)
 EVT_BUTTON(wxID_FORWARD, BrushPalettePanel::OnNextPage)
 EVT_BUTTON(wxID_BACKWARD, BrushPalettePanel::OnPreviousPage)
-EVT_CHOICE(PALETTE_TILESET_CHOICE, BrushPalettePanel::OnCategoryListChanged)
+EVT_BUTTON(PALETTE_TILESET_BUTTON, BrushPalettePanel::OnCategoryButtonClick)
+EVT_MENU(wxID_ANY, BrushPalettePanel::OnCategoryMenuSelect)
 END_EVENT_TABLE()
 
 BrushPalettePanel::BrushPalettePanel(wxWindow* parent, const TilesetContainer &tilesets, TilesetCategoryType category, wxWindowID id) :
@@ -43,9 +44,9 @@ BrushPalettePanel::BrushPalettePanel(wxWindow* parent, const TilesetContainer &t
 	// Create main layout: Tileset list on top (fixed height), content below
 	const auto tsSizer = newd wxStaticBoxSizer(wxVERTICAL, this, "Tileset");
 	
-	// Category dropdown (wxChoice to match Terrain Palette style)
-	m_categoryChoice = newd wxChoice(this, PALETTE_TILESET_CHOICE, wxDefaultPosition, wxDefaultSize, 0, nullptr);
-	tsSizer->Add(m_categoryChoice, 0, wxEXPAND | wxBOTTOM, 5);
+	// Category dropdown (wxButton + wxMenu to avoid GTK positioning issues)
+	m_categoryButton = newd wxButton(this, PALETTE_TILESET_BUTTON, "Tilesets ▼", wxDefaultPosition, wxDefaultSize, wxBU_LEFT);
+	tsSizer->Add(m_categoryButton, 0, wxEXPAND | wxBOTTOM, 5);
 	
 	// Page container - will hold the current BrushPanel
 	m_pageContainer = newd wxPanel(this, wxID_ANY);
@@ -64,11 +65,9 @@ BrushPalettePanel::BrushPalettePanel(wxWindow* parent, const TilesetContainer &t
 	for (auto it = tilesets.begin(); it != tilesets.end(); ++it) {
 		const auto tilesetCategory = it->second->getCategory(category);
 		if (tilesetCategory && !tilesetCategory->brushlist.empty()) {
-			// Add to combo
-			m_categoryChoice->Append(wxstr(it->second->name));
-			
 			// Create the panel (hidden initially)
 			const auto panel = newd BrushPanel(m_pageContainer, tilesetCategory);
+			panel->SetName(wxstr(it->second->name));
 			panel->Hide();
 			m_pages.push_back(panel);
 		}
@@ -76,7 +75,6 @@ BrushPalettePanel::BrushPalettePanel(wxWindow* parent, const TilesetContainer &t
 	
 	// Select first page if available
 	if (!m_pages.empty()) {
-		m_categoryChoice->SetSelection(0);
 		ChangeSelection(0);
 	}
 
@@ -155,8 +153,8 @@ int BrushPalettePanel::GetSelection() const {
 }
 
 wxString BrushPalettePanel::GetPageText(int index) const {
-	if (m_categoryChoice && index >= 0 && index < static_cast<int>(m_categoryChoice->GetCount())) {
-		return m_categoryChoice->GetString(index);
+	if (index >= 0 && index < static_cast<int>(m_pages.size()) && m_pages[index]) {
+		return m_pages[index]->GetName();
 	}
 	return wxEmptyString;
 }
@@ -202,9 +200,9 @@ void BrushPalettePanel::ChangeSelection(int index) {
 		m_pageContainer->Layout();
 	}
 	
-	// Update list selection
-	if (m_categoryChoice && m_categoryChoice->GetSelection() != index) {
-		m_categoryChoice->SetSelection(index);
+	// Update button label
+	if (m_pages[index]) {
+		m_categoryButton->SetLabel(m_pages[index]->GetName() + " ▼");
 	}
 }
 
@@ -337,12 +335,33 @@ bool BrushPalettePanel::SelectBrush(const Brush* whatBrush) {
 
 // === Event Handlers ===
 
-void BrushPalettePanel::OnCategoryListChanged(wxCommandEvent &event) {
-	int selection = m_categoryChoice->GetSelection();
-	if (selection != wxNOT_FOUND && selection != m_currentPageIndex) {
-		ChangeSelection(selection);
-		g_gui.ActivatePalette(GetParentPalette());
-		g_gui.SelectBrush();
+void BrushPalettePanel::OnCategoryButtonClick(wxCommandEvent& event) {
+	wxMenu menu;
+	for (size_t i = 0; i < m_pages.size(); ++i) {
+		if (m_pages[i]) {
+			auto* item = menu.AppendRadioItem(i, m_pages[i]->GetName());
+			if (i == (size_t)m_currentPageIndex) {
+				item->Check(true);
+			}
+		}
+	}
+
+	const wxSize btnSize = m_categoryButton->GetSize();
+	m_categoryButton->PopupMenu(&menu, 0, btnSize.GetHeight());
+}
+
+void BrushPalettePanel::OnCategoryMenuSelect(wxCommandEvent& event) {
+	int newSelection = event.GetId();
+	if (newSelection >= 0 && newSelection < (int)m_pages.size()) {
+		if (newSelection != m_currentPageIndex) {
+			ChangeSelection(newSelection);
+			// Update button label
+			if (m_pages[newSelection]) {
+				m_categoryButton->SetLabel(m_pages[newSelection]->GetName() + " ▼");
+			}
+			g_gui.ActivatePalette(GetParentPalette());
+			g_gui.SelectBrush();
+		}
 	}
 }
 

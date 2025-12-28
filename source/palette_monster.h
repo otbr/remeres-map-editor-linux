@@ -53,7 +53,6 @@ public:
 	void OnChangeSpawnMonsterTime(wxSpinEvent &event);
 	void OnChangeSpawnMonsterSize(wxSpinEvent &event);
 
-	void OnTilesetChange(wxCommandEvent &event);
 	void OnListBoxChange(wxCommandEvent &event);
 	void OnClickMonsterBrushButton(wxCommandEvent &event);
 	void OnClickSpawnMonsterBrushButton(wxCommandEvent &event);
@@ -65,7 +64,13 @@ protected:
 	void SelectMonsterBrush();
 	void SelectSpawnBrush();
 
-	wxChoice* tileset_choice;
+	void OnTilesetButtonClick(wxCommandEvent& event);
+	void OnTilesetMenuSelect(wxCommandEvent& event);
+
+	wxButton* tileset_button;
+	std::vector<const TilesetCategory*> m_tilesetData;
+	std::vector<wxString> m_tilesetNames;
+	int m_selectionIndex = 0;
 	wxTextCtrl* monster_name_text;
 	wxButton* monster_search_button;
 	SortableListBox* monster_list;

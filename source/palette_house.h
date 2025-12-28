@@ -60,7 +60,8 @@ protected:
 
 public:
 	// wxWidgets event handling
-	void OnTownChange(wxCommandEvent &event);
+	void OnTownButtonClick(wxCommandEvent &event);
+	void OnTownMenuSelect(wxCommandEvent &event);
 	void OnListBoxChange(wxCommandEvent &event);
 	void OnListBoxDoubleClick(wxCommandEvent &event);
 	void OnClickHouseBrushButton(wxCommandEvent &event);
@@ -76,7 +77,10 @@ public:
 
 protected:
 	Map* map;
-	wxChoice* town_choice;
+	wxButton* town_button;
+	std::vector<Town*> m_townData;
+	std::vector<wxString> m_townNames;
+	int m_selectionIndex = 0;
 	SortableListBox* house_list;
 	wxToggleButton* house_brush_button;
 	wxToggleButton* select_position_button;

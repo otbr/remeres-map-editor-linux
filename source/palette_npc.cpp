@@ -29,7 +29,8 @@
 // Npc palette
 
 BEGIN_EVENT_TABLE(NpcPalettePanel, PalettePanel)
-EVT_CHOICE(PALETTE_NPC_TILESET_CHOICE, NpcPalettePanel::OnTilesetChange)
+EVT_BUTTON(PALETTE_NPC_TILESET_BUTTON, NpcPalettePanel::OnTilesetButtonClick)
+EVT_MENU(wxID_ANY, NpcPalettePanel::OnTilesetMenuSelect)
 
 EVT_LISTBOX(PALETTE_NPC_LISTBOX, NpcPalettePanel::OnListBoxChange)
 
@@ -46,8 +47,8 @@ NpcPalettePanel::NpcPalettePanel(wxWindow* parent, wxWindowID id) :
 	wxSizer* topsizer = newd wxBoxSizer(wxVERTICAL);
 
 	wxSizer* sidesizer = newd wxStaticBoxSizer(wxVERTICAL, this, "Npcs");
-	tileset_choice = newd wxChoice(this, PALETTE_NPC_TILESET_CHOICE, wxDefaultPosition, wxDefaultSize, (int)0, (const wxString*)nullptr);
-	sidesizer->Add(tileset_choice, 0, wxEXPAND);
+	tileset_button = newd wxButton(this, PALETTE_NPC_TILESET_BUTTON, "All ▼", wxDefaultPosition, wxDefaultSize, wxBU_LEFT);
+	sidesizer->Add(tileset_button, 0, wxEXPAND);
 
 	npc_list = newd SortableListBox(this, PALETTE_NPC_LISTBOX);
 	sidesizer->Add(npc_list, 1, wxEXPAND);
@@ -116,9 +117,9 @@ bool NpcPalettePanel::SelectBrush(const Brush* whatbrush) {
 	}
 
 	if (whatbrush->isNpc()) {
-		int current_index = tileset_choice->GetSelection();
-		if (current_index != wxNOT_FOUND) {
-			const TilesetCategory* tsc = reinterpret_cast<const TilesetCategory*>(tileset_choice->GetClientData(current_index));
+		int current_index = m_selectionIndex;
+		if (current_index >= 0 && current_index < (int)m_tilesetData.size()) {
+			const TilesetCategory* tsc = m_tilesetData[current_index];
 			// Select first house
 			for (BrushVector::const_iterator iter = tsc->brushlist.begin(); iter != tsc->brushlist.end(); ++iter) {
 				if (*iter == whatbrush) {
@@ -128,9 +129,9 @@ bool NpcPalettePanel::SelectBrush(const Brush* whatbrush) {
 			}
 		}
 		// Not in the current display, search the hidden one's
-		for (size_t i = 0; i < tileset_choice->GetCount(); ++i) {
+		for (size_t i = 0; i < m_tilesetData.size(); ++i) {
 			if (current_index != (int)i) {
-				const TilesetCategory* tsc = reinterpret_cast<const TilesetCategory*>(tileset_choice->GetClientData(i));
+				const TilesetCategory* tsc = m_tilesetData[i];
 				for (BrushVector::const_iterator iter = tsc->brushlist.begin();
 					 iter != tsc->brushlist.end();
 					 ++iter) {
@@ -154,20 +155,28 @@ int NpcPalettePanel::GetSelectedBrushSize() const {
 }
 
 void NpcPalettePanel::OnUpdate() {
-	tileset_choice->Clear();
+	m_tilesetData.clear();
+	m_tilesetNames.clear();
 	g_materials.createNpcTileset();
 
 	for (TilesetContainer::const_iterator iter = g_materials.tilesets.begin(); iter != g_materials.tilesets.end(); ++iter) {
 		const TilesetCategory* tsc = iter->second->getCategory(TILESET_NPC);
 		if (tsc && tsc->size() > 0) {
-			tileset_choice->Append(wxstr(iter->second->name), const_cast<TilesetCategory*>(tsc));
+			m_tilesetData.push_back(tsc);
+			m_tilesetNames.push_back(wxstr(iter->second->name));
 		} else if (iter->second->name == "NPCs") {
 			Tileset* ts = const_cast<Tileset*>(iter->second);
 			TilesetCategory* rtsc = ts->getCategory(TILESET_NPC);
-			tileset_choice->Append(wxstr(ts->name), rtsc);
+			m_tilesetData.push_back(rtsc);
+			m_tilesetNames.push_back(wxstr(ts->name));
 		}
 	}
-	SelectTileset(0);
+	
+	if (m_selectionIndex >= (int)m_tilesetData.size()) {
+		m_selectionIndex = 0;
+	}
+
+	SelectTileset(m_selectionIndex);
 }
 
 void NpcPalettePanel::OnUpdateBrushSize(BrushShape shape, int size) {
@@ -179,26 +188,53 @@ void NpcPalettePanel::OnSwitchIn() {
 	g_gui.SetBrushSize(spawn_npc_size_spin->GetValue());
 }
 
-void NpcPalettePanel::SelectTileset(size_t index) {
-	ASSERT(tileset_choice->GetCount() >= index);
-
-	npc_list->Clear();
-	if (tileset_choice->GetCount() == 0) {
-		// No tilesets :(
-		npc_brush_button->Enable(false);
-	} else {
-		const TilesetCategory* tsc = reinterpret_cast<const TilesetCategory*>(tileset_choice->GetClientData(index));
-		// Select first house
-		for (BrushVector::const_iterator iter = tsc->brushlist.begin();
-			 iter != tsc->brushlist.end();
-			 ++iter) {
-			npc_list->Append(wxstr((*iter)->getName()), *iter);
+// Button Handlers
+void NpcPalettePanel::OnTilesetButtonClick(wxCommandEvent& event) {
+	wxMenu menu;
+	for (size_t i = 0; i < m_tilesetNames.size(); ++i) {
+		auto* item = menu.AppendRadioItem(i, m_tilesetNames[i]);
+		if (i == (size_t)m_selectionIndex) {
+			item->Check(true);
 		}
-		npc_list->Sort();
-		SelectNpc(0);
-
-		tileset_choice->SetSelection(index);
 	}
+	const wxSize btnSize = tileset_button->GetSize();
+	tileset_button->PopupMenu(&menu, 0, btnSize.GetHeight());
+}
+
+void NpcPalettePanel::OnTilesetMenuSelect(wxCommandEvent& event) {
+	int newSelection = event.GetId();
+	if (newSelection >= 0 && newSelection < (int)m_tilesetData.size()) {
+		SelectTileset(newSelection);
+		g_gui.ActivatePalette(GetParentPalette());
+		g_gui.SelectBrush();
+	}
+}
+
+void NpcPalettePanel::SelectTileset(size_t index) {
+	if (m_tilesetData.empty()) {
+		npc_list->Clear();
+		npc_brush_button->Enable(false);
+		tileset_button->SetLabel("All ▼");
+		return;
+	}
+
+	if (index >= m_tilesetData.size()) {
+		index = 0;
+	}
+
+	m_selectionIndex = index;
+	npc_list->Clear();
+
+	const TilesetCategory* tsc = m_tilesetData[index];
+	for (BrushVector::const_iterator iter = tsc->brushlist.begin();
+		 iter != tsc->brushlist.end();
+		 ++iter) {
+		npc_list->Append(wxstr((*iter)->getName()), *iter);
+	}
+	npc_list->Sort();
+	SelectNpc(0);
+
+	tileset_button->SetLabel(m_tilesetNames[index] + " ▼");
 }
 
 void NpcPalettePanel::SelectNpc(size_t index) {
@@ -239,11 +275,7 @@ void NpcPalettePanel::SelectSpawnNpcBrush() {
 	spawn_npc_brush_button->SetValue(true);
 }
 
-void NpcPalettePanel::OnTilesetChange(wxCommandEvent &event) {
-	SelectTileset(event.GetSelection());
-	g_gui.ActivatePalette(GetParentPalette());
-	g_gui.SelectBrush();
-}
+
 
 void NpcPalettePanel::OnListBoxChange(wxCommandEvent &event) {
 	SelectNpc(event.GetSelection());

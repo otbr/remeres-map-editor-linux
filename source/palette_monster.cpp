@@ -29,7 +29,8 @@
 // Monster palette
 
 BEGIN_EVENT_TABLE(MonsterPalettePanel, PalettePanel)
-EVT_CHOICE(PALETTE_MONSTER_TILESET_CHOICE, MonsterPalettePanel::OnTilesetChange)
+EVT_BUTTON(PALETTE_MONSTER_TILESET_BUTTON, MonsterPalettePanel::OnTilesetButtonClick)
+EVT_MENU(wxID_ANY, MonsterPalettePanel::OnTilesetMenuSelect)
 
 EVT_LISTBOX(PALETTE_MONSTER_LISTBOX, MonsterPalettePanel::OnListBoxChange)
 
@@ -47,8 +48,8 @@ MonsterPalettePanel::MonsterPalettePanel(wxWindow* parent, wxWindowID id) :
 	wxSizer* topsizer = newd wxBoxSizer(wxVERTICAL);
 
 	wxSizer* sidesizer = newd wxStaticBoxSizer(wxVERTICAL, this, "Monsters");
-	tileset_choice = newd wxChoice(this, PALETTE_MONSTER_TILESET_CHOICE, wxDefaultPosition, wxDefaultSize, (int)0, (const wxString*)nullptr);
-	sidesizer->Add(tileset_choice, 0, wxEXPAND);
+	tileset_button = newd wxButton(this, PALETTE_MONSTER_TILESET_BUTTON, "All ▼", wxDefaultPosition, wxDefaultSize, wxBU_LEFT);
+	sidesizer->Add(tileset_button, 0, wxEXPAND);
 
 	wxSizer* monsterNameSizer = newd wxStaticBoxSizer(wxHORIZONTAL, this);
 	monster_name_text = newd wxTextCtrl(this, PALETTE_MONSTER_SEARCH, "Search name", wxDefaultPosition, wxDefaultSize, wxTE_PROCESS_ENTER);
@@ -152,9 +153,9 @@ bool MonsterPalettePanel::SelectBrush(const Brush* whatbrush) {
 	}
 
 	if (whatbrush->isMonster()) {
-		int current_index = tileset_choice->GetSelection();
-		if (current_index != wxNOT_FOUND) {
-			const TilesetCategory* tsc = reinterpret_cast<const TilesetCategory*>(tileset_choice->GetClientData(current_index));
+		int current_index = m_selectionIndex;
+		if (current_index >= 0 && current_index < (int)m_tilesetData.size()) {
+			const TilesetCategory* tsc = m_tilesetData[current_index];
 			// Select first house
 			for (BrushVector::const_iterator iter = tsc->brushlist.begin(); iter != tsc->brushlist.end(); ++iter) {
 				if (*iter == whatbrush) {
@@ -164,9 +165,9 @@ bool MonsterPalettePanel::SelectBrush(const Brush* whatbrush) {
 			}
 		}
 		// Not in the current display, search the hidden one's
-		for (size_t i = 0; i < tileset_choice->GetCount(); ++i) {
+		for (size_t i = 0; i < m_tilesetData.size(); ++i) {
 			if (current_index != (int)i) {
-				const TilesetCategory* tsc = reinterpret_cast<const TilesetCategory*>(tileset_choice->GetClientData(i));
+				const TilesetCategory* tsc = m_tilesetData[i];
 				for (BrushVector::const_iterator iter = tsc->brushlist.begin();
 					 iter != tsc->brushlist.end();
 					 ++iter) {
@@ -190,20 +191,29 @@ int MonsterPalettePanel::GetSelectedBrushSize() const {
 }
 
 void MonsterPalettePanel::OnUpdate() {
-	tileset_choice->Clear();
+	m_tilesetData.clear();
+	m_tilesetNames.clear();
 	g_materials.createOtherTileset();
 
 	for (TilesetContainer::const_iterator iter = g_materials.tilesets.begin(); iter != g_materials.tilesets.end(); ++iter) {
 		const TilesetCategory* tsc = iter->second->getCategory(TILESET_MONSTER);
 		if (tsc && tsc->size() > 0) {
-			tileset_choice->Append(wxstr(iter->second->name), const_cast<TilesetCategory*>(tsc));
+			m_tilesetData.push_back(tsc);
+			m_tilesetNames.push_back(wxstr(iter->second->name));
 		} else if (iter->second->name == "Others") {
 			Tileset* ts = const_cast<Tileset*>(iter->second);
 			TilesetCategory* rtsc = ts->getCategory(TILESET_MONSTER);
-			tileset_choice->Append(wxstr(ts->name), rtsc);
+			m_tilesetData.push_back(rtsc);
+			m_tilesetNames.push_back(wxstr(ts->name));
 		}
 	}
-	SelectTileset(0);
+	
+	// Ensure selection is valid
+	if (m_selectionIndex >= (int)m_tilesetData.size()) {
+		m_selectionIndex = 0;
+	}
+	
+	SelectTileset(m_selectionIndex);
 }
 
 void MonsterPalettePanel::OnUpdateBrushSize(BrushShape shape, int size) {
@@ -215,26 +225,55 @@ void MonsterPalettePanel::OnSwitchIn() {
 	g_gui.SetBrushSize(spawn_monster_size_spin->GetValue());
 }
 
-void MonsterPalettePanel::SelectTileset(size_t index) {
-	ASSERT(tileset_choice->GetCount() >= index);
-
-	monster_list->Clear();
-	if (tileset_choice->GetCount() == 0) {
-		// No tilesets :(
-		monster_brush_button->Enable(false);
-	} else {
-		const TilesetCategory* tsc = reinterpret_cast<const TilesetCategory*>(tileset_choice->GetClientData(index));
-		for (BrushVector::const_iterator iter = tsc->brushlist.begin();
-			 iter != tsc->brushlist.end();
-			 ++iter) {
-			monster_list->Append(wxstr((*iter)->getName()), *iter);
+// Button Handlers
+void MonsterPalettePanel::OnTilesetButtonClick(wxCommandEvent& event) {
+	wxMenu menu;
+	for (size_t i = 0; i < m_tilesetNames.size(); ++i) {
+		auto* item = menu.AppendRadioItem(i, m_tilesetNames[i]);
+		if (i == (size_t)m_selectionIndex) {
+			item->Check(true);
 		}
-		monster_list->Sort();
-		SelectMonster(0);
+	}
+	const wxSize btnSize = tileset_button->GetSize();
+	tileset_button->PopupMenu(&menu, 0, btnSize.GetHeight());
+}
 
-		tileset_choice->SetSelection(index);
+void MonsterPalettePanel::OnTilesetMenuSelect(wxCommandEvent& event) {
+	int newSelection = event.GetId();
+	if (newSelection >= 0 && newSelection < (int)m_tilesetData.size()) {
+		SelectTileset(newSelection);
+		g_gui.ActivatePalette(GetParentPalette());
+		g_gui.SelectBrush();
 	}
 }
+
+void MonsterPalettePanel::SelectTileset(size_t index) {
+	if (m_tilesetData.empty()) {
+		monster_list->Clear();
+		monster_brush_button->Enable(false);
+		tileset_button->SetLabel("All ▼");
+		return;
+	}
+
+	if (index >= m_tilesetData.size()) {
+		index = 0;
+	}
+
+	m_selectionIndex = index;
+	monster_list->Clear();
+
+	const TilesetCategory* tsc = m_tilesetData[index];
+	for (BrushVector::const_iterator iter = tsc->brushlist.begin();
+		 iter != tsc->brushlist.end();
+		 ++iter) {
+		monster_list->Append(wxstr((*iter)->getName()), *iter);
+	}
+	monster_list->Sort();
+	SelectMonster(0);
+
+	tileset_button->SetLabel(m_tilesetNames[index] + " ▼");
+}
+
 
 void MonsterPalettePanel::SelectMonster(size_t index) {
 	// Save the old g_settings
@@ -274,11 +313,7 @@ void MonsterPalettePanel::SelectSpawnBrush() {
 	spawn_monster_brush_button->SetValue(true);
 }
 
-void MonsterPalettePanel::OnTilesetChange(wxCommandEvent &event) {
-	SelectTileset(event.GetSelection());
-	g_gui.ActivatePalette(GetParentPalette());
-	g_gui.SelectBrush();
-}
+
 
 void MonsterPalettePanel::OnListBoxChange(wxCommandEvent &event) {
 	SelectMonster(event.GetSelection());
@@ -325,7 +360,7 @@ void MonsterPalettePanel::OnKillFocus(wxFocusEvent &event) {
 void MonsterPalettePanel::OnChangeMonsterNameSearch(wxCommandEvent &event) {
 	const auto monsterNameSearch = as_lower_str(monster_name_text->GetValue().ToStdString());
 
-	const auto index = tileset_choice->GetSelection();
+	const auto index = m_selectionIndex;
 
 	if (monsterNameSearch.empty()) {
 		SelectTileset(index);
@@ -333,7 +368,9 @@ void MonsterPalettePanel::OnChangeMonsterNameSearch(wxCommandEvent &event) {
 	}
 
 	monster_list->Clear();
-	const auto tilesetCategory = reinterpret_cast<const TilesetCategory*>(tileset_choice->GetClientData(index));
+	if (index < 0 || index >= (int)m_tilesetData.size()) return;
+
+	const auto tilesetCategory = m_tilesetData[index];
 	for (auto it = tilesetCategory->brushlist.begin(); it != tilesetCategory->brushlist.end(); ++it) {
 		const auto monsterName = wxstr((*it)->getName());
 		const auto regexPattern = std::regex(monsterNameSearch);

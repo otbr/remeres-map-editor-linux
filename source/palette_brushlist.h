@@ -254,7 +254,9 @@ public:
 	void OnSwitchIn();
 
 	// Event handlers
-	void OnCategoryListChanged(wxCommandEvent& event);
+	// Event handlers
+	void OnCategoryButtonClick(wxCommandEvent& event);
+	void OnCategoryMenuSelect(wxCommandEvent& event);
 	void OnClickAddTileset(wxCommandEvent &WXUNUSED(event));
 	void OnClickAddItemToTileset(wxCommandEvent &WXUNUSED(event));
 
@@ -283,8 +285,8 @@ protected:
 	wxSizer* pageInfoSizer = newd wxFlexGridSizer(7, 1, 1);
 	PaletteType paletteType;
 	
-	// Replaced wxChoicebook with manual implementation
-	wxChoice* m_categoryChoice = nullptr;
+	// Replaced wxChoice with wxButton + wxMenu
+	wxButton* m_categoryButton = nullptr;
 	wxPanel* m_pageContainer = nullptr;
 	std::vector<BrushPanel*> m_pages;
 	int m_currentPageIndex = -1;

@@ -39,7 +39,8 @@
 BEGIN_EVENT_TABLE(HousePalettePanel, PalettePanel)
 EVT_TIMER(PALETTE_LAYOUT_FIX_TIMER, HousePalettePanel::OnLayoutFixTimer)
 
-EVT_CHOICE(PALETTE_HOUSE_TOWN_CHOICE, HousePalettePanel::OnTownChange)
+EVT_BUTTON(PALETTE_HOUSE_TOWN_BUTTON, HousePalettePanel::OnTownButtonClick)
+EVT_MENU(wxID_ANY, HousePalettePanel::OnTownMenuSelect)
 
 EVT_LISTBOX(PALETTE_HOUSE_LISTBOX, HousePalettePanel::OnListBoxChange)
 EVT_LISTBOX_DCLICK(PALETTE_HOUSE_LISTBOX, HousePalettePanel::OnListBoxDoubleClick)
@@ -61,8 +62,8 @@ HousePalettePanel::HousePalettePanel(wxWindow* parent, wxWindowID id) :
 	wxSizer* tmpsizer;
 
 	wxSizer* sidesizer = newd wxStaticBoxSizer(wxVERTICAL, this, "Houses");
-	town_choice = newd wxChoice(this, PALETTE_HOUSE_TOWN_CHOICE, wxDefaultPosition, wxDefaultSize, (int)0, (const wxString*)nullptr);
-	sidesizer->Add(town_choice, 0, wxEXPAND);
+	town_button = newd wxButton(this, PALETTE_HOUSE_TOWN_BUTTON, "All ▼", wxDefaultPosition, wxDefaultSize, wxBU_LEFT);
+	sidesizer->Add(town_button, 0, wxEXPAND);
 
 	house_list = newd SortableListBox(this, PALETTE_HOUSE_LISTBOX);
 #ifdef __APPLE__
@@ -157,10 +158,10 @@ bool HousePalettePanel::SelectBrush(const Brush* whatbrush) {
 		const HouseBrush* house_brush = static_cast<const HouseBrush*>(whatbrush);
 		for (HouseMap::iterator house_iter = map->houses.begin(); house_iter != map->houses.end(); ++house_iter) {
 			if (house_iter->second->id == house_brush->getHouseID()) {
-				for (uint32_t i = 0; i < town_choice->GetCount(); ++i) {
-					Town* town = reinterpret_cast<Town*>(town_choice->GetClientData(i));
+				for (uint32_t i = 0; i < m_townData.size(); ++i) {
+					Town* town = m_townData[i];
 					// If it's "No Town" (nullptr) select it, or if it has the same town ID as the house
-					if (town == nullptr || town->getID() == house_iter->second->townid) {
+					if ((town == nullptr && house_iter->second->townid == 0) || (town != nullptr && town->getID() == house_iter->second->townid)) {
 						SelectTown(i);
 						for (uint32_t j = 0; j < house_list->GetCount(); ++j) {
 							if (house_iter->second->id == reinterpret_cast<House*>(house_list->GetClientData(j))->id) {
@@ -190,13 +191,15 @@ PaletteType HousePalettePanel::GetType() const {
 }
 
 void HousePalettePanel::SelectTown(size_t index) {
-	ASSERT(town_choice->GetCount() >= index);
-
-	if (map == nullptr || town_choice->GetCount() == 0) {
+	if (map == nullptr || m_townData.empty()) {
 		// No towns :(
 		add_house_button->Enable(false);
+		town_button->SetLabel("No Towns ▼");
 	} else {
-		Town* what_town = reinterpret_cast<Town*>(town_choice->GetClientData(index));
+		if (index >= m_townData.size()) index = 0;
+		m_selectionIndex = index;
+		
+		Town* what_town = m_townData[index];
 
 		// Clear the old houselist
 		house_list->Clear();
@@ -218,9 +221,30 @@ void HousePalettePanel::SelectTown(size_t index) {
 
 		// Select first house
 		SelectHouse(0);
-		town_choice->SetSelection(index);
+		
+		town_button->SetLabel(m_townNames[index] + " ▼");
 		add_house_button->Enable(what_town != nullptr);
 		ASSERT(what_town == nullptr || add_house_button->IsEnabled() || !IsEnabled());
+	}
+}
+
+// Button Handlers
+void HousePalettePanel::OnTownButtonClick(wxCommandEvent& event) {
+	wxMenu menu;
+	for (size_t i = 0; i < m_townNames.size(); ++i) {
+		auto* item = menu.AppendRadioItem(i, m_townNames[i]);
+		if (i == (size_t)m_selectionIndex) {
+			item->Check(true);
+		}
+	}
+	const wxSize btnSize = town_button->GetSize();
+	town_button->PopupMenu(&menu, 0, btnSize.GetHeight());
+}
+
+void HousePalettePanel::OnTownMenuSelect(wxCommandEvent& event) {
+	int newSelection = event.GetId();
+	if (newSelection >= 0 && newSelection < (int)m_townData.size()) {
+		SelectTown(newSelection);
 	}
 }
 
@@ -273,9 +297,10 @@ void HousePalettePanel::SelectExitBrush() {
 }
 
 void HousePalettePanel::OnUpdate() {
-	int old_town_selection = town_choice->GetSelection();
+	int old_town_selection = m_selectionIndex;
 
-	town_choice->Clear();
+	m_townData.clear();
+	m_townNames.clear();
 	house_list->Clear();
 
 	if (map == nullptr) {
@@ -283,22 +308,25 @@ void HousePalettePanel::OnUpdate() {
 	}
 
 	if (map->towns.count() != 0) {
-		// Create choice control
+		// Populate town data
 		for (TownMap::iterator town_iter = map->towns.begin(); town_iter != map->towns.end(); ++town_iter) {
-			town_choice->Append(wxstr(town_iter->second->getName()), town_iter->second);
+			m_townData.push_back(town_iter->second);
+			m_townNames.push_back(wxstr(town_iter->second->getName()));
 		}
-		town_choice->Append("No Town", (void*)(nullptr));
+		// Add "No Town" option
+		m_townData.push_back(nullptr);
+		m_townNames.push_back("No Town");
+
 		if (old_town_selection <= 0) {
 			SelectTown(0);
-		} else if ((size_t)old_town_selection <= town_choice->GetCount()) {
+		} else if ((size_t)old_town_selection < m_townData.size()) {
 			SelectTown(old_town_selection);
 		} else {
-			SelectTown(old_town_selection - 1);
+			SelectTown(0);
 		}
 
 		house_list->Enable(true);
 	} else {
-		town_choice->Append("No Town", (void*)(nullptr));
 		select_position_button->Enable(false);
 		select_position_button->SetValue(false);
 		house_brush_button->Enable(false);
@@ -306,15 +334,10 @@ void HousePalettePanel::OnUpdate() {
 		add_house_button->Enable(false);
 		edit_house_button->Enable(false);
 		remove_house_button->Enable(false);
-
-		SelectTown(0);
 	}
 }
 
-void HousePalettePanel::OnTownChange(wxCommandEvent &event) {
-	SelectTown(event.GetSelection());
-	g_gui.SelectBrush();
-}
+
 
 void HousePalettePanel::OnListBoxChange(wxCommandEvent &event) {
 	SelectHouse(event.GetSelection());
@@ -360,7 +383,7 @@ void HousePalettePanel::OnClickAddHouse(wxCommandEvent &event) {
 	std::ostringstream os;
 	os << "Unnamed House #" << new_house->id;
 	new_house->name = os.str();
-	Town* town = reinterpret_cast<Town*>(town_choice->GetClientData(town_choice->GetSelection()));
+	Town* town = m_townData[m_selectionIndex];
 
 	ASSERT(town);
 	new_house->townid = town->getID();

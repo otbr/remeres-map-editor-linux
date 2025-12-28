@@ -53,7 +53,6 @@ public:
 	void OnChangeSpawnNpcTime(wxSpinEvent &event);
 	void OnChangeSpawnNpcSize(wxSpinEvent &event);
 
-	void OnTilesetChange(wxCommandEvent &event);
 	void OnListBoxChange(wxCommandEvent &event);
 	void OnClickNpcBrushButton(wxCommandEvent &event);
 	void OnClickSpawnNpcBrushButton(wxCommandEvent &event);
@@ -62,7 +61,13 @@ protected:
 	void SelectNpcBrush();
 	void SelectSpawnNpcBrush();
 
-	wxChoice* tileset_choice;
+	void OnTilesetButtonClick(wxCommandEvent& event);
+	void OnTilesetMenuSelect(wxCommandEvent& event);
+
+	wxButton* tileset_button;
+	std::vector<const TilesetCategory*> m_tilesetData;
+	std::vector<wxString> m_tilesetNames;
+	int m_selectionIndex = 0;
 	SortableListBox* npc_list;
 	wxToggleButton* npc_brush_button;
 	wxToggleButton* spawn_npc_brush_button;
