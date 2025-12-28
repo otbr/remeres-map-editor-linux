@@ -1,10 +1,6 @@
 <materials>
 	<!-- Tilesets -->
-	<include file="tilesets/addons_and_quest_items.xml"/>
-	<include file="tilesets/animals.xml"/>
-	<include file="tilesets/architecture.xml"/>
-	<include file="tilesets/archway.xml"/>
-	<include file="tilesets/banners.xml"/>
+	<include file="tilesets/architecture_parts.xml"/>
 	<include file="tilesets/boats.xml"/>
 	<include file="tilesets/borders.xml"/>
 	<include file="tilesets/bottom.xml"/>
@@ -12,12 +8,12 @@
 	<include file="tilesets/common.xml"/>
 	<include file="tilesets/constructions.xml"/>
 	<include file="tilesets/containers.xml"/>
-	<include file="tilesets/contest_prizes.xml"/>
+
 	<include file="tilesets/corpses.xml"/>
 	<include file="tilesets/creature_outfits.xml"/>
 	<include file="tilesets/creature_products.xml"/>
 	<include file="tilesets/crystals.xml"/>
-	<include file="tilesets/decorations.xml"/>
+	<include file="tilesets/decor_rewards.xml"/>
 	<include file="tilesets/depots.xml"/>
 	<include file="tilesets/desert.xml"/>
 	<include file="tilesets/dools.xml"/>
@@ -29,7 +25,6 @@
 	<include file="tilesets/equipments_rings.xml"/>
 	<include file="tilesets/equipments_shields.xml"/>
 	<include file="tilesets/exterior.xml"/>
-	<include file="tilesets/festive_items.xml"/>
 	<include file="tilesets/fields.xml"/>
 	<include file="tilesets/fluid_containers.xml"/>
 	<include file="tilesets/food.xml"/>
@@ -46,33 +41,27 @@
 	<include file="tilesets/kitchen.xml"/>
 	<include file="tilesets/levers.xml"/>
 	<include file="tilesets/magic_fields.xml"/>
-	<include file="tilesets/magical_items.xml"/>
+
 	<include file="tilesets/mountains.xml"/>
 	<include file="tilesets/musical_instruments.xml"/>
 	<include file="tilesets/natural_products.xml"/>
-	<include file="tilesets/nature.xml"/>
+	<include file="tilesets/nature_flora.xml"/>
+	<include file="tilesets/nature_details.xml"/>
 	<include file="tilesets/nature_brushes.xml"/>
-	<include file="tilesets/nature_flowers.xml"/>
-	<include file="tilesets/nature_grass.xml"/>
-	<include file="tilesets/nature_holes.xml"/>
-	<include file="tilesets/nature_plants.xml"/>
 	<include file="tilesets/nature_steppe_plants.xml"/>
-	<include file="tilesets/nature_stones.xml"/>
 	<include file="tilesets/nature_stones_crystals.xml"/>
-	<include file="tilesets/nature_trees.xml"/>
 	<include file="tilesets/nature_underground_plants.xml"/>
-	<include file="tilesets/nature_tiny_borders.xml"/>
 	<include file="tilesets/oldschool.xml"/>
 	<include file="tilesets/pipes.xml"/>
 	<include file="tilesets/plants_and_flowers.xml"/>
 	<include file="tilesets/potions.xml"/>
-	<include file="tilesets/quest_objects.xml"/>
+	<include file="tilesets/quests_magic.xml"/>
 	<include file="tilesets/raillings.xml"/>
-	<include file="tilesets/refuse.xml"/>
-	<include file="tilesets/remains.xml"/>
-	<include file="tilesets/rocks.xml"/>
+
+
+
 	<include file="tilesets/roofs.xml"/>
-	<include file="tilesets/rubbish.xml"/>
+
 	<include file="tilesets/runes.xml"/>
 	<include file="tilesets/sea.xml"/>
 	<include file="tilesets/signs.xml"/>
@@ -87,7 +76,6 @@
 	<include file="tilesets/tools.xml"/>
 	<include file="tilesets/trash.xml"/>
 	<include file="tilesets/trinkets.xml"/>
-	<include file="tilesets/trophies.xml"/>
 	<include file="tilesets/unknown.xml"/>
 	<include file="tilesets/utilities.xml"/>
 	<include file="tilesets/valuables.xml"/>

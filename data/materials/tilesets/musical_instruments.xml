@@ -1,6 +1,6 @@
 <materials>
 	<tileset name="Musical Instruments">
-		<doodad>
+		<items>
 			<item id="2948"/>
 			<item id="2949"/>
 			<item id="2950"/>
@@ -32,6 +32,6 @@
 			<item id="8645"/>
 			<item id="12602"/>
 			<item id="21554"/>
-		</doodad>
+		</items>
 	</tileset>
 </materials>

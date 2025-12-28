@@ -1,6 +1,6 @@
 <materials>
 	<tileset name="Kitchen">
-		<doodad>
+		<items>
 			<item id="2880"/>
 			<item id="2881"/>
 			<item id="2882"/>
@@ -22,6 +22,6 @@
 			<item id="31913"/>
 			<item id="32071"/>
 			<item id="32072"/>
-		</doodad>
+		</items>
 	</tileset>
 </materials>
