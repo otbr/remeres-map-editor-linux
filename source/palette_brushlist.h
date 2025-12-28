@@ -284,7 +284,7 @@ protected:
 	PaletteType paletteType;
 	
 	// Replaced wxChoicebook with manual implementation
-	wxListBox* m_categoryList = nullptr;
+	wxComboBox* m_categoryCombo = nullptr;
 	wxPanel* m_pageContainer = nullptr;
 	std::vector<BrushPanel*> m_pages;
 	int m_currentPageIndex = -1;
