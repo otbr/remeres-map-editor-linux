@@ -19,83 +19,60 @@
 #define RME_PALETTE_H_
 
 #include "palette_common.h"
-#include <wx/simplebook.h>
+#include <vector>
 
-class BrushPalettePanel;
-class MonsterPalettePanel;
-class NpcPalettePanel;
-class HousePalettePanel;
-class WaypointPalettePanel;
-class ZonesPalettePanel;
+class PaletteView;
+class EarControl;
 
+// Refactored PaletteWindow class that acts as a container for multiple "PaletteViews"
+// If multiple views are present, it shows the "EarControl" to switch between them.
 class PaletteWindow : public wxPanel {
 public:
 	PaletteWindow(wxWindow* parent, const TilesetContainer &tilesets);
-	~PaletteWindow() = default;
+	~PaletteWindow();
 
-	// Interface
-	// Reloads layout g_settings from g_settings (and using map)
+	// Container Interface
+	// Adds a new view to this window (creates a new ear)
+	void AddView();
+	// Removes the currently active view
+	void RemoveCurrentView();
+
+	// Proxy Interface (Forwards to Active View)
 	void ReloadSettings(Map* from);
-	// Flushes all pages and forces them to be reloaded from the palette data again
 	void InvalidateContents();
-	// (Re)Loads all currently displayed data, called from InvalidateContents implicitly
 	void LoadCurrentContents() const;
-	// Goes to the selected page and selects any brush there
 	void SelectPage(PaletteType palette);
-	// The currently selected brush in this palette
 	Brush* GetSelectedBrush() const;
-	// The currently selected brush size in this palette
 	int GetSelectedBrushSize() const;
-	// The currently selected page (terrain, doodad...)
 	PaletteType GetSelectedPage() const;
-
-	// Custom Event handlers (something has changed?)
-	// Finds the brush pointed to by whatbrush and selects it as the current brush (also changes page)
-	// Returns if the brush was found in this palette
+	
+	// Custom Event handlers (Forwards to Active View)
 	virtual bool OnSelectBrush(const Brush* whatBrush, PaletteType primary = TILESET_UNKNOWN);
-	// Updates the palette window to use the current brush size
 	virtual void OnUpdateBrushSize(BrushShape shape, int size);
-	// Updates the content of the palette (eg. houses, monsters)
 	virtual void OnUpdate(Map* map);
 
-	// wxWidgets Event Handlers
-	void OnPaletteButtonClick(wxCommandEvent& event);
-	void OnPaletteMenuSelect(wxCommandEvent& event);
-	void OnSwitchingPage(int oldSelection, int newSelection);
-	// Forward key events to the parent window (The Map Window)
-	void OnKey(wxKeyEvent &event);
+	// Event Handlers for Container
+	void OnEarSelected(wxCommandEvent& event);
+	void OnEarAdd(wxCommandEvent& event);
+    void OnPaletteContentChanged(wxCommandEvent& event);
 	void OnClose(wxCloseEvent &);
+    void OnSize(wxSizeEvent &event); // To handle layout of ears
+
+    // Temporary accessor to getting internal views if needed
+    PaletteView* GetActiveView() const;
+    
+    EarControl* GetEarControl() const { return m_earControl; }
 
 protected:
-	static void AddBrushToolPanel(PalettePanel* panel, const Config::Key config);
-	static void AddBrushSizePanel(PalettePanel* panel, const Config::Key config);
+    void UpdateLayout();
+    void UpdateEars();
 
-	static PalettePanel* CreateTerrainPalette(wxWindow* parent, const TilesetContainer &tilesets);
-	static PalettePanel* CreateDoodadPalette(wxWindow* parent, const TilesetContainer &tilesets);
-	static PalettePanel* CreateItemPalette(wxWindow* parent, const TilesetContainer &tilesets);
-	static PalettePanel* CreateMonsterPalette(wxWindow* parent, const TilesetContainer &tilesets);
-	static PalettePanel* CreateNpcPalette(wxWindow* parent, const TilesetContainer &tilesets);
-	static PalettePanel* CreateHousePalette(wxWindow* parent, const TilesetContainer &tilesets);
-	static PalettePanel* CreateWaypointPalette(wxWindow* parent, const TilesetContainer &tilesets);
-	static PalettePanel* CreateZonesPalette(wxWindow* parent, const TilesetContainer &tilesets);
-	static PalettePanel* CreateRAWPalette(wxWindow* parent, const TilesetContainer &tilesets);
+	EarControl* m_earControl = nullptr;
+    std::vector<PaletteView*> m_views;
+    PaletteView* m_activeView = nullptr;
+    const TilesetContainer& m_tilesets;
 
-	static bool CanSelectHouseBrush(PalettePanel* palette, const Brush* whatBrush);
-	static bool CanSelectBrush(PalettePanel* palette, const Brush* whatBrush);
-
-	// Replaced wxChoice with wxButton + wxMenu for explicit positioning
-	wxButton* paletteButton = nullptr;
-	wxSimplebook* paletteBook = nullptr;
-
-	BrushPalettePanel* terrainPalette = nullptr;
-	BrushPalettePanel* doodadPalette = nullptr;
-	BrushPalettePanel* itemPalette = nullptr;
-	MonsterPalettePanel* monsterPalette = nullptr;
-	NpcPalettePanel* npcPalette = nullptr;
-	HousePalettePanel* housePalette = nullptr;
-	WaypointPalettePanel* waypointPalette = nullptr;
-	ZonesPalettePanel* zonesPalette = nullptr;
-	BrushPalettePanel* rawPalette = nullptr;
+    wxBoxSizer* m_mainSizer = nullptr;
 
 	DECLARE_EVENT_TABLE()
 };

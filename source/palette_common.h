@@ -62,6 +62,7 @@ public:
 
 	PaletteWindow* GetParentPalette() const;
 	virtual wxString GetName() const;
+	virtual wxString GetContentSummary() const;
 	virtual PaletteType GetType() const;
 
 	// Add a tool panel!

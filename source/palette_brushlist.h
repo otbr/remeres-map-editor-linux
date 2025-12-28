@@ -238,6 +238,8 @@ public:
 	// Loads all content in this panel
 	void LoadAllContents();
 
+	wxString GetContentSummary() const override;
+
 	PaletteType GetType() const;
 	BrushListType GetListType() const;
 

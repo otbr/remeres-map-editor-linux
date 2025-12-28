@@ -270,7 +270,9 @@ target_sources(${PROJECT_NAME}
 	palette_npc.cpp
 	palette_waypoints.cpp
 	palette_zones.cpp
+	palette_view.cpp
 	palette_window.cpp
+	ear_control.cpp
 	pngfiles.cpp
 	preferences.cpp
 	process_com.cpp

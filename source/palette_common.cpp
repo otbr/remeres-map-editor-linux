@@ -114,6 +114,10 @@ wxString PalettePanel::GetName() const {
 	return wxEmptyString;
 }
 
+wxString PalettePanel::GetContentSummary() const {
+	return GetName();
+}
+
 PaletteType PalettePanel::GetType() const {
 	return TILESET_UNKNOWN;
 }

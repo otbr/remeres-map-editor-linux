@@ -38,6 +38,7 @@
 #include "result_window.h"
 #include "minimap_window.h"
 #include "palette_window.h"
+#include "ear_control.h"
 #include "map_display.h"
 #include "application.h"
 #include "welcome_dialog.h"
@@ -729,6 +730,16 @@ void GUI::LoadPerspective() {
 			palette_list.push_back(tmp);
 		}
 
+        // Fix for "Always Valid Tabs":
+        // If no palette layout is found/saved, or the list is empty, force creation of 
+        // at least 2 palettes (Left and Right) so the EarControls (Buttons) appear.
+        if (palette_list.empty()) {
+             // Just creating them will invoke CreatePalette which adds them to AUI.
+             // We don't have saved PaneInfo strings, but CreatePalette sets default AUI info.
+             CreatePalette(); // Left
+             CreatePalette(); // Right
+        }
+
 		for (const std::string &name : palette_list) {
 			PaletteWindow* palette = CreatePalette();
 
@@ -935,13 +946,93 @@ PaletteWindow* GUI::CreatePalette() {
 		return nullptr;
 	}
 
+	// Logic:
+	// 0 palettes: Create 1st (Left)
+	// 1 palette: Create 2nd (Right)
+	// 2+ palettes: Add tab to 1st (Left)
+
+	if (palettes.size() >= 2) {
+		// Add to the first palette (the one on the left/primary)
+		// Usually palettes.back() is the first one created if we push_front?
+		// Wait, ActivatePalette pushes to front.
+		// Let's assume the user wants to add to the "Main" palette window.
+		// RME lists palettes in a std::list. 
+		// If we just pick the first one in the list, it might be the most recently active one.
+		// The requirement says: "A partir da terceira, elas se tornam 'orelhas' na lateral da primeira."
+		// "A primeira palette aberta continua fixa na esquerda."
+		
+		// Let's find the one that is likely the left one. 
+		// Without complex layout analysis, we can try to use the oldest one or just the one that is currently active?
+		// Actually, if we have 2 windows, Left and Right.
+		// If the user clicks "New Palette", we want it to go to the Left one.
+		
+		// In RME, palettes are stored in std::list<PaletteWindow*> palettes;
+		// When created, pushed_front.
+		// So the "first" one created is at the back.
+		
+		PaletteWindow* target = palettes.back(); // Oldest
+		if (target) {
+			target->AddView();
+			
+			// Make sure it's visible
+			if (!aui_manager->GetPane(target).IsShown()) {
+				aui_manager->GetPane(target).Show(true);
+				aui_manager->Update();
+			}
+			return target;
+		}
+	}
+
 	auto* palette = newd PaletteWindow(root, g_materials.tilesets);
 	wxAuiPaneInfo info = wxAuiPaneInfo().Caption("Palette").TopDockable(false).BottomDockable(false);
+	
 	if (!palettes.empty()) {
 		info.Right();
+	} else {
+		info.Left(); // First one goes left
 	}
+	
 	aui_manager->AddPane(palette, info);
-	palette->OnUpdate(GetCurrentMapTab()->GetMap());
+
+    // Add EarControl as TOP Exogenous Tab Bar
+    if (palette->GetEarControl()) {
+        wxAuiPaneInfo earInfo;
+        earInfo.Name(wxT("PaletteTabs"));
+        earInfo.CaptionVisible(false); // No caption
+        earInfo.Top();                 // Dock at Top
+        earInfo.Layer(2);              // Higher layer 
+        earInfo.Row(0);                // Topmost row
+        earInfo.Position(0);
+        earInfo.Fixed();               // Fixed height
+        earInfo.Resizable(false);
+        earInfo.Movable(false);        // Can't move it
+        earInfo.DockFixed(true);       // Docked fixed
+        earInfo.PaneBorder(false);
+        earInfo.MinSize(-1, 24);
+        earInfo.BestSize(-1, 24);
+        earInfo.FloatingSize(-1, 24);
+
+        // Unique name to allow multiple bars
+        wxString earName = wxString::Format("PaletteTabs_%d", (int)palettes.size());
+        earInfo.Name(earName);
+
+        // Alignment Logic: Left for first (0), Right for subsequent
+        if (!palettes.empty()) {
+             // Right Palette
+             palette->GetEarControl()->SetAlignment(true);
+             earInfo.Position(1); // Try to place to the right of the first one if same row
+        } else {
+             // Left Palette
+             earInfo.Position(0);
+        }
+        
+        aui_manager->AddPane(palette->GetEarControl(), earInfo);
+        aui_manager->GetPane(palette->GetEarControl()).Show(); 
+    }
+
+    // Safe update: GetCurrentMapTab() might be null on startup
+    Map* currentMap = GetCurrentMapTab() ? GetCurrentMapTab()->GetMap() : nullptr;
+	palette->OnUpdate(currentMap);
 	aui_manager->Update();
 
 	// Make us the active palette
@@ -1497,7 +1588,9 @@ void GUI::SetBrushSize(int nz) {
 		palette->OnUpdateBrushSize(brush_shape, brush_size);
 	}
 
-	root->GetAuiToolBar()->UpdateBrushSize(brush_shape, brush_size);
+	if (root->GetAuiToolBar()) {
+		root->GetAuiToolBar()->UpdateBrushSize(brush_shape, brush_size);
+	}
 }
 
 void GUI::SetBrushVariation(int nz) {
@@ -1522,7 +1615,9 @@ void GUI::SetBrushShape(BrushShape bs) {
 		palette->OnUpdateBrushSize(brush_shape, brush_size);
 	}
 
-	root->GetAuiToolBar()->UpdateBrushSize(brush_shape, brush_size);
+	if (root->GetAuiToolBar()) {
+		root->GetAuiToolBar()->UpdateBrushSize(brush_shape, brush_size);
+	}
 }
 
 void GUI::SetBrushThickness(bool on, int x, int y) {
@@ -1685,7 +1780,9 @@ bool GUI::SelectBrush(const Brush* whatbrush, PaletteType primary) {
 	}
 
 	SelectBrushInternal(const_cast<Brush*>(whatbrush));
-	root->GetAuiToolBar()->UpdateBrushButtons();
+	if (root->GetAuiToolBar()) {
+		root->GetAuiToolBar()->UpdateBrushButtons();
+	}
 	return true;
 }
 

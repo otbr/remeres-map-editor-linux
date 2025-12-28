@@ -20,6 +20,9 @@
 
 #include "filehandle.h"
 #include "brush_enums.h"
+#include <map>
+#include <memory>
+#include <pugixml.hpp>
 
 namespace canary {
 	namespace protobuf {

@@ -377,7 +377,11 @@ MainFrame::MainFrame(const wxString &title, const wxPoint &pos, const wxSize &si
 	g_gui.aui_manager = newd wxAuiManager(this);
 	g_gui.tabbook = newd MapTabbook(this, wxID_ANY);
 
-	tool_bar = newd MainToolBar(this, g_gui.aui_manager);
+	g_gui.aui_manager = newd wxAuiManager(this);
+	g_gui.tabbook = newd MapTabbook(this, wxID_ANY);
+
+	// tool_bar = newd MainToolBar(this, g_gui.aui_manager);
+    tool_bar = nullptr;
 
 	g_gui.aui_manager->AddPane(g_gui.tabbook, wxAuiPaneInfo().CenterPane().Floatable(false).CloseButton(false).PaneBorder(false));
 	// Note: aui_manager->Update() is deferred until after Show() to avoid GTK layout errors
@@ -428,7 +432,7 @@ void MainFrame::OnUpdateMenus(wxCommandEvent &) {
 }
 
 void MainFrame::OnUpdateActions(wxCommandEvent &) {
-	tool_bar->UpdateButtons();
+	if (tool_bar) tool_bar->UpdateButtons();
 	g_gui.RefreshActions();
 }
 
@@ -449,7 +453,7 @@ bool MainFrame::MSWTranslateMessage(WXMSG* msg) {
 
 void MainFrame::UpdateMenubar() {
 	menu_bar->Update();
-	tool_bar->UpdateButtons();
+	if (tool_bar) tool_bar->UpdateButtons();
 }
 
 bool MainFrame::DoQueryClose() {

@@ -17,6 +17,7 @@
 
 #include "main.h"
 
+#include "palette_view.h"
 #include "palette_brushlist.h"
 #include "gui.h"
 #include "brush.h"
@@ -364,8 +365,17 @@ void BrushPalettePanel::OnCategoryMenuSelect(wxCommandEvent& event) {
 			}
 			g_gui.ActivatePalette(GetParentPalette());
 			g_gui.SelectBrush();
+
+			// Notify Parent (PaletteView -> PaletteWindow)
+			wxCommandEvent evt(EVT_PALETTE_CONTENT_CHANGED, GetId());
+			evt.SetEventObject(this);
+			ProcessEvent(evt);
 		}
 	}
+}
+
+wxString BrushPalettePanel::GetContentSummary() const {
+	return GetPageText(GetSelection());
 }
 
 void BrushPalettePanel::OnSwitchIn() {
