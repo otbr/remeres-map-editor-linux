@@ -728,7 +728,8 @@ void BorderEditorDialog::OnRawCategoryButtonClick(wxCommandEvent& event) {
     }
     
     menu.Bind(wxEVT_MENU, &BorderEditorDialog::OnRawCategoryMenuSelect, this);
-    PopupMenu(&menu);
+    const wxSize btnSize = m_rawCategoryButton->GetSize();
+    m_rawCategoryButton->PopupMenu(&menu, 0, btnSize.GetHeight());
 }
 
 void BorderEditorDialog::OnRawCategoryMenuSelect(wxCommandEvent& event) {
@@ -757,7 +758,8 @@ void BorderEditorDialog::OnGroundTilesetButtonClick(wxCommandEvent& event) {
     }
     
     menu.Bind(wxEVT_MENU, &BorderEditorDialog::OnGroundTilesetMenuSelect, this);
-    PopupMenu(&menu);
+    const wxSize btnSize = m_groundTilesetButton->GetSize();
+    m_groundTilesetButton->PopupMenu(&menu, 0, btnSize.GetHeight());
 }
 
 void BorderEditorDialog::OnGroundTilesetMenuSelect(wxCommandEvent& event) {
@@ -786,7 +788,8 @@ void BorderEditorDialog::OnWallTilesetButtonClick(wxCommandEvent& event) {
     }
     
     menu.Bind(wxEVT_MENU, &BorderEditorDialog::OnWallTilesetMenuSelect, this);
-    PopupMenu(&menu);
+    const wxSize btnSize = m_wallTilesetButton->GetSize();
+    m_wallTilesetButton->PopupMenu(&menu, 0, btnSize.GetHeight());
 }
 
 void BorderEditorDialog::OnWallTilesetMenuSelect(wxCommandEvent& event) {
@@ -811,7 +814,8 @@ void BorderEditorDialog::OnBorderAlignmentButtonClick(wxCommandEvent& event) {
     menu.Check(4000 + m_borderAlignmentSelection, true);
     
     menu.Bind(wxEVT_MENU, &BorderEditorDialog::OnBorderAlignmentMenuSelect, this);
-    PopupMenu(&menu);
+    const wxSize btnSize = m_borderAlignmentButton->GetSize();
+    m_borderAlignmentButton->PopupMenu(&menu, 0, btnSize.GetHeight());
 }
 
 void BorderEditorDialog::OnBorderAlignmentMenuSelect(wxCommandEvent& event) {
