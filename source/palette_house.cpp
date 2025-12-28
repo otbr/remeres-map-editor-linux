@@ -72,12 +72,11 @@ HousePalettePanel::HousePalettePanel(wxWindow* parent, wxWindowID id) :
 #endif
 	sidesizer->Add(house_list, 1, wxEXPAND);
 
-	tmpsizer = newd wxBoxSizer(wxHORIZONTAL);
-	wxSizerFlags sizerFlags(1);
-	tmpsizer->Add(add_house_button = newd wxButton(this, PALETTE_HOUSE_ADD_HOUSE, "Add", wxDefaultPosition, wxSize(50, -1)), sizerFlags);
-	tmpsizer->Add(edit_house_button = newd wxButton(this, PALETTE_HOUSE_EDIT_HOUSE, "Edit", wxDefaultPosition, wxSize(50, -1)), sizerFlags);
-	tmpsizer->Add(remove_house_button = newd wxButton(this, PALETTE_HOUSE_REMOVE_HOUSE, "Remove", wxDefaultPosition, wxSize(70, -1)), sizerFlags);
-	sidesizer->Add(tmpsizer, wxSizerFlags(0).Right());
+	tmpsizer = newd wxGridSizer(1, 3, 0, 0);
+	tmpsizer->Add(add_house_button = newd wxButton(this, PALETTE_HOUSE_ADD_HOUSE, "Add"), wxSizerFlags(1).Expand());
+	tmpsizer->Add(edit_house_button = newd wxButton(this, PALETTE_HOUSE_EDIT_HOUSE, "Edit"), wxSizerFlags(1).Expand());
+	tmpsizer->Add(remove_house_button = newd wxButton(this, PALETTE_HOUSE_REMOVE_HOUSE, "Remove"), wxSizerFlags(1).Expand());
+	sidesizer->Add(tmpsizer, wxSizerFlags(0).Expand());
 
 	topsizer->Add(sidesizer, 1, wxEXPAND);
 
@@ -86,15 +85,14 @@ HousePalettePanel::HousePalettePanel(wxWindow* parent, wxWindowID id) :
 
 	// sidesizer->Add(180, 1, wxEXPAND);
 
-	tmpsizer = newd wxBoxSizer(wxHORIZONTAL);
+	tmpsizer = newd wxGridSizer(1, 2, 0, 0);
 	house_brush_button = newd wxToggleButton(this, PALETTE_HOUSE_BRUSH_BUTTON, "House tiles");
-	tmpsizer->Add(house_brush_button);
-	sidesizer->Add(tmpsizer, wxSizerFlags(1).Center());
-
-	tmpsizer = newd wxBoxSizer(wxHORIZONTAL);
+	tmpsizer->Add(house_brush_button, wxSizerFlags(1).Expand());
+	
 	select_position_button = newd wxToggleButton(this, PALETTE_HOUSE_SELECT_EXIT_BUTTON, "Select Exit");
-	tmpsizer->Add(select_position_button);
-	sidesizer->Add(tmpsizer, wxSizerFlags(1).Center());
+	tmpsizer->Add(select_position_button, wxSizerFlags(1).Expand());
+	
+	sidesizer->Add(tmpsizer, wxSizerFlags(0).Expand());
 
 	topsizer->Add(sidesizer, 0, wxEXPAND);
 

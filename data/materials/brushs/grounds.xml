@@ -2548,7 +2548,7 @@
 		<item id="18464" chance="2000"/>
 		
 		<border align="outer" id="137"/>
-		<border align="inner" to="none" id="1"/>
+		<!-- <border align="inner" to="none" id="1"/> -->
 	</brush>
 
 	<brush name="blood water" type="ground" lookid="18615" z-order="1700">

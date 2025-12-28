@@ -50,8 +50,8 @@ protected:
 
 public:
 	// Event handling
-	void OnChangeSpawnMonsterTime(wxSpinEvent &event);
-	void OnChangeSpawnMonsterSize(wxSpinEvent &event);
+	void OnChangeSpawnMonsterTime(wxCommandEvent &event);
+	void OnChangeSpawnMonsterSize(wxCommandEvent &event);
 
 	void OnListBoxChange(wxCommandEvent &event);
 	void OnClickMonsterBrushButton(wxCommandEvent &event);
@@ -76,10 +76,10 @@ protected:
 	SortableListBox* monster_list;
 	wxToggleButton* monster_brush_button;
 	wxToggleButton* spawn_monster_brush_button;
-	wxSpinCtrl* monster_spawntime_spin;
-	wxSpinCtrl* spawn_monster_size_spin;
-	wxSpinCtrl* monster_spawndensity_spin;
-	wxSpinCtrl* monsterDefaultWeight = nullptr;
+	wxTextCtrl* monster_spawntime_spin;
+	wxTextCtrl* spawn_monster_size_spin;
+	wxTextCtrl* monster_spawndensity_spin;
+	wxTextCtrl* monsterDefaultWeight = nullptr;
 
 	bool handling_event;
 
