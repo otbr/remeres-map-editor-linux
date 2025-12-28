@@ -1165,12 +1165,7 @@ bool BorderEditorDialog::ValidateWallBrush() {
 }
 
 // Helper to get current selected type string
-wxString GetCurrentWallType(wxChoice* choice) {
-    if (!choice) return "vertical";
-    int sel = choice->GetSelection();
-    if (sel == wxNOT_FOUND) return "vertical";
-    return choice->GetString(sel);
-}
+
 
 void BorderEditorDialog::ClearWallItems(bool clearBrowser) {
     if (m_wallVisualPanel)
