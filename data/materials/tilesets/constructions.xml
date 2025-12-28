@@ -1,7 +1,0 @@
-<materials>
-	<tileset name="Constructions">
-		<items>
-			<item fromid="19209" toid="19210"/>
-		</items>
-	</tileset>
-</materials>

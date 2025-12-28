@@ -46,6 +46,9 @@ public:
 	}
 
 	virtual int getLookID() const; // We don't have a look type, this will always return 0
+	virtual std::string getAssetIdString() const override {
+		return getName();
+	}
 	virtual std::string getName() const;
 	virtual bool canDrag() const {
 		return false;

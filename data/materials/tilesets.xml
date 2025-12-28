@@ -6,7 +6,6 @@
 	<include file="tilesets/bottom.xml"/>
 	<include file="tilesets/bridges.xml"/>
 	<include file="tilesets/common.xml"/>
-	<include file="tilesets/constructions.xml"/>
 	<include file="tilesets/containers.xml"/>
 
 	<include file="tilesets/corpses.xml"/>

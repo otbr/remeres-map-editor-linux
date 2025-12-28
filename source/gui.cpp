@@ -17,6 +17,9 @@
 
 #include "main.h"
 
+#include <wx/clipbrd.h>
+#include <wx/dataobj.h>
+
 #include "gui.h"
 
 #include "application.h"
@@ -933,7 +936,11 @@ PaletteWindow* GUI::CreatePalette() {
 	}
 
 	auto* palette = newd PaletteWindow(root, g_materials.tilesets);
-	aui_manager->AddPane(palette, wxAuiPaneInfo().Caption("Palette").TopDockable(false).BottomDockable(false));
+	wxAuiPaneInfo info = wxAuiPaneInfo().Caption("Palette").TopDockable(false).BottomDockable(false);
+	if (!palettes.empty()) {
+		info.Right();
+	}
+	aui_manager->AddPane(palette, info);
 	palette->OnUpdate(GetCurrentMapTab()->GetMap());
 	aui_manager->Update();
 
@@ -1879,31 +1886,31 @@ void GUI::ListDialog(wxWindow* parent, wxString title, const wxArrayString &para
 		return;
 	}
 
-	wxArrayString list_items(param_items);
+	wxString combined_text;
+	for (const auto& item : param_items) {
+		combined_text << item << "\n";
+	}
 
 	// Create the window
 	wxDialog* dlg = newd wxDialog(parent, wxID_ANY, title, wxDefaultPosition, wxDefaultSize, wxRESIZE_BORDER | wxCAPTION | wxCLOSE_BOX);
 
 	wxSizer* sizer = newd wxBoxSizer(wxVERTICAL);
-	wxListBox* item_list = newd wxListBox(dlg, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0, nullptr, wxLB_SINGLE);
-	item_list->SetMinSize(wxSize(500, 300));
-
-	for (size_t i = 0; i != list_items.GetCount();) {
-		wxString str = list_items[i];
-		size_t pos = str.find("\n");
-		if (pos != wxString::npos) {
-			// Split string!
-			item_list->Append(str.substr(0, pos));
-			list_items[i] = str.substr(pos + 1);
-			continue;
-		}
-		item_list->Append(list_items[i]);
-		++i;
-	}
-	sizer->Add(item_list, 1, wxEXPAND);
+	wxTextCtrl* text_ctrl = newd wxTextCtrl(dlg, wxID_ANY, combined_text, wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxTE_READONLY | wxHSCROLL);
+	text_ctrl->SetMinSize(wxSize(600, 400));
+	sizer->Add(text_ctrl, 1, wxEXPAND | wxALL, 5);
 
 	wxSizer* stdsizer = newd wxBoxSizer(wxHORIZONTAL);
-	stdsizer->Add(newd wxButton(dlg, wxID_OK, "OK"), wxSizerFlags(1).Center());
+	
+	wxButton* copy_btn = newd wxButton(dlg, wxID_ANY, "Copy to Clipboard");
+	copy_btn->Bind(wxEVT_BUTTON, [text_ctrl](wxCommandEvent&) {
+		if (wxTheClipboard->Open()) {
+			wxTheClipboard->SetData(new wxTextDataObject(text_ctrl->GetValue()));
+			wxTheClipboard->Close();
+		}
+	});
+
+	stdsizer->Add(copy_btn, wxSizerFlags(0).Center().Border(wxALL, 5));
+	stdsizer->Add(newd wxButton(dlg, wxID_OK, "OK"), wxSizerFlags(0).Center().Border(wxALL, 5));
 	sizer->Add(stdsizer, wxSizerFlags(0).Center());
 
 	dlg->SetSizerAndFit(sizer);

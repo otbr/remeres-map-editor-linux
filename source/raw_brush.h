@@ -45,6 +45,9 @@ public:
 		return true;
 	}
 	virtual int getLookID() const;
+	virtual std::string getAssetIdString() const override {
+		return std::to_string(getItemID());
+	}
 	virtual std::string getName() const;
 	std::shared_ptr<ItemType> getItemType() const {
 		return itemtype;

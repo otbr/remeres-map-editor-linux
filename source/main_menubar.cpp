@@ -843,10 +843,13 @@ void MainMenuBar::OnMonsterMaker(wxCommandEvent &WXUNUSED(event)) {
 
 void MainMenuBar::OnBorderEditor(wxCommandEvent &WXUNUSED(event)) {
 	if (border_editor_dialog) {
-		border_editor_dialog->Raise();
-		border_editor_dialog->SetFocus();
+		wxAuiPaneInfo& info = g_gui.aui_manager->GetPane(border_editor_dialog);
+		if (info.IsOk()) {
+			info.Show();
+			g_gui.aui_manager->Update();
+		}
 	} else {
-		border_editor_dialog = new BorderEditorDialog(g_gui.root, "Auto Border Editor");
+		border_editor_dialog = new BorderEditorPanel(g_gui.root);
 		// Clean up pointer when dialog is destroyed
 		border_editor_dialog->Bind(wxEVT_DESTROY, [this](wxWindowDestroyEvent& event) {
 			if (event.GetEventObject() == border_editor_dialog) {
@@ -854,7 +857,14 @@ void MainMenuBar::OnBorderEditor(wxCommandEvent &WXUNUSED(event)) {
 			}
 			event.Skip();
 		});
-		border_editor_dialog->Show();
+		g_gui.aui_manager->AddPane(border_editor_dialog, wxAuiPaneInfo().
+			Name("BorderEditor").
+			Caption("Auto Border Editor").
+			Float().
+			Dockable(true).
+			CloseButton(true).
+			BestSize(850, 650));
+		g_gui.aui_manager->Update();
 	}
 }
 

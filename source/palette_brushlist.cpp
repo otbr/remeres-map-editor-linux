@@ -24,6 +24,9 @@
 #include "add_item_window.h"
 #include "materials.h"
 
+#include <wx/clipbrd.h>
+#include <wx/dataobj.h>
+
 // ============================================================================
 // Brush Palette Panel
 // A common class for terrain/doodad/item/raw palette
@@ -593,6 +596,7 @@ EVT_SIZE(BrushIconBox::OnSize)
 EVT_LEFT_UP(BrushIconBox::OnLeftUp)
 EVT_MOTION(BrushIconBox::OnMotion)
 EVT_LEAVE_WINDOW(BrushIconBox::OnLeave)
+EVT_RIGHT_UP(BrushIconBox::OnRightUp)
 END_EVENT_TABLE()
 
 BrushIconBox::BrushIconBox(wxWindow* parent, const TilesetCategory* tileset, RenderSize rsz) :
@@ -742,6 +746,26 @@ void BrushIconBox::OnLeftUp(wxMouseEvent& event) {
 	}
 }
 
+void BrushIconBox::OnRightUp(wxMouseEvent& event) {
+	wxPoint pos = event.GetPosition();
+	CalcUnscrolledPosition(pos.x, pos.y, &pos.x, &pos.y);
+
+	int index = HitTest(pos);
+	if (index >= 0 && index < (int)tileset->brushlist.size()) {
+		const auto brush = tileset->brushlist[index];
+		const std::string idStr = brush->getAssetIdString();
+
+		if (!idStr.empty()) {
+			if (wxTheClipboard->Open()) {
+				wxTheClipboard->SetData(newd wxTextDataObject(wxstr(idStr)));
+				wxTheClipboard->Close();
+
+				g_gui.SetStatusText(wxString("Copied asset ID to clipboard: ") << wxstr(idStr));
+			}
+		}
+	}
+}
+
 int BrushIconBox::HitTest(const wxPoint& pt) const {
 	int col = pt.x / m_cellWidth;
 	int row = pt.y / m_cellHeight;
@@ -833,6 +857,7 @@ void BrushIconBox::Deselect() { }
 
 BEGIN_EVENT_TABLE(BrushListBox, wxVListBox)
 EVT_KEY_DOWN(BrushListBox::OnKey)
+EVT_RIGHT_UP(BrushListBox::OnRightUp)
 END_EVENT_TABLE()
 
 BrushListBox::BrushListBox(wxWindow* parent, const TilesetCategory* tileset) :
@@ -913,5 +938,22 @@ void BrushListBox::OnKey(wxKeyEvent &event) {
 						g_gui.GetCurrentMapTab()->GetEventHandler()->AddPendingEvent(event);
 					}
 			}
+	}
+}
+
+void BrushListBox::OnRightUp(wxMouseEvent &event) {
+	int index = HitTest(event.GetPosition());
+	if (index != wxNOT_FOUND && index < (int)tileset->brushlist.size()) {
+		const auto brush = tileset->brushlist[index];
+		const std::string idStr = brush->getAssetIdString();
+
+		if (!idStr.empty()) {
+			if (wxTheClipboard->Open()) {
+				wxTheClipboard->SetData(newd wxTextDataObject(wxstr(idStr)));
+				wxTheClipboard->Close();
+
+				g_gui.SetStatusText(wxString("Copied asset ID to clipboard: ") << wxstr(idStr));
+			}
+		}
 	}
 }

@@ -112,6 +112,10 @@ public:
 		return id;
 	}
 
+	virtual std::string getAssetIdString() const {
+		return "";
+	}
+
 	virtual std::string getName() const = 0;
 	virtual void setName(const std::string &newName) {
 		ASSERT(_MSG("setName attempted on nameless brush!"));
@@ -302,8 +306,11 @@ public:
 	virtual int32_t getZ() const {
 		return 0;
 	}
-	virtual int32_t getLookID() const {
+	virtual int getLookID() const {
 		return look_id;
+	}
+	virtual std::string getAssetIdString() const override {
+		return std::to_string(look_id);
 	}
 
 	virtual bool needBorders() const {

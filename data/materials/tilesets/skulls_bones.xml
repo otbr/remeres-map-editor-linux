@@ -1,60 +1,178 @@
 <materials>
-	<tileset name="Skulls / Bones">
-		<raw>
+	<tileset name="Skulls, Bones & Remains">
+		<doodad>
+			<item id="958"/>
+			<item id="1047"/>
+			<item id="1048"/>
 			<item id="3111"/>
-			<item fromid="3114" toid="3116"/>
-			<item fromid="3132" toid="3133"/>
+			<item id="3114"/>
+			<item id="3115"/>
+			<item id="3116"/>
+			<item id="3132"/>
+			<item id="3133"/>
+			<item id="3635"/>
+			<item id="3698"/>
+			<item id="5015"/>
+			<item id="5016"/>
+			<item id="5017"/>
+			<item id="5018"/>
+			<item id="5019"/>
+			<item id="5020"/>
 			<item id="5024"/>
-			<item fromid="5812" toid="5813"/>
-			<item fromid="5015" toid="5020"/>
-			<item fromid="6523" toid="6524"/>
-			<item fromid="6972" toid="6973"/>
-			<item fromid="8605" toid="8606"/>
-			<item fromid="6889" toid="6890"/>
-			<item fromid="6970" toid="6977"/>
-			<item fromid="7058" toid="7059"/>
-			<item fromid="1047" toid="1048"/>
-			<item fromid="7556" toid="7557"/>
-			<item fromid="7758" toid="7759"/>
-			<item fromid="7799" toid="7802"/>
+			<item id="5393"/>
+			<item id="5395"/>
+			<item id="5397"/>
+			<item id="5812"/>
+			<item id="5813"/>
+			<item id="6523"/>
+			<item id="6524"/>
+			<item id="6889"/>
+			<item id="6890"/>
+			<item id="6970"/>
+			<item id="6971"/>
+			<item id="6972"/>
+			<item id="6973"/>
+			<item id="6974"/>
+			<item id="6975"/>
+			<item id="6976"/>
+			<item id="6977"/>
+			<item id="7058"/>
+			<item id="7059"/>
+			<item id="7556"/>
+			<item id="7557"/>
+			<item id="7753"/>
+			<item id="7758"/>
+			<item id="7759"/>
+			<item id="7799"/>
+			<item id="7800"/>
+			<item id="7801"/>
+			<item id="7802"/>
+			<item id="7960"/>
+			<item id="8036"/>
 			<item id="8532"/>
+			<item id="8605"/>
+			<item id="8606"/>
 			<item id="9175"/>
+			<item id="9584"/>
+			<item id="9889"/>
+			<item id="9900"/>
+			<item id="9996"/>
+			<item id="10134"/>
+			<item id="10135"/>
+			<item id="10136"/>
+			<item id="10137"/>
+			<item id="10138"/>
+			<item id="10139"/>
+			<item id="10159"/>
 			<item id="10205"/>
 			<item id="10336"/>
-			<item fromid="10434" toid="10437"/>
+			<item id="10434"/>
+			<item id="10435"/>
+			<item id="10436"/>
+			<item id="10437"/>
 			<item id="10876"/>
-			<item fromid="20179" toid="20180"/>
-			<item id="10134"/>
-			<item id="10159"/>
-			<item fromid="11188" toid="11192"/>
+			<item id="11188"/>
+			<item id="11189"/>
+			<item id="11190"/>
+			<item id="11191"/>
+			<item id="11192"/>
 			<item id="11196"/>
-			<item fromid="10135" toid="10139"/>
-			<item fromid="12144" toid="12146"/>
-			<item fromid="12247" toid="12248"/>
+			<item id="11533"/>
+			<item id="11534"/>
 			<item id="12144"/>
 			<item id="12145"/>
-			<item fromid="12282" toid="12284"/>
-			<item fromid="12294" toid="12300"/>
 			<item id="12146"/>
-			<item fromid="15752" toid="15757"/>
-			<item fromid="15759" toid="15770"/>
-			<item fromid="15774" toid="15784"/>
-			<item fromid="15786" toid="15791"/>
-			<item fromid="18903" toid="18905"/>
-			<item id="19081"/>
-			<item fromid="19088" toid="19091"/>
-			<item fromid="19097" toid="19098"/>
-			<item id="19160"/>
-			<item id="20265"/>
-			<item id="21770"/>
 			<item id="12194"/>
 			<item id="12198"/>
+			<item id="12199"/>
 			<item id="12200"/>
 			<item id="12201"/>
+			<item id="12247"/>
+			<item id="12248"/>
+			<item id="12282"/>
+			<item id="12283"/>
+			<item id="12284"/>
+			<item id="12294"/>
+			<item id="12295"/>
+			<item id="12296"/>
+			<item id="12297"/>
+			<item id="12298"/>
+			<item id="12299"/>
+			<item id="12300"/>
+			<item id="12424"/>
+			<item id="14847"/>
+			<item id="14855"/>
+			<item id="14887"/>
+			<item id="15752"/>
+			<item id="15753"/>
+			<item id="15754"/>
+			<item id="15755"/>
+			<item id="15756"/>
+			<item id="15757"/>
+			<item id="15759"/>
+			<item id="15760"/>
+			<item id="15761"/>
+			<item id="15762"/>
+			<item id="15763"/>
+			<item id="15764"/>
+			<item id="15765"/>
+			<item id="15766"/>
+			<item id="15767"/>
+			<item id="15768"/>
+			<item id="15769"/>
+			<item id="15770"/>
+			<item id="15774"/>
+			<item id="15775"/>
+			<item id="15776"/>
+			<item id="15777"/>
+			<item id="15778"/>
+			<item id="15779"/>
+			<item id="15780"/>
+			<item id="15781"/>
+			<item id="15782"/>
+			<item id="15783"/>
+			<item id="15784"/>
+			<item id="15786"/>
+			<item id="15787"/>
+			<item id="15788"/>
+			<item id="15789"/>
+			<item id="15790"/>
+			<item id="15791"/>
+			<item id="18903"/>
+			<item id="18904"/>
+			<item id="18905"/>
+			<item id="19081"/>
+			<item id="19088"/>
+			<item id="19089"/>
+			<item id="19090"/>
+			<item id="19091"/>
+			<item id="19097"/>
+			<item id="19098"/>
+			<item id="19144"/>
+			<item id="19160"/>
+			<item id="20179"/>
+			<item id="20180"/>
+			<item id="20265"/>
+			<item id="21412"/>
+			<item id="21770"/>
+			<item id="22881"/>
 			<item id="23680"/>
-			<item fromid="29988" toid="29990"/>
-			<item fromid="31209" toid="31216"/>
-			<item fromid="31223" toid="31226"/>
-		</raw>
+			<item id="29988"/>
+			<item id="29989"/>
+			<item id="29990"/>
+			<item id="30339"/>
+			<item id="31209"/>
+			<item id="31210"/>
+			<item id="31211"/>
+			<item id="31212"/>
+			<item id="31213"/>
+			<item id="31214"/>
+			<item id="31215"/>
+			<item id="31216"/>
+			<item id="31223"/>
+			<item id="31224"/>
+			<item id="31225"/>
+			<item id="31226"/>
+		</doodad>
 	</tileset>
 </materials>

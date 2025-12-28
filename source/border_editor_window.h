@@ -187,10 +187,10 @@ wxDECLARE_EVENT(wxEVT_GROUND_CONTAINER_CHANGE, wxCommandEvent);
 class WallGridPanel;
 class WallVisualPanel;
 
-class BorderEditorDialog : public wxDialog {
+class BorderEditorPanel : public wxPanel {
 public:
-    BorderEditorDialog(wxWindow* parent, const wxString& title);
-    virtual ~BorderEditorDialog();
+    BorderEditorPanel(wxWindow* parent);
+    virtual ~BorderEditorPanel();
 
     // Event handlers
     void OnItemIdChanged(wxCommandEvent& event);

@@ -106,6 +106,7 @@ public:
 	wxCoord OnMeasureItem(size_t index) const override;
 
 	void OnKey(wxKeyEvent &event);
+	void OnRightUp(wxMouseEvent &event);
 
 	DECLARE_EVENT_TABLE();
 };
@@ -143,6 +144,7 @@ public:
 	void OnLeftUp(wxMouseEvent& event);
 	void OnMotion(wxMouseEvent& event);
 	void OnLeave(wxMouseEvent& event);
+	void OnRightUp(wxMouseEvent& event);
 
 private:
 	// Used internally to select a brush

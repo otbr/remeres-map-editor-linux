@@ -21,7 +21,7 @@
 #include <wx/docview.h>
 
 class ProceduralMapDialog;
-class BorderEditorDialog;
+class BorderEditorPanel;
 
 namespace MenuBar {
 	struct Action;
@@ -357,7 +357,7 @@ protected:
 	std::map<std::string, MenuBar::Action*> actions;
     
     ProceduralMapDialog* procedural_map_dialog = nullptr;
-    BorderEditorDialog* border_editor_dialog = nullptr;
+    BorderEditorPanel* border_editor_dialog = nullptr;
 
 	DECLARE_EVENT_TABLE();
 };

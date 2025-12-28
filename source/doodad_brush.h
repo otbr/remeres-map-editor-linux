@@ -90,6 +90,9 @@ public:
 	virtual int getLookID() const {
 		return look_id;
 	}
+	virtual std::string getAssetIdString() const override {
+		return std::to_string(look_id);
+	}
 	virtual int getMaxVariation() const {
 		return alternatives.size();
 	}

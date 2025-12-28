@@ -208,17 +208,17 @@ uint16_t GetItemIDFromBrush(Brush* brush) {
     return id;
 }
 
-// Event table for BorderEditorDialog
+// Event table for BorderEditorPanel
 wxDEFINE_EVENT(wxEVT_GROUND_CONTAINER_CHANGE, wxCommandEvent);
 
-BEGIN_EVENT_TABLE(BorderEditorDialog, wxDialog)
-    EVT_BUTTON(wxID_ADD, BorderEditorDialog::OnAddItem)
-    EVT_BUTTON(wxID_CLEAR, BorderEditorDialog::OnClear)
-    EVT_BUTTON(wxID_SAVE, BorderEditorDialog::OnSave)
-    EVT_BUTTON(wxID_CLOSE, BorderEditorDialog::OnClose)
-    EVT_BUTTON(wxID_FIND, BorderEditorDialog::OnBrowse)
-    EVT_COMBOBOX(wxID_ANY, BorderEditorDialog::OnLoadBorder)
-    EVT_NOTEBOOK_PAGE_CHANGED(wxID_ANY, BorderEditorDialog::OnPageChanged)
+BEGIN_EVENT_TABLE(BorderEditorPanel, wxPanel)
+    EVT_BUTTON(wxID_ADD, BorderEditorPanel::OnAddItem)
+    EVT_BUTTON(wxID_CLEAR, BorderEditorPanel::OnClear)
+    EVT_BUTTON(wxID_SAVE, BorderEditorPanel::OnSave)
+    EVT_BUTTON(wxID_CLOSE, BorderEditorPanel::OnClose)
+    EVT_BUTTON(wxID_FIND, BorderEditorPanel::OnBrowse)
+    EVT_COMBOBOX(wxID_ANY, BorderEditorPanel::OnLoadBorder)
+    EVT_NOTEBOOK_PAGE_CHANGED(wxID_ANY, BorderEditorPanel::OnPageChanged)
 END_EVENT_TABLE()
 
 // Event table for BorderItemButton
@@ -238,9 +238,8 @@ BEGIN_EVENT_TABLE(BorderPreviewPanel, wxPanel)
     EVT_PAINT(BorderPreviewPanel::OnPaint)
 END_EVENT_TABLE()
 
-BorderEditorDialog::BorderEditorDialog(wxWindow* parent, const wxString& title) :
-    wxDialog(parent, wxID_ANY, title, wxDefaultPosition, wxSize(850, 650),
-        wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER),
+BorderEditorPanel::BorderEditorPanel(wxWindow* parent) :
+    wxPanel(parent, wxID_ANY),
     m_nextBorderId(1),
     m_activeTab(0),
     m_lastInteractionTime(0) {
@@ -261,16 +260,14 @@ BorderEditorDialog::BorderEditorDialog(wxWindow* parent, const wxString& title) 
     // Set initial border ID
     m_currentBorderId = m_nextBorderId;
     
-    // Center the dialog
-    Fit();
-    CenterOnParent();
+    Layout();
 }
 
-BorderEditorDialog::~BorderEditorDialog() {
+BorderEditorPanel::~BorderEditorPanel() {
     // Nothing to destroy manually
 }
 
-void BorderEditorDialog::CreateGUIControls() {
+void BorderEditorPanel::CreateGUIControls() {
     wxBoxSizer* topSizer = new wxBoxSizer(wxVERTICAL);
     
     
@@ -322,14 +319,14 @@ void BorderEditorDialog::CreateGUIControls() {
     m_rawCategoryNames = categories; // Store for menu
     m_rawCategoryButton = new wxButton(m_borderPanel, wxID_ANY, "Category ▼", wxDefaultPosition, wxDefaultSize, wxBU_LEFT);
     m_rawCategoryButton->SetToolTip("Filter by Tileset Category");
-    m_rawCategoryButton->Bind(wxEVT_BUTTON, &BorderEditorDialog::OnRawCategoryButtonClick, this);
+    m_rawCategoryButton->Bind(wxEVT_BUTTON, &BorderEditorPanel::OnRawCategoryButtonClick, this);
     borderTilesetRowSizer->Add(m_rawCategoryButton, 1, wxEXPAND | wxRIGHT, 2);
     
     // Filter button with Cut icon (scissors)
     wxBitmapButton* borderFilterBtn = new wxBitmapButton(m_borderPanel, wxID_ANY, 
         wxArtProvider::GetBitmap(wxART_CUT, wxART_BUTTON, wxSize(16, 16)));
     borderFilterBtn->SetToolTip("Filter visible tilesets");
-    borderFilterBtn->Bind(wxEVT_BUTTON, &BorderEditorDialog::OnOpenTilesetFilter, this);
+    borderFilterBtn->Bind(wxEVT_BUTTON, &BorderEditorPanel::OnOpenTilesetFilter, this);
     borderTilesetRowSizer->Add(borderFilterBtn, 0, wxALIGN_CENTER_VERTICAL);
     
     leftColumnSizer->Add(borderTilesetRowSizer, 0, wxEXPAND | wxBOTTOM, 5);
@@ -419,21 +416,21 @@ void BorderEditorDialog::CreateGUIControls() {
     
     m_groundTilesetButton = new wxButton(m_groundPanel, wxID_ANY, "Select Tileset ▼", wxDefaultPosition, wxDefaultSize, wxBU_LEFT);
     m_groundTilesetButton->SetToolTip("Select Tileset");
-    m_groundTilesetButton->Bind(wxEVT_BUTTON, &BorderEditorDialog::OnGroundTilesetButtonClick, this);
+    m_groundTilesetButton->Bind(wxEVT_BUTTON, &BorderEditorPanel::OnGroundTilesetButtonClick, this);
     tilesetRowSizer->Add(m_groundTilesetButton, 1, wxEXPAND | wxRIGHT, 2);
     
     // Filter button with Cut icon (scissors)
     m_tilesetFilterBtn = new wxBitmapButton(m_groundPanel, wxID_ANY, 
         wxArtProvider::GetBitmap(wxART_CUT, wxART_BUTTON, wxSize(16, 16)));
     m_tilesetFilterBtn->SetToolTip("Filter visible tilesets");
-    m_tilesetFilterBtn->Bind(wxEVT_BUTTON, &BorderEditorDialog::OnOpenTilesetFilter, this);
+    m_tilesetFilterBtn->Bind(wxEVT_BUTTON, &BorderEditorPanel::OnOpenTilesetFilter, this);
     tilesetRowSizer->Add(m_tilesetFilterBtn, 0, wxALIGN_CENTER_VERTICAL);
     
     groundLeftSizer->Add(tilesetRowSizer, 0, wxEXPAND | wxBOTTOM, 5);
 
     m_groundPalette = new SimpleRawPalettePanel(m_groundPanel);
     m_groundPalette->SetMinSize(wxSize(220, 200));
-    m_groundPalette->Bind(wxEVT_COMMAND_LISTBOX_SELECTED, &BorderEditorDialog::OnGroundPaletteSelect, this);
+    m_groundPalette->Bind(wxEVT_COMMAND_LISTBOX_SELECTED, &BorderEditorPanel::OnGroundPaletteSelect, this);
     groundLeftSizer->Add(m_groundPalette, 1, wxEXPAND | wxALL, 5);
     groundContentSizer->Add(groundLeftSizer, 0, wxEXPAND);
     
@@ -449,9 +446,9 @@ void BorderEditorDialog::CreateGUIControls() {
     wxStaticBoxSizer* groundEditorBoxSizer = new wxStaticBoxSizer(wxVERTICAL, m_groundPanel, "Variations");
     
     m_groundGridContainer = new GroundGridContainer(groundEditorBoxSizer->GetStaticBox(), wxID_ANY + 1); // Added ID
-    m_groundGridContainer->Bind(wxEVT_COMMAND_LISTBOX_SELECTED, &BorderEditorDialog::OnGroundGridSelect, this);
+    m_groundGridContainer->Bind(wxEVT_COMMAND_LISTBOX_SELECTED, &BorderEditorPanel::OnGroundGridSelect, this);
     // Bind change event to update preview
-    Bind(wxEVT_GROUND_CONTAINER_CHANGE, &BorderEditorDialog::OnGroundContainerChange, this);
+    Bind(wxEVT_GROUND_CONTAINER_CHANGE, &BorderEditorPanel::OnGroundContainerChange, this);
     
     groundEditorBoxSizer->Add(m_groundGridContainer, 1, wxEXPAND | wxALL, 5);
     
@@ -464,7 +461,7 @@ void BorderEditorDialog::CreateGUIControls() {
     
     borderOptionsRow->Add(new wxStaticText(borderOptionsBoxSizer->GetStaticBox(), wxID_ANY, "Alignment:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
     m_borderAlignmentButton = new wxButton(borderOptionsBoxSizer->GetStaticBox(), wxID_ANY, "Outer ▼", wxDefaultPosition, wxSize(80, -1), wxBU_LEFT);
-    m_borderAlignmentButton->Bind(wxEVT_BUTTON, &BorderEditorDialog::OnBorderAlignmentButtonClick, this);
+    m_borderAlignmentButton->Bind(wxEVT_BUTTON, &BorderEditorPanel::OnBorderAlignmentButtonClick, this);
     borderOptionsRow->Add(m_borderAlignmentButton, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 15);
     
     m_includeToNoneCheck = new wxCheckBox(borderOptionsBoxSizer->GetStaticBox(), wxID_ANY, "To None");
@@ -536,21 +533,21 @@ void BorderEditorDialog::CreateGUIControls() {
     
     m_wallTilesetButton = new wxButton(m_wallPanel, wxID_ANY, "Select Tileset ▼", wxDefaultPosition, wxDefaultSize, wxBU_LEFT);
     m_wallTilesetButton->SetToolTip("Select Tileset");
-    m_wallTilesetButton->Bind(wxEVT_BUTTON, &BorderEditorDialog::OnWallTilesetButtonClick, this);
+    m_wallTilesetButton->Bind(wxEVT_BUTTON, &BorderEditorPanel::OnWallTilesetButtonClick, this);
     wallTilesetRowSizer->Add(m_wallTilesetButton, 1, wxEXPAND | wxRIGHT, 2);
     
     // Filter button
     wxBitmapButton* wallFilterBtn = new wxBitmapButton(m_wallPanel, wxID_ANY, 
         wxArtProvider::GetBitmap(wxART_CUT, wxART_BUTTON, wxSize(16, 16)));
     wallFilterBtn->SetToolTip("Filter visible tilesets");
-    wallFilterBtn->Bind(wxEVT_BUTTON, &BorderEditorDialog::OnOpenTilesetFilter, this);
+    wallFilterBtn->Bind(wxEVT_BUTTON, &BorderEditorPanel::OnOpenTilesetFilter, this);
     wallTilesetRowSizer->Add(wallFilterBtn, 0, wxALIGN_CENTER_VERTICAL);
     
     wallLeftSizer->Add(wallTilesetRowSizer, 0, wxEXPAND | wxBOTTOM, 5);
 
     m_wallPalette = new SimpleRawPalettePanel(m_wallPanel);
     m_wallPalette->SetMinSize(wxSize(220, 300));
-    m_wallPalette->Bind(wxEVT_COMMAND_LISTBOX_SELECTED, &BorderEditorDialog::OnWallPaletteSelect, this);
+    m_wallPalette->Bind(wxEVT_COMMAND_LISTBOX_SELECTED, &BorderEditorPanel::OnWallPaletteSelect, this);
     wallLeftSizer->Add(m_wallPalette, 1, wxEXPAND | wxALL, 5);
     
     wallContentSizer->Add(wallLeftSizer, 0, wxEXPAND);
@@ -569,7 +566,7 @@ void BorderEditorDialog::CreateGUIControls() {
     m_wallGridPanel->SetMinSize(wxSize(280, 200)); // Increased height for 3x3 grid
     
     // Bind click event (reusing BUTTON_CLICKED)
-    m_wallGridPanel->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &BorderEditorDialog::OnWallGridSelect, this);
+    m_wallGridPanel->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &BorderEditorPanel::OnWallGridSelect, this);
     
     wallTypeSizer->Add(m_wallGridPanel, 0, wxEXPAND | wxBOTTOM, 5);
     structureSizer->Add(wallTypeSizer, 0, wxEXPAND | wxALL, 5);
@@ -588,11 +585,11 @@ void BorderEditorDialog::CreateGUIControls() {
     m_wallItemIdCtrl = nullptr;
     
     // wxButton* addWallItemBtn = new wxButton(structureSizer->GetStaticBox(), wxID_ANY, "Add", wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
-    // addWallItemBtn->Bind(wxEVT_BUTTON, &BorderEditorDialog::OnAddWallItem, this);
+    // addWallItemBtn->Bind(wxEVT_BUTTON, &BorderEditorPanel::OnAddWallItem, this);
     // wallItemInputSizer->Add(addWallItemBtn, 0, wxRIGHT, 5);
     
     // wxButton* remWallItemBtn = new wxButton(structureSizer->GetStaticBox(), wxID_ANY, "Remove", wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
-    // remWallItemBtn->Bind(wxEVT_BUTTON, &BorderEditorDialog::OnRemoveWallItem, this);
+    // remWallItemBtn->Bind(wxEVT_BUTTON, &BorderEditorPanel::OnRemoveWallItem, this);
     // wallItemInputSizer->Add(remWallItemBtn, 0);
     
     // structureSizer->Add(wallItemInputSizer, 0, wxEXPAND | wxALL, 5);
@@ -646,15 +643,15 @@ void BorderEditorDialog::CreateGUIControls() {
     
     m_borderModeBtn = new wxToggleButton(this, wxID_ANY, "Border", wxDefaultPosition, wxDefaultSize);
     m_borderModeBtn->SetValue(true); // Default to Border mode
-    m_borderModeBtn->Bind(wxEVT_TOGGLEBUTTON, &BorderEditorDialog::OnModeSwitch, this);
+    m_borderModeBtn->Bind(wxEVT_TOGGLEBUTTON, &BorderEditorPanel::OnModeSwitch, this);
     modeSwitcherSizer->Add(m_borderModeBtn, 1, wxEXPAND | wxRIGHT, 2);
     
     m_groundModeBtn = new wxToggleButton(this, wxID_ANY, "Ground", wxDefaultPosition, wxDefaultSize);
-    m_groundModeBtn->Bind(wxEVT_TOGGLEBUTTON, &BorderEditorDialog::OnModeSwitch, this);
+    m_groundModeBtn->Bind(wxEVT_TOGGLEBUTTON, &BorderEditorPanel::OnModeSwitch, this);
     modeSwitcherSizer->Add(m_groundModeBtn, 1, wxEXPAND | wxRIGHT, 2);
     
     m_wallModeBtn = new wxToggleButton(this, wxID_ANY, "Wall", wxDefaultPosition, wxDefaultSize);
-    m_wallModeBtn->Bind(wxEVT_TOGGLEBUTTON, &BorderEditorDialog::OnModeSwitch, this);
+    m_wallModeBtn->Bind(wxEVT_TOGGLEBUTTON, &BorderEditorPanel::OnModeSwitch, this);
     modeSwitcherSizer->Add(m_wallModeBtn, 1, wxEXPAND);
     
     browserSizer->Add(modeSwitcherSizer, 0, wxEXPAND | wxALL, 5);
@@ -662,13 +659,13 @@ void BorderEditorDialog::CreateGUIControls() {
     // Search control
     m_browserSearchCtrl = new wxSearchCtrl(this, wxID_ANY, "", wxDefaultPosition, wxSize(280, -1));
     m_browserSearchCtrl->SetDescriptiveText("Search...");
-    m_browserSearchCtrl->Bind(wxEVT_SEARCHCTRL_SEARCH_BTN, &BorderEditorDialog::OnBrowserSearch, this);
-    m_browserSearchCtrl->Bind(wxEVT_TEXT, &BorderEditorDialog::OnBrowserSearch, this);
+    m_browserSearchCtrl->Bind(wxEVT_SEARCHCTRL_SEARCH_BTN, &BorderEditorPanel::OnBrowserSearch, this);
+    m_browserSearchCtrl->Bind(wxEVT_TEXT, &BorderEditorPanel::OnBrowserSearch, this);
     browserSizer->Add(m_browserSearchCtrl, 0, wxEXPAND | wxLEFT | wxRIGHT, 5);
     
     m_borderBrowserList = new wxListBox(this, wxID_ANY, wxDefaultPosition, wxSize(280, -1), 0, nullptr, wxLB_SINGLE | wxBORDER_NONE);
     m_borderBrowserList->SetToolTip("Click an item to load it for editing");
-    m_borderBrowserList->Bind(wxEVT_LISTBOX, &BorderEditorDialog::OnBorderBrowserSelection, this);
+    m_borderBrowserList->Bind(wxEVT_LISTBOX, &BorderEditorPanel::OnBorderBrowserSelection, this);
     browserSizer->Add(m_borderBrowserList, 1, wxEXPAND | wxALL, 5);
     
     mainHorizSizer->Add(browserSizer, 0, wxEXPAND);
@@ -716,7 +713,7 @@ void BorderEditorDialog::CreateGUIControls() {
     }
 }
 
-void BorderEditorDialog::OnRawCategoryButtonClick(wxCommandEvent& event) {
+void BorderEditorPanel::OnRawCategoryButtonClick(wxCommandEvent& event) {
     if (m_rawCategoryNames.IsEmpty()) return;
     
     wxMenu menu;
@@ -727,12 +724,12 @@ void BorderEditorDialog::OnRawCategoryButtonClick(wxCommandEvent& event) {
         }
     }
     
-    menu.Bind(wxEVT_MENU, &BorderEditorDialog::OnRawCategoryMenuSelect, this);
+    menu.Bind(wxEVT_MENU, &BorderEditorPanel::OnRawCategoryMenuSelect, this);
     const wxSize btnSize = m_rawCategoryButton->GetSize();
     m_rawCategoryButton->PopupMenu(&menu, 0, btnSize.GetHeight());
 }
 
-void BorderEditorDialog::OnRawCategoryMenuSelect(wxCommandEvent& event) {
+void BorderEditorPanel::OnRawCategoryMenuSelect(wxCommandEvent& event) {
     int id = event.GetId() - 1000;
     if (id < 0 || id >= (int)m_rawCategoryNames.GetCount()) return;
     
@@ -746,7 +743,7 @@ void BorderEditorDialog::OnRawCategoryMenuSelect(wxCommandEvent& event) {
     }
 }
 
-void BorderEditorDialog::OnGroundTilesetButtonClick(wxCommandEvent& event) {
+void BorderEditorPanel::OnGroundTilesetButtonClick(wxCommandEvent& event) {
     if (m_tilesetListData.IsEmpty()) return;
     
     wxMenu menu;
@@ -757,12 +754,12 @@ void BorderEditorDialog::OnGroundTilesetButtonClick(wxCommandEvent& event) {
         }
     }
     
-    menu.Bind(wxEVT_MENU, &BorderEditorDialog::OnGroundTilesetMenuSelect, this);
+    menu.Bind(wxEVT_MENU, &BorderEditorPanel::OnGroundTilesetMenuSelect, this);
     const wxSize btnSize = m_groundTilesetButton->GetSize();
     m_groundTilesetButton->PopupMenu(&menu, 0, btnSize.GetHeight());
 }
 
-void BorderEditorDialog::OnGroundTilesetMenuSelect(wxCommandEvent& event) {
+void BorderEditorPanel::OnGroundTilesetMenuSelect(wxCommandEvent& event) {
     int id = event.GetId() - 2000;
     if (id < 0 || id >= (int)m_tilesetListData.GetCount()) return;
     
@@ -776,7 +773,7 @@ void BorderEditorDialog::OnGroundTilesetMenuSelect(wxCommandEvent& event) {
     }
 }
 
-void BorderEditorDialog::OnWallTilesetButtonClick(wxCommandEvent& event) {
+void BorderEditorPanel::OnWallTilesetButtonClick(wxCommandEvent& event) {
     if (m_tilesetListData.IsEmpty()) return;
     
     wxMenu menu;
@@ -787,12 +784,12 @@ void BorderEditorDialog::OnWallTilesetButtonClick(wxCommandEvent& event) {
         }
     }
     
-    menu.Bind(wxEVT_MENU, &BorderEditorDialog::OnWallTilesetMenuSelect, this);
+    menu.Bind(wxEVT_MENU, &BorderEditorPanel::OnWallTilesetMenuSelect, this);
     const wxSize btnSize = m_wallTilesetButton->GetSize();
     m_wallTilesetButton->PopupMenu(&menu, 0, btnSize.GetHeight());
 }
 
-void BorderEditorDialog::OnWallTilesetMenuSelect(wxCommandEvent& event) {
+void BorderEditorPanel::OnWallTilesetMenuSelect(wxCommandEvent& event) {
     int id = event.GetId() - 3000;
     if (id < 0 || id >= (int)m_tilesetListData.GetCount()) return;
     
@@ -806,19 +803,19 @@ void BorderEditorDialog::OnWallTilesetMenuSelect(wxCommandEvent& event) {
     }
 }
 
-void BorderEditorDialog::OnBorderAlignmentButtonClick(wxCommandEvent& event) {
+void BorderEditorPanel::OnBorderAlignmentButtonClick(wxCommandEvent& event) {
     wxMenu menu;
     menu.AppendCheckItem(4000, "Outer");
     menu.AppendCheckItem(4001, "Inner");
     
     menu.Check(4000 + m_borderAlignmentSelection, true);
     
-    menu.Bind(wxEVT_MENU, &BorderEditorDialog::OnBorderAlignmentMenuSelect, this);
+    menu.Bind(wxEVT_MENU, &BorderEditorPanel::OnBorderAlignmentMenuSelect, this);
     const wxSize btnSize = m_borderAlignmentButton->GetSize();
     m_borderAlignmentButton->PopupMenu(&menu, 0, btnSize.GetHeight());
 }
 
-void BorderEditorDialog::OnBorderAlignmentMenuSelect(wxCommandEvent& event) {
+void BorderEditorPanel::OnBorderAlignmentMenuSelect(wxCommandEvent& event) {
     int id = event.GetId() - 4000;
     if (id < 0 || id > 1) return;
     
@@ -828,7 +825,7 @@ void BorderEditorDialog::OnBorderAlignmentMenuSelect(wxCommandEvent& event) {
     }
 }
 
-void BorderEditorDialog::OnWallPaletteSelect(wxCommandEvent& event) {
+void BorderEditorPanel::OnWallPaletteSelect(wxCommandEvent& event) {
     int itemId = event.GetInt();
     if (itemId > 0) {
         m_currentWallItemId = itemId;
@@ -837,7 +834,7 @@ void BorderEditorDialog::OnWallPaletteSelect(wxCommandEvent& event) {
 }
 
 
-void BorderEditorDialog::OnWallGridSelect(wxCommandEvent& event) {
+void BorderEditorPanel::OnWallGridSelect(wxCommandEvent& event) {
     std::string type = event.GetString().ToStdString();
     if (type.empty()) return;
 
@@ -873,7 +870,7 @@ void BorderEditorDialog::OnWallGridSelect(wxCommandEvent& event) {
 
 
 
-void BorderEditorDialog::OnOpenTilesetFilter(wxCommandEvent& event) {
+void BorderEditorPanel::OnOpenTilesetFilter(wxCommandEvent& event) {
     // Get all available tilesets
     wxArrayString allTilesets;
     for (const auto& pair : g_materials.tilesets) {
@@ -988,7 +985,7 @@ void TilesetFilterDialog::OnSelectNone(wxCommandEvent& event) {
     }
 }
 
-void BorderEditorDialog::LoadWallBrushByName(const wxString& name) {
+void BorderEditorPanel::LoadWallBrushByName(const wxString& name) {
     if (name.IsEmpty()) {
         // Clear all fields for new brush
         if (m_wallServerLookIdCtrl) m_wallServerLookIdCtrl->SetValue(0);
@@ -1075,7 +1072,7 @@ void BorderEditorDialog::LoadWallBrushByName(const wxString& name) {
 
 
 
-void BorderEditorDialog::SaveWallBrush() {
+void BorderEditorPanel::SaveWallBrush() {
     wxString name;
     if (m_wallNameCtrl) name = m_wallNameCtrl->GetValue();
     
@@ -1155,19 +1152,19 @@ void BorderEditorDialog::SaveWallBrush() {
     }
 }
 
-void BorderEditorDialog::LoadExistingWallBrushes() {
+void BorderEditorPanel::LoadExistingWallBrushes() {
     // Legacy method - wall brushes are now populated via PopulateWallList()
     // Called from constructor for compatibility, actual population happens on tab change
 }
 
-bool BorderEditorDialog::ValidateWallBrush() {
+bool BorderEditorPanel::ValidateWallBrush() {
     return true;
 }
 
 // Helper to get current selected type string
 
 
-void BorderEditorDialog::ClearWallItems(bool clearBrowser) {
+void BorderEditorPanel::ClearWallItems(bool clearBrowser) {
     if (m_wallVisualPanel)
         m_wallVisualPanel->Clear();
     m_wallTypes.clear();
@@ -1179,7 +1176,7 @@ void BorderEditorDialog::ClearWallItems(bool clearBrowser) {
     }
 }
 
-void BorderEditorDialog::UpdateWallItemsList() {
+void BorderEditorPanel::UpdateWallItemsList() {
     if (!m_wallItemsList || !m_wallGridPanel) return;
     
     m_wallItemsList->Clear();
@@ -1194,12 +1191,12 @@ void BorderEditorDialog::UpdateWallItemsList() {
     }
 }
 
-void BorderEditorDialog::OnWallBrowse(wxCommandEvent& event) {
+void BorderEditorPanel::OnWallBrowse(wxCommandEvent& event) {
     // Reuse Ground Browse Logic or create new dialog
     // implementation pending... using manual ID for now
 }
 
-void BorderEditorDialog::OnAddWallItem(wxCommandEvent& event) {
+void BorderEditorPanel::OnAddWallItem(wxCommandEvent& event) {
     if (!m_wallItemIdCtrl) return;
     int id = m_wallItemIdCtrl->GetValue();
     if (id <= 0) return;
@@ -1216,7 +1213,7 @@ void BorderEditorDialog::OnAddWallItem(wxCommandEvent& event) {
     m_wallGridPanel->SetWallTypes(m_wallTypes); // Update visual selector
 }
 
-void BorderEditorDialog::OnRemoveWallItem(wxCommandEvent& event) {
+void BorderEditorPanel::OnRemoveWallItem(wxCommandEvent& event) {
     if (!m_wallItemsList) return;
     int sel = m_wallItemsList->GetSelection();
     if (sel == wxNOT_FOUND) return;
@@ -1236,7 +1233,7 @@ void BorderEditorDialog::OnRemoveWallItem(wxCommandEvent& event) {
 }
 
 
-void BorderEditorDialog::LoadExistingBorders() {
+void BorderEditorPanel::LoadExistingBorders() {
     // Clear the browser list
     if (!m_borderBrowserList) return;
     m_borderBrowserList->Clear();
@@ -1291,7 +1288,7 @@ void BorderEditorDialog::LoadExistingBorders() {
 }
 
 // Helper method to load a border by ID
-void BorderEditorDialog::LoadBorderById(int borderId) {
+void BorderEditorPanel::LoadBorderById(int borderId) {
     wxString dataDir = g_gui.GetDataDirectory();
     wxString bordersFile = dataDir + wxFileName::GetPathSeparator() + 
                           "materials" + wxFileName::GetPathSeparator() + 
@@ -1346,7 +1343,7 @@ void BorderEditorDialog::LoadBorderById(int borderId) {
 }
 
 // Browser sidebar selection handler - dispatches based on active tab
-void BorderEditorDialog::OnBorderBrowserSelection(wxCommandEvent& event) {
+void BorderEditorPanel::OnBorderBrowserSelection(wxCommandEvent& event) {
     if (!m_borderBrowserList) return;
     
     int selection = m_borderBrowserList->GetSelection();
@@ -1370,16 +1367,16 @@ void BorderEditorDialog::OnBorderBrowserSelection(wxCommandEvent& event) {
     }
 }
 
-void BorderEditorDialog::OnLoadBorder(wxCommandEvent& event) {
+void BorderEditorPanel::OnLoadBorder(wxCommandEvent& event) {
     // Old combo box handler - now unused as browser list handles loading
 }
 
-void BorderEditorDialog::OnItemIdChanged(wxCommandEvent& event) {
+void BorderEditorPanel::OnItemIdChanged(wxCommandEvent& event) {
     // This event handler would update the display when an item ID is entered manually
     // but we're handling this directly in OnAddItem instead
 }
 
-void BorderEditorDialog::OnBrowse(wxCommandEvent& event) {
+void BorderEditorPanel::OnBrowse(wxCommandEvent& event) {
     // Open the Find Item dialog instead
     FindItemDialog dialog(this, "Select Border Item");
     
@@ -1408,7 +1405,7 @@ void BorderEditorDialog::OnBrowse(wxCommandEvent& event) {
     }
 }
 
-void BorderEditorDialog::OnPositionSelected(wxCommandEvent& event) {
+void BorderEditorPanel::OnPositionSelected(wxCommandEvent& event) {
     // Get the position from the event
     BorderEdgePosition pos = static_cast<BorderEdgePosition>(event.GetInt());
     wxLogDebug("OnPositionSelected: Position %s selected", wxstr(edgePositionToString(pos)).c_str());
@@ -1529,7 +1526,7 @@ void BorderEditorDialog::OnPositionSelected(wxCommandEvent& event) {
     }
 }
 
-void BorderEditorDialog::OnAddItem(wxCommandEvent& event) {
+void BorderEditorPanel::OnAddItem(wxCommandEvent& event) {
     // This function is now obsolete as manual add buttons and m_itemIdCtrl are removed.
     // If it were to be used, it would need to get the item ID from the currently selected brush.
     wxMessageBox("This 'Add Item' functionality is no longer available. Please select an item brush and click on the grid to add items.", "Information", wxICON_INFORMATION);
@@ -1587,7 +1584,7 @@ void BorderEditorDialog::OnAddItem(wxCommandEvent& event) {
     */
 }
 
-void BorderEditorDialog::OnClear(wxCommandEvent& event) {
+void BorderEditorPanel::OnClear(wxCommandEvent& event) {
     if (m_activeTab == 0) {
         // Border tab
     ClearItems();
@@ -1597,7 +1594,7 @@ void BorderEditorDialog::OnClear(wxCommandEvent& event) {
     }
 }
 
-void BorderEditorDialog::ClearItems(bool clearBrowser) {
+void BorderEditorPanel::ClearItems(bool clearBrowser) {
     m_borderItems.clear();
     m_gridPanel->Clear();
     m_previewPanel->Clear();
@@ -1615,12 +1612,12 @@ void BorderEditorDialog::ClearItems(bool clearBrowser) {
     }
 }
 
-void BorderEditorDialog::UpdatePreview() {
+void BorderEditorPanel::UpdatePreview() {
     m_previewPanel->SetBorderItems(m_borderItems);
     m_previewPanel->Refresh();
 }
 
-bool BorderEditorDialog::ValidateBorder() {
+bool BorderEditorPanel::ValidateBorder() {
     // Check for empty name
     if (m_nameCtrl->GetValue().IsEmpty()) {
         wxMessageBox("Please enter a name for the border.", "Validation Error", wxICON_ERROR);
@@ -1652,7 +1649,7 @@ bool BorderEditorDialog::ValidateBorder() {
     return true;
 }
 
-void BorderEditorDialog::SaveBorder() {
+void BorderEditorPanel::SaveBorder() {
     if (!ValidateBorder()) {
         return;
     }
@@ -1780,7 +1777,7 @@ void BorderEditorDialog::SaveBorder() {
     PopulateBorderList();
 }
 
-void BorderEditorDialog::OnSave(wxCommandEvent& event) {
+void BorderEditorPanel::OnSave(wxCommandEvent& event) {
     if (m_activeTab == 0) {
         // Border tab
         SaveBorder();
@@ -1790,11 +1787,11 @@ void BorderEditorDialog::OnSave(wxCommandEvent& event) {
     }
 }
 
-void BorderEditorDialog::OnClose(wxCommandEvent& event) {
+void BorderEditorPanel::OnClose(wxCommandEvent& event) {
     Close();
 }
 
-void BorderEditorDialog::OnGridCellClicked(wxMouseEvent& event) {
+void BorderEditorPanel::OnGridCellClicked(wxMouseEvent& event) {
     // This event is handled by the BorderGridPanel directly
     event.Skip();
 }
@@ -2319,21 +2316,21 @@ void BorderGridPanel::OnMouseClick(wxMouseEvent& event) {
         wxCommandEvent selEvent(wxEVT_COMMAND_BUTTON_CLICKED, ID_BORDER_GRID_SELECT);
         selEvent.SetInt(static_cast<int>(pos));
         
-        // Find the parent BorderEditorDialog
+        // Find the parent BorderEditorPanel
         wxWindow* parent = GetParent();
-        while (parent && !dynamic_cast<BorderEditorDialog*>(parent)) {
+        while (parent && !dynamic_cast<BorderEditorPanel*>(parent)) {
             parent = parent->GetParent();
         }
         
         // Send the event to the parent dialog
-        BorderEditorDialog* dialog = dynamic_cast<BorderEditorDialog*>(parent);
+        BorderEditorPanel* dialog = dynamic_cast<BorderEditorPanel*>(parent);
         if (dialog) {
             // Call the event handler directly
             wxLogDebug("BorderGridPanel::OnMouseClick: Calling OnPositionSelected directly for position %s", wxstr(edgePositionToString(pos)));
             dialog->OnPositionSelected(selEvent);
         } else {
             // If we couldn't find the parent dialog, post the event to the parent
-            wxLogDebug("BorderGridPanel::OnMouseClick: Could not find BorderEditorDialog parent, posting event");
+            wxLogDebug("BorderGridPanel::OnMouseClick: Could not find BorderEditorPanel parent, posting event");
             wxPostEvent(GetParent(), selEvent);
         }
     }
@@ -2542,11 +2539,11 @@ void BorderPreviewPanel::OnPaint(wxPaintEvent& event) {
     }
 }
 
-void BorderEditorDialog::LoadExistingGroundBrushes() {
+void BorderEditorPanel::LoadExistingGroundBrushes() {
     // Legacy method - ground brushes are now populated via PopulateGroundList()
     // Called from constructor for compatibility, actual population happens on tab change
 }
-void BorderEditorDialog::ClearGroundItems(bool clearBrowser) {
+void BorderEditorPanel::ClearGroundItems(bool clearBrowser) {
     if (m_groundGridContainer) m_groundGridContainer->Clear();
     if (m_groundNameCtrl) m_groundNameCtrl->SetValue("");
     if (m_serverLookIdCtrl) m_serverLookIdCtrl->SetValue(0);
@@ -2567,7 +2564,7 @@ void BorderEditorDialog::ClearGroundItems(bool clearBrowser) {
     }
 }
 
-void BorderEditorDialog::OnPageChanged(wxBookCtrlEvent& event) {
+void BorderEditorPanel::OnPageChanged(wxBookCtrlEvent& event) {
     m_activeTab = event.GetSelection();
     
     // Refresh tileset list (and apply filters) for the new tab
@@ -2598,11 +2595,11 @@ void BorderEditorDialog::OnPageChanged(wxBookCtrlEvent& event) {
     event.Skip();
 }
 
-void BorderEditorDialog::UpdateBrowserLabel() {
+void BorderEditorPanel::UpdateBrowserLabel() {
     // No longer needed - mode is indicated by toggle buttons
 }
 
-void BorderEditorDialog::OnModeSwitch(wxCommandEvent& event) {
+void BorderEditorPanel::OnModeSwitch(wxCommandEvent& event) {
     wxToggleButton* clickedBtn = dynamic_cast<wxToggleButton*>(event.GetEventObject());
     if (!clickedBtn) return;
     
@@ -2643,7 +2640,7 @@ void BorderEditorDialog::OnModeSwitch(wxCommandEvent& event) {
     }
 }
 
-void BorderEditorDialog::PopulateBorderList() {
+void BorderEditorPanel::PopulateBorderList() {
     m_fullBrowserList.Clear();
     m_fullBrowserIds.Clear();
     m_borderBrowserList->Clear();
@@ -2743,7 +2740,7 @@ void BorderEditorDialog::PopulateBorderList() {
     // m_currentBorderId = m_nextBorderId; // Optional update
 }
 
-void BorderEditorDialog::PopulateGroundList() {
+void BorderEditorPanel::PopulateGroundList() {
     m_fullBrowserList.Clear();
     m_fullBrowserIds.Clear();
     m_borderBrowserList->Clear();
@@ -2775,7 +2772,7 @@ void BorderEditorDialog::PopulateGroundList() {
     }
 }
 
-void BorderEditorDialog::PopulateWallList() {
+void BorderEditorPanel::PopulateWallList() {
     m_fullBrowserList.Clear();
     m_fullBrowserIds.Clear();
     m_borderBrowserList->Clear();
@@ -2804,11 +2801,11 @@ void BorderEditorDialog::PopulateWallList() {
     }
 }
 
-void BorderEditorDialog::OnBrowserSearch(wxCommandEvent& event) {
+void BorderEditorPanel::OnBrowserSearch(wxCommandEvent& event) {
     FilterBrowserList(m_browserSearchCtrl->GetValue());
 }
 
-void BorderEditorDialog::FilterBrowserList(const wxString& query) {
+void BorderEditorPanel::FilterBrowserList(const wxString& query) {
     m_borderBrowserList->Clear();
     wxString lowerQuery = query.Lower();
     
@@ -2820,12 +2817,12 @@ void BorderEditorDialog::FilterBrowserList(const wxString& query) {
     }
 }
 
-void BorderEditorDialog::OnGroundGridSelect(wxCommandEvent& event) {
+void BorderEditorPanel::OnGroundGridSelect(wxCommandEvent& event) {
     // Selection logic logic is handled by container/cell highlighting
     // No UI updates needed here anymore as editing is via double-click modal
 }
 
-void BorderEditorDialog::LoadTilesets() {
+void BorderEditorPanel::LoadTilesets() {
     // Clear the choice control
     m_tilesetListData.Clear();
     m_tilesets.clear();
@@ -2899,7 +2896,7 @@ void BorderEditorDialog::LoadTilesets() {
 // ============================================================================
 // Filter Config Persistence
 
-void BorderEditorDialog::SaveFilterConfig() {
+void BorderEditorPanel::SaveFilterConfig() {
     // Save filter configuration to JSON file
     wxString configDir = wxFileName::GetHomeDir() + wxFileName::GetPathSeparator() + ".rme";
     if (!wxDirExists(configDir)) {
@@ -2953,7 +2950,7 @@ void BorderEditorDialog::SaveFilterConfig() {
     }
 }
 
-void BorderEditorDialog::LoadFilterConfig() {
+void BorderEditorPanel::LoadFilterConfig() {
     // Ensure clean state
     m_borderEnabledTilesets.clear();
     m_groundEnabledTilesets.clear();
@@ -3161,11 +3158,11 @@ void WallGridPanel::OnMouseClick(wxMouseEvent& event) {
             
             // Find parent dialog and call callback directly
             wxWindow* parent = GetParent();
-            while (parent && !dynamic_cast<BorderEditorDialog*>(parent)) {
+            while (parent && !dynamic_cast<BorderEditorPanel*>(parent)) {
                 parent = parent->GetParent();
             }
             
-            if (BorderEditorDialog* dialog = dynamic_cast<BorderEditorDialog*>(parent)) {
+            if (BorderEditorPanel* dialog = dynamic_cast<BorderEditorPanel*>(parent)) {
                 dialog->OnWallGridSelect(evt);
             }
         }
@@ -3920,7 +3917,7 @@ void GroundGridContainer::SetSelectedCell(GroundGridPanel* cell) {
             // We need to walk up to find the dialog
             wxWindow* win = GetParent();
             while (win) {
-                BorderEditorDialog* dialog = dynamic_cast<BorderEditorDialog*>(win);
+                BorderEditorPanel* dialog = dynamic_cast<BorderEditorPanel*>(win);
                 if (dialog) {
                     wxCommandEvent evt(wxEVT_NULL); // Just update UI call
                     // We can't easily fire an event to dialog from here without ID. 
@@ -3953,13 +3950,13 @@ void GroundGridContainer::SetSelectedCell(GroundGridPanel* cell) {
 }
 
 // DISABLE Old Event Handlers
-void BorderEditorDialog::OnAddVariation(wxCommandEvent& event) {}
-void BorderEditorDialog::OnRemoveVariationBtn(wxCommandEvent& event) {}
-void BorderEditorDialog::OnPreviewTimer(wxTimerEvent& event) {}
-void BorderEditorDialog::RebuildVariationsList() {}
-void BorderEditorDialog::AddVariationRow(GroundVariation& variation, int index) {}
+void BorderEditorPanel::OnAddVariation(wxCommandEvent& event) {}
+void BorderEditorPanel::OnRemoveVariationBtn(wxCommandEvent& event) {}
+void BorderEditorPanel::OnPreviewTimer(wxTimerEvent& event) {}
+void BorderEditorPanel::RebuildVariationsList() {}
+void BorderEditorPanel::AddVariationRow(GroundVariation& variation, int index) {}
 
-void BorderEditorDialog::OnGroundPaletteSelect(wxCommandEvent& event) {
+void BorderEditorPanel::OnGroundPaletteSelect(wxCommandEvent& event) {
     // When an item is selected from the palette, add it to the container
     uint16_t itemId = static_cast<uint16_t>(event.GetInt());
     if (itemId > 0 && m_groundGridContainer) {
@@ -3970,13 +3967,13 @@ void BorderEditorDialog::OnGroundPaletteSelect(wxCommandEvent& event) {
     }
 }
 
-void BorderEditorDialog::OnGroundContainerChange(wxCommandEvent& event) {
+void BorderEditorPanel::OnGroundContainerChange(wxCommandEvent& event) {
     if (m_groundPreviewPanel && m_groundGridContainer) {
         m_groundPreviewPanel->UpdateFromContainer(m_groundGridContainer);
     }
 }
 
-void BorderEditorDialog::SaveGroundBrush() {
+void BorderEditorPanel::SaveGroundBrush() {
     // Validate input
     wxString name = m_groundNameCtrl->GetValue().Trim();
     if (name.IsEmpty()) {
@@ -4109,7 +4106,7 @@ void BorderEditorDialog::SaveGroundBrush() {
     }
 }
 
-void BorderEditorDialog::LoadGroundBrushByName(const wxString& name) {
+void BorderEditorPanel::LoadGroundBrushByName(const wxString& name) {
     if (name.IsEmpty()) return;
     
     wxString dataDir = g_gui.GetDataDirectory();
