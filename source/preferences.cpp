@@ -454,7 +454,7 @@ wxNotebookPage* PreferencesWindow::CreateUIPage() {
 		ui_page, subsizer,
 		"RAW Palette Style:",
 		"Configures the look of the raw palette.",
-		g_settings.getString(Config::PALETTE_RAW_STYLE)
+		g_settings.getString(Config::PALETTE_RAW_STYLE_V2)
 	);
 
 	sizer->Add(subsizer, 0, wxALL, 5);
@@ -691,7 +691,7 @@ void PreferencesWindow::Apply() {
 	SetPaletteStyleChoice(terrain_palette_style_choice, Config::PALETTE_TERRAIN_STYLE);
 	SetPaletteStyleChoice(doodad_palette_style_choice, Config::PALETTE_DOODAD_STYLE);
 	SetPaletteStyleChoice(item_palette_style_choice, Config::PALETTE_ITEM_STYLE);
-	SetPaletteStyleChoice(raw_palette_style_choice, Config::PALETTE_RAW_STYLE);
+	SetPaletteStyleChoice(raw_palette_style_choice, Config::PALETTE_RAW_STYLE_V2);
 	g_settings.setInteger(Config::USE_LARGE_TERRAIN_TOOLBAR, large_terrain_tools_chkbox->GetValue());
 	g_settings.setInteger(Config::USE_LARGE_DOODAD_SIZEBAR, large_doodad_sizebar_chkbox->GetValue());
 	g_settings.setInteger(Config::USE_LARGE_ITEM_SIZEBAR, large_item_sizebar_chkbox->GetValue());

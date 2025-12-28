@@ -173,7 +173,7 @@ PalettePanel* PaletteWindow::CreateNpcPalette(wxWindow* parent, const TilesetCon
 
 PalettePanel* PaletteWindow::CreateRAWPalette(wxWindow* parent, const TilesetContainer &tilesets) {
 	const auto panel = newd BrushPalettePanel(parent, tilesets, TILESET_RAW);
-	panel->SetListType(wxstr(g_settings.getString(Config::PALETTE_RAW_STYLE)));
+	panel->SetListType(wxstr(g_settings.getString(Config::PALETTE_RAW_STYLE_V2)));
 
 	AddBrushSizePanel(panel, Config::USE_LARGE_RAW_SIZEBAR);
 
@@ -220,7 +220,7 @@ void PaletteWindow::ReloadSettings(Map* map) {
 		itemPalette->SetToolbarIconSize(g_settings.getBoolean(Config::USE_LARGE_ITEM_SIZEBAR));
 	}
 	if (rawPalette) {
-		rawPalette->SetListType(wxstr(g_settings.getString(Config::PALETTE_RAW_STYLE)));
+		rawPalette->SetListType(wxstr(g_settings.getString(Config::PALETTE_RAW_STYLE_V2)));
 		rawPalette->SetToolbarIconSize(g_settings.getBoolean(Config::USE_LARGE_RAW_SIZEBAR));
 	}
 	InvalidateContents();
