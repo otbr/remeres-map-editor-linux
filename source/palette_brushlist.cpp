@@ -702,10 +702,10 @@ void BrushIconBox::OnPaint(wxPaintEvent& event) {
 			int offY = (m_cellHeight - spriteSize) / 2;
 			
 			// Use proper enum for size if available, or just raw numbers? 
-			// Use standard 32x32 (cropped) for Grounds and Walls (tiling).
-			// Use SCALED 32x32 for everything else (Doodads, Monsters, RAW, etc.) to show full asset.
+			// Use standard 32x32 (cropped) for Grounds ONLY (tiling preview).
+			// Use SCALED 32x32 for everything else (Walls, Doodads, Monsters, RAW, etc.) to show full asset.
 			SpriteSize sz = SPRITE_SIZE_32x32_SCALED;
-			if (iconSize == RENDER_SIZE_32x32 && (brush->isGround() || brush->isWall())) {
+			if (iconSize == RENDER_SIZE_32x32 && brush->isGround()) {
 				sz = SPRITE_SIZE_32x32;
 			}
 			

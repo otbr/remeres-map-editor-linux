@@ -1008,9 +1008,9 @@ PaletteWindow* GUI::CreatePalette() {
         earInfo.Movable(false);        // Can't move it
         earInfo.DockFixed(true);       // Docked fixed
         earInfo.PaneBorder(false);
-        earInfo.MinSize(-1, 24);
-        earInfo.BestSize(-1, 24);
-        earInfo.FloatingSize(-1, 24);
+        earInfo.MinSize(-1, 28);
+        earInfo.BestSize(-1, 28);
+        earInfo.FloatingSize(-1, 28);
 
         // Unique name to allow multiple bars
         wxString earName = wxString::Format("PaletteTabs_%d", (int)palettes.size());

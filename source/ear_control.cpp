@@ -52,7 +52,7 @@ void EarControl::OnPaint(wxPaintEvent& event) {
     wxAutoBufferedPaintDC dc(this);
     
     // Clear background
-    wxColour bg = GetParent()->GetBackgroundColour().ChangeLightness(90);
+    wxColour bg = wxColour(40, 40, 40); // Fixed dark theme header color
     dc.SetBackground(wxBrush(bg));
     dc.Clear();
 

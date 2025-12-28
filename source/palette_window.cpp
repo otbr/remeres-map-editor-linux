@@ -99,9 +99,20 @@ void PaletteWindow::UpdateEars() {
             if (m_views[i] == m_activeView) activeIdx = i;
         }
         m_earControl->SetItems(items, activeIdx);
-        m_earControl->Show();
+        
+        // Use AUI pane visibility instead of direct Show()
+        wxAuiPaneInfo& pane = g_gui.aui_manager->GetPane(m_earControl);
+        if (pane.IsOk() && !pane.IsShown()) {
+            pane.Show(true);
+            g_gui.aui_manager->Update();
+        }
     } else {
-        m_earControl->Hide();
+        // Use AUI pane visibility instead of direct Hide()
+        wxAuiPaneInfo& pane = g_gui.aui_manager->GetPane(m_earControl);
+        if (pane.IsOk() && pane.IsShown()) {
+            pane.Show(false);
+            g_gui.aui_manager->Update();
+        }
     }
 }
 
