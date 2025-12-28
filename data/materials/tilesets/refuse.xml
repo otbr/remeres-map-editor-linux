@@ -1,7 +1,26 @@
 <materials>
 	<tileset name="Refuse">
-		<items>
+		<doodad>
+			<item id="2200"/>
+			<item id="2264"/>
+			<item id="2290"/>
 			<item id="4851"/>
-		</items>
+			<item id="5425"/>
+			<item id="5443"/>
+			<item id="5449"/>
+			<item id="8389"/>
+			<item id="8983"/>
+			<item id="8986"/>
+			<item id="8989"/>
+			<item id="8992"/>
+			<item id="11517"/>
+			<item id="11521"/>
+			<item id="11526"/>
+			<item id="11529"/>
+			<item id="11530"/>
+			<item id="11532"/>
+			<item id="22658"/>
+			<item id="30145"/>
+		</doodad>
 	</tileset>
 </materials>

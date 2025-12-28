@@ -1,7 +1,30 @@
 <materials>
 	<tileset name="Remains">
-		<items>
-			<item id="5687"/>
-		</items>
+		<doodad>
+			<item id="958"/>
+			<item id="3635"/>
+			<item id="3698"/>
+			<item id="5393"/>
+			<item id="5395"/>
+			<item id="5397"/>
+			<item id="7753"/>
+			<item id="7960"/>
+			<item id="8036"/>
+			<item id="9584"/>
+			<item id="9889"/>
+			<item id="9900"/>
+			<item id="9996"/>
+			<item id="11533"/>
+			<item id="11534"/>
+			<item id="12199"/>
+			<item id="12424"/>
+			<item id="14847"/>
+			<item id="14855"/>
+			<item id="14887"/>
+			<item id="19144"/>
+			<item id="21412"/>
+			<item id="22881"/>
+			<item id="30339"/>
+		</doodad>
 	</tileset>
 </materials>
