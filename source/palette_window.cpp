@@ -26,37 +26,28 @@
 
 BEGIN_EVENT_TABLE(PaletteWindow, wxPanel)
     EVT_CLOSE(PaletteWindow::OnClose)
+    EVT_SIZE(PaletteWindow::OnSize)
 END_EVENT_TABLE()
 
 PaletteWindow::PaletteWindow(wxWindow* parent, const TilesetContainer &tilesets) :
 	wxPanel(parent, wxID_ANY, wxDefaultPosition, wxSize(230, 250)),
     m_tilesets(tilesets) 
 {
-    // Create Ear Control (Exogenous - Parented to Main Window/Root)
-    // We assume 'parent' is the dock window or something managed by AUI. 
-    // To be safe for AUI Top Dock, let's parent it to the same parent as this window initially?
-    // Actually, for AUI floating/docking, it usually needs to be child of fluid frame.
-    // GUI::CreatePalette will handle parenting if needed, or we just create it here with 'parent' 
-    // and let AUI reparent it when AddPane is called? 
-    // wxAuiManager::AddPane usually handles reparenting if necessary, or expects child of managed window.
-    // Let's keep 'parent' for now.
-    
-    m_earControl = newd EarControl(parent); // Parent is root frame usually
+    // EarControl is parented to the MAIN FRAME (parent), not this PaletteWindow.
+    // This allows AUI to manage it as a separate, top-docked pane.
+    m_earControl = newd EarControl(parent);
     m_earControl->Hide(); 
 
-    // Bind custom events directly to the control since it's not our child anymore
     m_earControl->Bind(EVT_EAR_SELECTED, &PaletteWindow::OnEarSelected, this);
     m_earControl->Bind(EVT_EAR_ADD, &PaletteWindow::OnEarAdd, this);
     
-    // Internal event
     Bind(EVT_PALETTE_CONTENT_CHANGED, &PaletteWindow::OnPaletteContentChanged, this);
 
 	SetMinSize(wxSize(225, 250));
 
-	// Create Layout: VBox [PaletteView] (EarControl is purely external now)
+    // Layout for PaletteWindow content only (EarControl is external)
     m_mainSizer = newd wxBoxSizer(wxVERTICAL);
     
-    // Create initial view
     AddView();
 
 	SetSizer(m_mainSizer);
@@ -232,4 +223,9 @@ void PaletteWindow::OnClose(wxCloseEvent &event) {
 
 PaletteView* PaletteWindow::GetActiveView() const {
     return m_activeView;
+}
+
+void PaletteWindow::OnSize(wxSizeEvent &event) {
+    Layout();
+    event.Skip();
 }

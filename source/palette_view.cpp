@@ -134,7 +134,7 @@ PalettePanel* PaletteView::CreateDoodadPalette(wxWindow* parent, const TilesetCo
 
 PalettePanel* PaletteView::CreateItemPalette(wxWindow* parent, const TilesetContainer &tilesets) {
 	const auto panel = newd BrushPalettePanel(parent, tilesets, TILESET_ITEM);
-	panel->SetListType(wxstr(g_settings.getString(Config::PALETTE_ITEM_STYLE)));
+	panel->SetListType(wxstr(g_settings.getString(Config::PALETTE_ITEM_STYLE_V2)));
 
 	AddBrushSizePanel(panel, Config::USE_LARGE_ITEM_SIZEBAR);
 
@@ -214,7 +214,7 @@ void PaletteView::ReloadSettings(Map* map) {
 		zonesPalette->SetMap(map);
 	}
 	if (itemPalette) {
-		itemPalette->SetListType(wxstr(g_settings.getString(Config::PALETTE_ITEM_STYLE)));
+		itemPalette->SetListType(wxstr(g_settings.getString(Config::PALETTE_ITEM_STYLE_V2)));
 		itemPalette->SetToolbarIconSize(g_settings.getBoolean(Config::USE_LARGE_ITEM_SIZEBAR));
 	}
 	if (rawPalette) {

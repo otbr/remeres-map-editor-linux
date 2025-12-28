@@ -25,9 +25,9 @@ END_EVENT_TABLE()
 // ... (Previous event table)
 
 EarControl::EarControl(wxWindow* parent, wxWindowID id) 
-    : wxPanel(parent, id, wxDefaultPosition, wxSize(-1, 24)) // Fixed Height 24
+    : wxPanel(parent, id, wxDefaultPosition, wxSize(-1, 28)) // Fixed Height 28
 {
-    SetMinSize(wxSize(-1, 24));
+    SetMinSize(wxSize(-1, 28));
     SetBackgroundStyle(wxBG_STYLE_PAINT);
 }
 
@@ -52,7 +52,8 @@ void EarControl::OnPaint(wxPaintEvent& event) {
     wxAutoBufferedPaintDC dc(this);
     
     // Clear background
-    dc.SetBackground(wxBrush(GetParent()->GetBackgroundColour()));
+    wxColour bg = GetParent()->GetBackgroundColour().ChangeLightness(90);
+    dc.SetBackground(wxBrush(bg));
     dc.Clear();
 
     int width = GetClientSize().GetWidth();
