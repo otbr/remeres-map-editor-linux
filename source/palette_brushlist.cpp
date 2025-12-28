@@ -437,7 +437,7 @@ void BrushPalettePanel::SetCurrentPage(const wxString &value) {
 
 BEGIN_EVENT_TABLE(BrushPanel, wxPanel)
 // Listbox style
-EVT_LISTBOX(wxID_ANY, BrushPanel::OnClickListBoxRow)
+EVT_LISTBOX(PALETTE_BRUSHLIST_LISTBOX, BrushPanel::OnClickListBoxRow)
 END_EVENT_TABLE()
 
 BrushPanel::BrushPanel(wxWindow* parent, const TilesetCategory* tileset) :
@@ -818,7 +818,7 @@ EVT_KEY_DOWN(BrushListBox::OnKey)
 END_EVENT_TABLE()
 
 BrushListBox::BrushListBox(wxWindow* parent, const TilesetCategory* tileset) :
-	wxVListBox(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLB_SINGLE),
+	wxVListBox(parent, PALETTE_BRUSHLIST_LISTBOX, wxDefaultPosition, wxDefaultSize, wxLB_SINGLE),
 	BrushBoxInterface(tileset) {
 	SetItemCount(tileset->size());
 }
