@@ -217,7 +217,21 @@ public:
     void OnOpenTilesetFilter(wxCommandEvent& event);
     void OnGroundGridSelect(wxCommandEvent& event);
     void OnGroundTilesetListSelect(wxCommandEvent& event);
-    void OnRawCategoryChange(wxCommandEvent& event);
+
+    
+    // Button + Menu Handlers
+    void OnRawCategoryButtonClick(wxCommandEvent& event);
+    void OnRawCategoryMenuSelect(wxCommandEvent& event);
+    
+    void OnGroundTilesetButtonClick(wxCommandEvent& event);
+    void OnGroundTilesetMenuSelect(wxCommandEvent& event);
+    
+    void OnWallTilesetButtonClick(wxCommandEvent& event);
+    void OnWallTilesetMenuSelect(wxCommandEvent& event);
+    
+    void OnBorderAlignmentButtonClick(wxCommandEvent& event);
+    void OnBorderAlignmentMenuSelect(wxCommandEvent& event);
+    
     void OnAddWallItem(wxCommandEvent& event);
     void OnRemoveWallItem(wxCommandEvent& event);
     
@@ -247,11 +261,11 @@ protected:
     bool ValidateWallBrush();
     void LoadExistingWallBrushes();
     void SaveWallBrush();
-    void ClearWallItems();
+    void ClearWallItems(bool clearBrowser = true);
     void UpdateWallItemsList();
     void UpdatePreview();
-    void ClearItems();
-    void ClearGroundItems();
+    void ClearItems(bool clearBrowser = true);
+    void ClearGroundItems(bool clearBrowser = true);
     void UpdateGroundItemsList();
     
     // Sidebar helpers
@@ -311,12 +325,12 @@ private:
     BorderGridPanel* m_gridPanel;
     BorderPreviewPanel* m_previewPanel;
     // Palette panels
-    SimpleRawPalettePanel* m_itemPalettePanel;  // Changed from BrushPalettePanel*
+    SimpleRawPalettePanel* m_itemPalettePanel;
     SimpleRawPalettePanel* m_groundPalette;     
     GroundGridContainer* m_groundGridContainer;
-    GroundPreviewPanel* m_groundPreviewPanel; // NEW
+    GroundPreviewPanel* m_groundPreviewPanel; 
     SimpleRawPalettePanel* m_wallPalette;
-    wxComboBox* m_wallTilesetCombo;
+    wxButton* m_wallTilesetButton;
     
     // Border items data
     std::vector<BorderItem> m_borderItems;
@@ -326,14 +340,20 @@ private:
     wxPanel* m_groundPanel;
     wxSpinCtrl* m_serverLookIdCtrl;
     wxSpinCtrl* m_zOrderCtrl;
-    // wxSpinCtrl* m_groundItemChanceCtrl; // REMOVED
-    wxChoice* m_borderAlignmentChoice;
+    wxButton* m_borderAlignmentButton;
     wxCheckBox* m_includeToNoneCheck;
 
     wxCheckBox* m_includeInnerCheck;
-    wxComboBox* m_groundTilesetCombo;
+    wxButton* m_groundTilesetButton;
     wxArrayString m_tilesetListData;
-    wxComboBox* m_rawCategoryCombo;
+    wxButton* m_rawCategoryButton;
+    
+    // Button state data
+    wxArrayString m_rawCategoryNames;
+    int m_rawCategorySelection = 0;
+    int m_groundTilesetSelection = 0;
+    int m_wallTilesetSelection = 0;
+    int m_borderAlignmentSelection = 0; // 0=Outer, 1=Inner
     
     // Ground items data
     std::vector<GroundItem> m_groundItems;
@@ -390,9 +410,7 @@ private:
     wxCheckBox* m_wallIsGroundCheck;
     WallVisualPanel* m_wallVisualPanel;
     WallGridPanel* m_wallGridPanel; // Visual selector for wall types
-    wxChoice* m_wallTypeChoice;
     
-    // Wall items data
     // Wall items data
     std::map<std::string, WallTypeData> m_wallTypes;
     wxString m_currentWallType;

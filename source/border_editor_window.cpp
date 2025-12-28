@@ -319,10 +319,11 @@ void BorderEditorDialog::CreateGUIControls() {
     for (const auto& pair : g_materials.tilesets) {
         categories.Add(wxstr(pair.first));
     }
-    m_rawCategoryCombo = new wxComboBox(m_borderPanel, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, categories, wxCB_READONLY | wxCB_SORT);
-    m_rawCategoryCombo->SetToolTip("Filter by Tileset Category");
-    m_rawCategoryCombo->Bind(wxEVT_COMBOBOX, &BorderEditorDialog::OnRawCategoryChange, this);
-    borderTilesetRowSizer->Add(m_rawCategoryCombo, 1, wxEXPAND | wxRIGHT, 2);
+    m_rawCategoryNames = categories; // Store for menu
+    m_rawCategoryButton = new wxButton(m_borderPanel, wxID_ANY, "Category ▼", wxDefaultPosition, wxDefaultSize, wxBU_LEFT);
+    m_rawCategoryButton->SetToolTip("Filter by Tileset Category");
+    m_rawCategoryButton->Bind(wxEVT_BUTTON, &BorderEditorDialog::OnRawCategoryButtonClick, this);
+    borderTilesetRowSizer->Add(m_rawCategoryButton, 1, wxEXPAND | wxRIGHT, 2);
     
     // Filter button with Cut icon (scissors)
     wxBitmapButton* borderFilterBtn = new wxBitmapButton(m_borderPanel, wxID_ANY, 
@@ -416,10 +417,10 @@ void BorderEditorDialog::CreateGUIControls() {
     // === Left Column: Raw Item Palette ===
     // Tileset selector row (ComboBox + Gear button)
     
-    m_groundTilesetCombo = new wxComboBox(m_groundPanel, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_READONLY);
-    m_groundTilesetCombo->SetToolTip("Select Tileset");
-    m_groundTilesetCombo->Bind(wxEVT_COMBOBOX, &BorderEditorDialog::OnGroundTilesetSelect, this);
-    tilesetRowSizer->Add(m_groundTilesetCombo, 1, wxEXPAND | wxRIGHT, 2);
+    m_groundTilesetButton = new wxButton(m_groundPanel, wxID_ANY, "Select Tileset ▼", wxDefaultPosition, wxDefaultSize, wxBU_LEFT);
+    m_groundTilesetButton->SetToolTip("Select Tileset");
+    m_groundTilesetButton->Bind(wxEVT_BUTTON, &BorderEditorDialog::OnGroundTilesetButtonClick, this);
+    tilesetRowSizer->Add(m_groundTilesetButton, 1, wxEXPAND | wxRIGHT, 2);
     
     // Filter button with Cut icon (scissors)
     m_tilesetFilterBtn = new wxBitmapButton(m_groundPanel, wxID_ANY, 
@@ -462,12 +463,9 @@ void BorderEditorDialog::CreateGUIControls() {
     wxBoxSizer* borderOptionsRow = new wxBoxSizer(wxHORIZONTAL);
     
     borderOptionsRow->Add(new wxStaticText(borderOptionsBoxSizer->GetStaticBox(), wxID_ANY, "Alignment:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
-    wxArrayString alignOptions;
-    alignOptions.Add("outer");
-    alignOptions.Add("inner");
-    m_borderAlignmentChoice = new wxChoice(borderOptionsBoxSizer->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxSize(80, -1), alignOptions);
-    m_borderAlignmentChoice->SetSelection(0);
-    borderOptionsRow->Add(m_borderAlignmentChoice, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 15);
+    m_borderAlignmentButton = new wxButton(borderOptionsBoxSizer->GetStaticBox(), wxID_ANY, "Outer ▼", wxDefaultPosition, wxSize(80, -1), wxBU_LEFT);
+    m_borderAlignmentButton->Bind(wxEVT_BUTTON, &BorderEditorDialog::OnBorderAlignmentButtonClick, this);
+    borderOptionsRow->Add(m_borderAlignmentButton, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 15);
     
     m_includeToNoneCheck = new wxCheckBox(borderOptionsBoxSizer->GetStaticBox(), wxID_ANY, "To None");
     m_includeToNoneCheck->SetValue(true);
@@ -536,10 +534,10 @@ void BorderEditorDialog::CreateGUIControls() {
     wxBoxSizer* wallTilesetRowSizer = new wxBoxSizer(wxHORIZONTAL);
     wallTilesetRowSizer->Add(new wxStaticText(m_wallPanel, wxID_ANY, "Source:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
     
-    m_wallTilesetCombo = new wxComboBox(m_wallPanel, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_READONLY);
-    m_wallTilesetCombo->SetToolTip("Select Tileset");
-    m_wallTilesetCombo->Bind(wxEVT_COMBOBOX, &BorderEditorDialog::OnWallTilesetSelect, this);
-    wallTilesetRowSizer->Add(m_wallTilesetCombo, 1, wxEXPAND | wxRIGHT, 2);
+    m_wallTilesetButton = new wxButton(m_wallPanel, wxID_ANY, "Select Tileset ▼", wxDefaultPosition, wxDefaultSize, wxBU_LEFT);
+    m_wallTilesetButton->SetToolTip("Select Tileset");
+    m_wallTilesetButton->Bind(wxEVT_BUTTON, &BorderEditorDialog::OnWallTilesetButtonClick, this);
+    wallTilesetRowSizer->Add(m_wallTilesetButton, 1, wxEXPAND | wxRIGHT, 2);
     
     // Filter button
     wxBitmapButton* wallFilterBtn = new wxBitmapButton(m_wallPanel, wxID_ANY, 
@@ -682,59 +680,148 @@ void BorderEditorDialog::CreateGUIControls() {
     Layout();
     
     // Initialize Category Combo (Select Borders if available)
-    if (m_rawCategoryCombo) {
-        int defaults = m_rawCategoryCombo->FindString("Borders");
+    // Initialize Category Button (Select Borders if available)
+    if (!m_rawCategoryNames.IsEmpty()) {
+        int defaults = m_rawCategoryNames.Index("Borders");
         if (defaults != wxNOT_FOUND) {
-            m_rawCategoryCombo->SetSelection(defaults);
-        } else if (m_rawCategoryCombo->GetCount() > 0) {
-            m_rawCategoryCombo->SetSelection(0);
+            m_rawCategorySelection = defaults;
+        } else {
+            m_rawCategorySelection = 0;
         }
         
-        // Trigger generic change handler to load
-        wxCommandEvent ev(wxEVT_COMBOBOX, m_rawCategoryCombo->GetId());
-        ev.SetEventObject(m_rawCategoryCombo);
-        OnRawCategoryChange(ev);
+        if (m_rawCategoryButton) {
+            m_rawCategoryButton->SetLabel(m_rawCategoryNames[m_rawCategorySelection] + " \u25BC");
+        }
+        
+        // Trigger load
+        if (m_itemPalettePanel) {
+            m_itemPalettePanel->LoadTileset(m_rawCategoryNames[m_rawCategorySelection]);
+        }
     }
 
     // Initialize Tileset Choice (Ground Tab)
-    LoadTilesets(); // Ensure m_groundTilesetCombo is populated
+    LoadTilesets(); // Ensure m_tilesetListData is populated
     
     // Select first tileset if any
     if (!m_tilesetListData.IsEmpty()) {
-        m_groundTilesetCombo->SetSelection(0);
-        wxCommandEvent ev(wxEVT_COMBOBOX, m_groundTilesetCombo->GetId());
-        ev.SetEventObject(m_groundTilesetCombo);
-        OnGroundTilesetSelect(ev);
+        m_groundTilesetSelection = 0;
+        if (m_groundTilesetButton) {
+            m_groundTilesetButton->SetLabel(m_tilesetListData[0] + " \u25BC");
+        }
+        
+        // Trigger load for ground
+        if (m_groundPalette) {
+             m_groundPalette->LoadTileset(m_tilesetListData[0], FILTER_GROUND);
+        }
     }
 }
 
-void BorderEditorDialog::OnRawCategoryChange(wxCommandEvent& event) {
-    if (!m_rawCategoryCombo || !m_itemPalettePanel) return;
+void BorderEditorDialog::OnRawCategoryButtonClick(wxCommandEvent& event) {
+    if (m_rawCategoryNames.IsEmpty()) return;
     
-    wxString category = m_rawCategoryCombo->GetValue();
-    m_itemPalettePanel->LoadTileset(category);
+    wxMenu menu;
+    for (size_t i = 0; i < m_rawCategoryNames.GetCount(); ++i) {
+        menu.AppendCheckItem(1000 + i, m_rawCategoryNames[i]);
+        if ((int)i == m_rawCategorySelection) {
+            menu.Check(1000 + i, true);
+        }
+    }
+    
+    menu.Bind(wxEVT_MENU, &BorderEditorDialog::OnRawCategoryMenuSelect, this);
+    PopupMenu(&menu);
 }
 
-void BorderEditorDialog::OnGroundTilesetSelect(wxCommandEvent& event) {
-    int sel = m_groundTilesetCombo->GetSelection();
-    if (sel == wxNOT_FOUND || sel >= (int)m_tilesetListData.GetCount()) return;
+void BorderEditorDialog::OnRawCategoryMenuSelect(wxCommandEvent& event) {
+    int id = event.GetId() - 1000;
+    if (id < 0 || id >= (int)m_rawCategoryNames.GetCount()) return;
     
-    wxString tilesetName = m_tilesetListData[sel];
-    if (!m_groundPalette) return;
-
-    // Use LoadTileset which loads all RAW items from the tileset
-    // This is the same approach used in the Border tab
-    m_groundPalette->LoadTileset(tilesetName, FILTER_GROUND);
+    m_rawCategorySelection = id;
+    if (m_rawCategoryButton) {
+        m_rawCategoryButton->SetLabel(m_rawCategoryNames[id] + " \u25BC");
+    }
+    
+    if (m_itemPalettePanel) {
+        m_itemPalettePanel->LoadTileset(m_rawCategoryNames[id]);
+    }
 }
 
-void BorderEditorDialog::OnWallTilesetSelect(wxCommandEvent& event) {
-    int sel = m_wallTilesetCombo->GetSelection();
-    if (sel == wxNOT_FOUND || sel >= (int)m_tilesetListData.GetCount()) return;
+void BorderEditorDialog::OnGroundTilesetButtonClick(wxCommandEvent& event) {
+    if (m_tilesetListData.IsEmpty()) return;
     
-    wxString tilesetName = m_tilesetListData[sel];
-    if (!m_wallPalette) return;
+    wxMenu menu;
+    for (size_t i = 0; i < m_tilesetListData.GetCount(); ++i) {
+        menu.AppendCheckItem(2000 + i, m_tilesetListData[i]);
+        if ((int)i == m_groundTilesetSelection) {
+            menu.Check(2000 + i, true);
+        }
+    }
+    
+    menu.Bind(wxEVT_MENU, &BorderEditorDialog::OnGroundTilesetMenuSelect, this);
+    PopupMenu(&menu);
+}
 
-    m_wallPalette->LoadTileset(tilesetName, FILTER_WALL);
+void BorderEditorDialog::OnGroundTilesetMenuSelect(wxCommandEvent& event) {
+    int id = event.GetId() - 2000;
+    if (id < 0 || id >= (int)m_tilesetListData.GetCount()) return;
+    
+    m_groundTilesetSelection = id;
+    if (m_groundTilesetButton) {
+        m_groundTilesetButton->SetLabel(m_tilesetListData[id] + " \u25BC");
+    }
+    
+    if (m_groundPalette) {
+        m_groundPalette->LoadTileset(m_tilesetListData[id], FILTER_GROUND);
+    }
+}
+
+void BorderEditorDialog::OnWallTilesetButtonClick(wxCommandEvent& event) {
+    if (m_tilesetListData.IsEmpty()) return;
+    
+    wxMenu menu;
+    for (size_t i = 0; i < m_tilesetListData.GetCount(); ++i) {
+        menu.AppendCheckItem(3000 + i, m_tilesetListData[i]);
+        if ((int)i == m_wallTilesetSelection) {
+            menu.Check(3000 + i, true);
+        }
+    }
+    
+    menu.Bind(wxEVT_MENU, &BorderEditorDialog::OnWallTilesetMenuSelect, this);
+    PopupMenu(&menu);
+}
+
+void BorderEditorDialog::OnWallTilesetMenuSelect(wxCommandEvent& event) {
+    int id = event.GetId() - 3000;
+    if (id < 0 || id >= (int)m_tilesetListData.GetCount()) return;
+    
+    m_wallTilesetSelection = id;
+    if (m_wallTilesetButton) {
+        m_wallTilesetButton->SetLabel(m_tilesetListData[id] + " \u25BC");
+    }
+    
+    if (m_wallPalette) {
+        m_wallPalette->LoadTileset(m_tilesetListData[id], FILTER_WALL);
+    }
+}
+
+void BorderEditorDialog::OnBorderAlignmentButtonClick(wxCommandEvent& event) {
+    wxMenu menu;
+    menu.AppendCheckItem(4000, "Outer");
+    menu.AppendCheckItem(4001, "Inner");
+    
+    menu.Check(4000 + m_borderAlignmentSelection, true);
+    
+    menu.Bind(wxEVT_MENU, &BorderEditorDialog::OnBorderAlignmentMenuSelect, this);
+    PopupMenu(&menu);
+}
+
+void BorderEditorDialog::OnBorderAlignmentMenuSelect(wxCommandEvent& event) {
+    int id = event.GetId() - 4000;
+    if (id < 0 || id > 1) return;
+    
+    m_borderAlignmentSelection = id;
+    if (m_borderAlignmentButton) {
+        m_borderAlignmentButton->SetLabel((id == 0 ? "Outer" : "Inner") + wxString(" \u25BC"));
+    }
 }
 
 void BorderEditorDialog::OnWallPaletteSelect(wxCommandEvent& event) {
@@ -934,7 +1021,7 @@ void BorderEditorDialog::LoadWallBrushByName(const wxString& name) {
             }
             
             // Clear existing items
-            ClearWallItems();
+            ClearWallItems(false);
             m_wallTypes.clear();
             
             // Iterate over children to find <wall> nodes
@@ -1081,12 +1168,16 @@ wxString GetCurrentWallType(wxChoice* choice) {
     return choice->GetString(sel);
 }
 
-void BorderEditorDialog::ClearWallItems() {
+void BorderEditorDialog::ClearWallItems(bool clearBrowser) {
     if (m_wallVisualPanel)
         m_wallVisualPanel->Clear();
     m_wallTypes.clear();
-    if (m_wallItemsList)
-        m_wallItemsList->Clear();
+    // if (m_wallItemsList) m_wallItemsList->Clear(); // Already gone
+    
+    // Deselect browser list if requested (missing in original? adding for consistency)
+    if (clearBrowser && m_borderBrowserList) {
+        m_borderBrowserList->SetSelection(wxNOT_FOUND);
+    }
 }
 
 void BorderEditorDialog::UpdateWallItemsList() {
@@ -1212,7 +1303,7 @@ void BorderEditorDialog::LoadBorderById(int borderId) {
     pugi::xml_document doc;
     if (!doc.load_file(nstr(bordersFile).c_str())) return;
     
-    ClearItems();
+    ClearItems(false); // Don't clear browser selection logic
     
     pugi::xml_node materials = doc.child("materials");
     for (pugi::xml_node borderNode = materials.child("border"); borderNode; borderNode = borderNode.next_sibling("border")) {
@@ -1507,20 +1598,20 @@ void BorderEditorDialog::OnClear(wxCommandEvent& event) {
     }
 }
 
-void BorderEditorDialog::ClearItems() {
+void BorderEditorDialog::ClearItems(bool clearBrowser) {
     m_borderItems.clear();
     m_gridPanel->Clear();
     m_previewPanel->Clear();
     
     // Reset controls to defaults
     m_currentBorderId = m_nextBorderId; // Use m_currentBorderId instead of m_idCtrl
-    m_nameCtrl->SetValue("");
-    m_isOptionalCheck->SetValue(false);
-    m_isGroundCheck->SetValue(false);
-    m_groupCheck->SetValue(false);
+    if (m_nameCtrl) m_nameCtrl->SetValue("");
+    if (m_isOptionalCheck) m_isOptionalCheck->SetValue(false);
+    if (m_isGroundCheck) m_isGroundCheck->SetValue(false);
+    if (m_groupCheck) m_groupCheck->SetValue(false);
     
     // Deselect browser list
-    if (m_borderBrowserList) {
+    if (clearBrowser && m_borderBrowserList) {
         m_borderBrowserList->SetSelection(wxNOT_FOUND);
     }
 }
@@ -2456,7 +2547,7 @@ void BorderEditorDialog::LoadExistingGroundBrushes() {
     // Legacy method - ground brushes are now populated via PopulateGroundList()
     // Called from constructor for compatibility, actual population happens on tab change
 }
-void BorderEditorDialog::ClearGroundItems() {
+void BorderEditorDialog::ClearGroundItems(bool clearBrowser) {
     if (m_groundGridContainer) m_groundGridContainer->Clear();
     if (m_groundNameCtrl) m_groundNameCtrl->SetValue("");
     if (m_serverLookIdCtrl) m_serverLookIdCtrl->SetValue(0);
@@ -2465,11 +2556,14 @@ void BorderEditorDialog::ClearGroundItems() {
     // Reset border alignment options
     if (m_includeToNoneCheck) m_includeToNoneCheck->SetValue(true);
     if (m_includeInnerCheck) m_includeInnerCheck->SetValue(false);
-    if (m_borderAlignmentChoice) m_borderAlignmentChoice->SetSelection(0);
+    if (m_borderAlignmentButton) {
+        m_borderAlignmentSelection = 0;
+        m_borderAlignmentButton->SetLabel("Outer \u25BC");
+    }
     if (m_groundPreviewPanel) m_groundPreviewPanel->SetWeightedItems({}); // Clear preview
 
     // Deselect browser list
-    if (m_borderBrowserList) {
+    if (clearBrowser && m_borderBrowserList) {
         m_borderBrowserList->SetSelection(wxNOT_FOUND);
     }
 }
@@ -2765,43 +2859,42 @@ void BorderEditorDialog::LoadTilesets() {
     m_tilesetListData = tilesetNames;
     
     // Update the appropriate ComboBox based on active tab
-    if (m_activeTab == 0 && m_rawCategoryCombo) {
+    // Update the appropriate Control based on active tab
+    if (m_activeTab == 0 && m_rawCategoryButton) {
         // Border tab
-        m_rawCategoryCombo->Clear();
-        m_rawCategoryCombo->Append(m_tilesetListData);
+        m_rawCategoryNames = m_tilesetListData;
+        
         if (!m_tilesetListData.IsEmpty()) {
-            m_rawCategoryCombo->SetSelection(0);
-            wxCommandEvent ev(wxEVT_COMBOBOX, m_rawCategoryCombo->GetId());
-            ev.SetEventObject(m_rawCategoryCombo);
-            OnRawCategoryChange(ev);
+            m_rawCategorySelection = 0;
+            m_rawCategoryButton->SetLabel(m_tilesetListData[0] + " \u25BC");
+            
+            if(m_itemPalettePanel) m_itemPalettePanel->LoadTileset(m_tilesetListData[0]);
         } else {
+             m_rawCategoryButton->SetLabel("Select \u25BC");
              if(m_itemPalettePanel) m_itemPalettePanel->LoadTileset("");
         }
-    } else if (m_activeTab == 1 && m_groundTilesetCombo) {
+    } else if (m_activeTab == 1 && m_groundTilesetButton) {
         // Ground tab
-        m_groundTilesetCombo->Clear();
-        m_groundTilesetCombo->Append(m_tilesetListData);
         if (!m_tilesetListData.IsEmpty()) {
-            m_groundTilesetCombo->SetSelection(0);
-            wxCommandEvent ev(wxEVT_COMBOBOX, m_groundTilesetCombo->GetId());
-            ev.SetEventObject(m_groundTilesetCombo);
-            OnGroundTilesetSelect(ev);
+            m_groundTilesetSelection = 0;
+            m_groundTilesetButton->SetLabel(m_tilesetListData[0] + " \u25BC");
+            
+            if(m_groundPalette) m_groundPalette->LoadTileset(m_tilesetListData[0], FILTER_GROUND);
         } else {
-             if(m_groundPalette) m_groundPalette->LoadTileset("", FILTER_GROUND);
+            m_groundTilesetButton->SetLabel("Select \u25BC");
         }
-    } else if (m_activeTab == 2 && m_wallTilesetCombo) {
+    } else if (m_activeTab == 2 && m_wallTilesetButton) {
         // Wall tab
-        m_wallTilesetCombo->Clear();
-        m_wallTilesetCombo->Append(m_tilesetListData);
-        if (!m_tilesetListData.IsEmpty()) {
-            m_wallTilesetCombo->SetSelection(0);
-            wxCommandEvent ev(wxEVT_COMBOBOX, m_wallTilesetCombo->GetId());
-            ev.SetEventObject(m_wallTilesetCombo);
-            OnWallTilesetSelect(ev);
-        } else {
-             if(m_wallPalette) m_wallPalette->LoadTileset("", FILTER_WALL);
-        }
+         if (!m_tilesetListData.IsEmpty()) {
+            m_wallTilesetSelection = 0;
+            m_wallTilesetButton->SetLabel(m_tilesetListData[0] + " \u25BC");
+            
+            if(m_wallPalette) m_wallPalette->LoadTileset(m_tilesetListData[0], FILTER_WALL);
+         } else {
+             m_wallTilesetButton->SetLabel("Select \u25BC");
+         }
     }
+
 } 
 
 // ============================================================================
@@ -3902,7 +3995,7 @@ void BorderEditorDialog::SaveGroundBrush() {
     // Get form values
     int serverLookId = m_serverLookIdCtrl->GetValue();
     int zOrder = m_zOrderCtrl->GetValue();
-    wxString alignment = m_borderAlignmentChoice->GetStringSelection();
+    wxString alignment = (m_borderAlignmentSelection == 1) ? "inner" : "outer";
     bool includeToNone = m_includeToNoneCheck->GetValue();
     bool includeInner = m_includeInnerCheck->GetValue();
     
@@ -4030,6 +4123,8 @@ void BorderEditorDialog::LoadGroundBrushByName(const wxString& name) {
     pugi::xml_document doc;
     if (!doc.load_file(nstr(groundsFile).c_str())) return;
     
+    ClearGroundItems(false); // Don't clear browser selection logic
+    
     pugi::xml_node materials = doc.child("materials");
     if (!materials) return;
     
@@ -4072,9 +4167,11 @@ void BorderEditorDialog::LoadGroundBrushByName(const wxString& name) {
         if (borderNode) {
             wxString align = wxString(borderNode.attribute("align").as_string());
             if (align == "inner") {
-                m_borderAlignmentChoice->SetSelection(1);
+                m_borderAlignmentSelection = 1;
+                if(m_borderAlignmentButton) m_borderAlignmentButton->SetLabel("Inner \u25BC");
             } else {
-                m_borderAlignmentChoice->SetSelection(0);  // outer
+                m_borderAlignmentSelection = 0;
+                if(m_borderAlignmentButton) m_borderAlignmentButton->SetLabel("Outer \u25BC");
             }
             
             wxString toValue = wxString(borderNode.attribute("to").as_string());
