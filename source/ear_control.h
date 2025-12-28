@@ -13,6 +13,8 @@
 wxDECLARE_EVENT(EVT_EAR_SELECTED, wxCommandEvent);
 // Event fired when the add button is clicked
 wxDECLARE_EVENT(EVT_EAR_ADD, wxCommandEvent);
+// Event fired when an ear is right-clicked to close
+wxDECLARE_EVENT(EVT_EAR_CLOSE, wxCommandEvent);
 
 struct EarItem {
     wxString summary;

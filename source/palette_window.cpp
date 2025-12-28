@@ -40,6 +40,7 @@ PaletteWindow::PaletteWindow(wxWindow* parent, const TilesetContainer &tilesets)
 
     m_earControl->Bind(EVT_EAR_SELECTED, &PaletteWindow::OnEarSelected, this);
     m_earControl->Bind(EVT_EAR_ADD, &PaletteWindow::OnEarAdd, this);
+    m_earControl->Bind(EVT_EAR_CLOSE, &PaletteWindow::OnEarClose, this);
     
     Bind(EVT_PALETTE_CONTENT_CHANGED, &PaletteWindow::OnPaletteContentChanged, this);
 
@@ -91,25 +92,24 @@ void PaletteWindow::AddView() {
 void PaletteWindow::UpdateEars() {
     if (!m_earControl) return;
 
-    if (m_views.size() > 1) {
-        std::vector<wxString> items;
-        int activeIdx = 0;
-        for (size_t i = 0; i < m_views.size(); ++i) {
-            items.push_back(m_views[i]->GetTabSummary());
-            if (m_views[i] == m_activeView) activeIdx = i;
-        }
-        m_earControl->SetItems(items, activeIdx);
-        
-        // Use AUI pane visibility instead of direct Show()
-        wxAuiPaneInfo& pane = g_gui.aui_manager->GetPane(m_earControl);
-        if (pane.IsOk() && !pane.IsShown()) {
+    // Build items list for ALL views (always show tabs for each view)
+    std::vector<wxString> items;
+    int activeIdx = 0;
+    for (size_t i = 0; i < m_views.size(); ++i) {
+        items.push_back(m_views[i]->GetTabSummary());
+        if (m_views[i] == m_activeView) activeIdx = i;
+    }
+    m_earControl->SetItems(items, activeIdx);
+    
+    // Always show EarControl if there's at least 1 view (for tabs and '+' button).
+    // Only hide if there are NO views (edge case).
+    wxAuiPaneInfo& pane = g_gui.aui_manager->GetPane(m_earControl);
+    if (pane.IsOk()) {
+        bool shouldShow = !m_views.empty();
+        if (shouldShow && !pane.IsShown()) {
             pane.Show(true);
             g_gui.aui_manager->Update();
-        }
-    } else {
-        // Use AUI pane visibility instead of direct Hide()
-        wxAuiPaneInfo& pane = g_gui.aui_manager->GetPane(m_earControl);
-        if (pane.IsOk() && pane.IsShown()) {
+        } else if (!shouldShow && pane.IsShown()) {
             pane.Show(false);
             g_gui.aui_manager->Update();
         }
@@ -139,9 +139,55 @@ void PaletteWindow::OnEarSelected(wxCommandEvent& event) {
     }
 }
 
+void PaletteWindow::OnEarClose(wxCommandEvent& event) {
+    int index = event.GetInt();
+    if (index >= 0 && index < (int)m_views.size()) {
+        
+        // Don't close if it's the only tab remaining.
+        if (m_views.size() <= 1) {
+            return; // Do nothing
+        }
+        
+        PaletteView* viewToRemove = m_views[index];
+        bool wasActive = (viewToRemove == m_activeView);
+
+        if (wasActive) {
+            // Switch to another tab first
+            int nextIdx = (index == 0) ? 1 : index - 1;
+            wxCommandEvent selEvt(EVT_EAR_SELECTED);
+            selEvt.SetInt(nextIdx);
+            OnEarSelected(selEvt);
+        }
+
+        // Remove from list
+        m_views.erase(m_views.begin() + index);
+
+        // Hide and Delete
+        viewToRemove->Hide();
+        viewToRemove->OnDeactivateView();
+        viewToRemove->Destroy(); // Safe deletion
+
+        UpdateEars();
+        Layout();
+    }
+}
+
 void PaletteWindow::OnEarAdd(wxCommandEvent& event) {
     AddView();
     // Auto switch is handled in AddView
+}
+
+// Proxies
+void PaletteWindow::RemoveCurrentView() {
+    if (m_activeView) {
+        // Find index
+        auto it = std::find(m_views.begin(), m_views.end(), m_activeView);
+        if (it != m_views.end()) {
+            wxCommandEvent evt(EVT_EAR_CLOSE);
+            evt.SetInt(std::distance(m_views.begin(), it));
+            OnEarClose(evt);
+        }
+    }
 }
 
 void PaletteWindow::OnPaletteContentChanged(wxCommandEvent& event) {

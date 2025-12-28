@@ -1447,39 +1447,8 @@ void GUI::SetTitle(wxString title) {
 	if (g_gui.root == nullptr) {
 		return;
 	}
-
-#ifdef NIGHTLY_BUILD
-	#ifdef SVN_BUILD
-		#define TITLE_APPEND (wxString(" (Nightly Build #") << i2ws(SVN_BUILD) << ")")
-	#else
-		#define TITLE_APPEND (wxString(" (Nightly Build)"))
-	#endif
-#else
-	#ifdef SVN_BUILD
-		#define TITLE_APPEND (wxString(" (Build #") << i2ws(SVN_BUILD) << ")")
-	#else
-		#define TITLE_APPEND (wxString(""))
-	#endif
-#endif
-#ifdef __EXPERIMENTAL__
-	if (title != "") {
-		g_gui.root->SetTitle(title << " - Canary's Map Editor BETA" << TITLE_APPEND);
-	} else {
-		g_gui.root->SetTitle(wxString("Canary's Map Editor BETA") << TITLE_APPEND);
-	}
-#elif __SNAPSHOT__
-	if (title != "") {
-		g_gui.root->SetTitle(title << " - Canary's Map Editor - SNAPSHOT" << TITLE_APPEND);
-	} else {
-		g_gui.root->SetTitle(wxString("Canary's Map Editor - SNAPSHOT") << TITLE_APPEND);
-	}
-#else
-	if (!title.empty()) {
-		g_gui.root->SetTitle(title << " - Canary's Map Editor" << TITLE_APPEND);
-	} else {
-		g_gui.root->SetTitle(wxString("Canary's Map Editor") << TITLE_APPEND);
-	}
-#endif
+	// User requested no title bar text - redundant information
+	g_gui.root->SetTitle(wxString(""));
 }
 
 void GUI::UpdateTitle() {

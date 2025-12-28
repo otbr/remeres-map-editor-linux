@@ -54,6 +54,7 @@ public:
 	// Event Handlers for Container
 	void OnEarSelected(wxCommandEvent& event);
 	void OnEarAdd(wxCommandEvent& event);
+    void OnEarClose(wxCommandEvent& event);
     void OnPaletteContentChanged(wxCommandEvent& event);
 	void OnClose(wxCloseEvent &);
     void OnSize(wxSizeEvent &event); // To handle layout of ears

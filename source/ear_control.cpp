@@ -7,10 +7,12 @@
 
 wxDEFINE_EVENT(EVT_EAR_SELECTED, wxCommandEvent);
 wxDEFINE_EVENT(EVT_EAR_ADD, wxCommandEvent);
+wxDEFINE_EVENT(EVT_EAR_CLOSE, wxCommandEvent);
 
 BEGIN_EVENT_TABLE(EarControl, wxPanel)
     EVT_PAINT(EarControl::OnPaint)
     EVT_LEFT_DOWN(EarControl::OnMouseEvent)
+    EVT_RIGHT_UP(EarControl::OnMouseEvent)
     EVT_MOTION(EarControl::OnMouseEvent)
     EVT_LEAVE_WINDOW(EarControl::OnLeaveWindow)
     EVT_ERASE_BACKGROUND(EarControl::OnEraseBackground)
@@ -277,6 +279,15 @@ void EarControl::OnMouseEvent(wxMouseEvent& event) {
         } else if (index == -2) {
             wxCommandEvent evt(EVT_EAR_ADD, GetId());
             evt.SetEventObject(this);
+            evt.SetInt(index);
+            ProcessEvent(evt);
+        }
+    } else if (event.RightUp()) {
+        int index = GetItemAt(event.GetPosition());
+        if (index >= 0) {
+            wxCommandEvent evt(EVT_EAR_CLOSE, GetId());
+            evt.SetEventObject(this);
+            evt.SetInt(index);
             ProcessEvent(evt);
         }
     } else if (event.Moving()) {
