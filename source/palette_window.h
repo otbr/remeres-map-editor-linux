@@ -59,7 +59,8 @@ public:
 	virtual void OnUpdate(Map* map);
 
 	// wxWidgets Event Handlers
-	void OnPaletteChoiceChanged(wxCommandEvent& event);
+	void OnPaletteButtonClick(wxCommandEvent& event);
+	void OnPaletteMenuSelect(wxCommandEvent& event);
 	void OnSwitchingPage(int oldSelection, int newSelection);
 	// Forward key events to the parent window (The Map Window)
 	void OnKey(wxKeyEvent &event);
@@ -82,8 +83,8 @@ protected:
 	static bool CanSelectHouseBrush(PalettePanel* palette, const Brush* whatBrush);
 	static bool CanSelectBrush(PalettePanel* palette, const Brush* whatBrush);
 
-	// Replaced wxChoicebook with separate controls for better GTK3 dropdown positioning
-	wxChoice* paletteChoice = nullptr;
+	// Replaced wxChoice with wxButton + wxMenu for explicit positioning
+	wxButton* paletteButton = nullptr;
 	wxSimplebook* paletteBook = nullptr;
 
 	BrushPalettePanel* terrainPalette = nullptr;

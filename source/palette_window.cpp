@@ -36,8 +36,12 @@
 // ============================================================================
 // Palette window
 
+// ============================================================================
+// Palette window
+
 BEGIN_EVENT_TABLE(PaletteWindow, wxPanel)
-EVT_CHOICE(PALETTE_MAIN_CHOICE, PaletteWindow::OnPaletteChoiceChanged)
+EVT_BUTTON(PALETTE_MAIN_BUTTON, PaletteWindow::OnPaletteButtonClick)
+EVT_MENU(wxID_ANY, PaletteWindow::OnPaletteMenuSelect)
 EVT_CLOSE(PaletteWindow::OnClose)
 
 EVT_KEY_DOWN(PaletteWindow::OnKey)
@@ -47,54 +51,45 @@ PaletteWindow::PaletteWindow(wxWindow* parent, const TilesetContainer &tilesets)
 	wxPanel(parent, wxID_ANY, wxDefaultPosition, wxSize(230, 250)) {
 	SetMinSize(wxSize(225, 250));
 
-	// Create separate wxChoice and wxSimplebook for better GTK3 dropdown positioning
-	paletteChoice = newd wxChoice(this, PALETTE_MAIN_CHOICE, wxDefaultPosition, wxDefaultSize);
+	// Create wxButton + wxMenu to replace native wxChoice and force dropdown direction
+	paletteButton = newd wxButton(this, PALETTE_MAIN_BUTTON, "Terrain Palette ▼", wxDefaultPosition, wxDefaultSize, wxBU_LEFT);
 	paletteBook = newd wxSimplebook(this, wxID_ANY);
 
 	// Create and add palettes
 	terrainPalette = static_cast<BrushPalettePanel*>(CreateTerrainPalette(paletteBook, tilesets));
-	paletteChoice->Append(terrainPalette->GetName());
 	paletteBook->AddPage(terrainPalette, terrainPalette->GetName());
 
 	doodadPalette = static_cast<BrushPalettePanel*>(CreateDoodadPalette(paletteBook, tilesets));
-	paletteChoice->Append(doodadPalette->GetName());
 	paletteBook->AddPage(doodadPalette, doodadPalette->GetName());
 
 	itemPalette = static_cast<BrushPalettePanel*>(CreateItemPalette(paletteBook, tilesets));
-	paletteChoice->Append(itemPalette->GetName());
 	paletteBook->AddPage(itemPalette, itemPalette->GetName());
 
 	housePalette = static_cast<HousePalettePanel*>(CreateHousePalette(paletteBook, tilesets));
-	paletteChoice->Append(housePalette->GetName());
 	paletteBook->AddPage(housePalette, housePalette->GetName());
 
 	waypointPalette = static_cast<WaypointPalettePanel*>(CreateWaypointPalette(paletteBook, tilesets));
-	paletteChoice->Append(waypointPalette->GetName());
 	paletteBook->AddPage(waypointPalette, waypointPalette->GetName());
 
 	zonesPalette = static_cast<ZonesPalettePanel*>(CreateZonesPalette(paletteBook, tilesets));
-	paletteChoice->Append(zonesPalette->GetName());
 	paletteBook->AddPage(zonesPalette, zonesPalette->GetName());
 
 	monsterPalette = static_cast<MonsterPalettePanel*>(CreateMonsterPalette(paletteBook, tilesets));
-	paletteChoice->Append(monsterPalette->GetName());
 	paletteBook->AddPage(monsterPalette, monsterPalette->GetName());
 
 	npcPalette = static_cast<NpcPalettePanel*>(CreateNpcPalette(paletteBook, tilesets));
-	paletteChoice->Append(npcPalette->GetName());
 	paletteBook->AddPage(npcPalette, npcPalette->GetName());
 
 	rawPalette = static_cast<BrushPalettePanel*>(CreateRAWPalette(paletteBook, tilesets));
-	paletteChoice->Append(rawPalette->GetName());
 	paletteBook->AddPage(rawPalette, rawPalette->GetName());
 
 	// Select first item
-	paletteChoice->SetSelection(0);
 	paletteBook->SetSelection(0);
+	paletteButton->SetLabel(terrainPalette->GetName() + " ▼");
 
 	// Setup sizers
 	const auto sizer = newd wxBoxSizer(wxVERTICAL);
-	sizer->Add(paletteChoice, 0, wxEXPAND | wxALL, 2);
+	sizer->Add(paletteButton, 0, wxEXPAND | wxALL, 2);
 	paletteBook->SetMinSize(wxSize(225, 280));
 	sizer->Add(paletteBook, 1, wxEXPAND);
 	SetSizer(sizer);
@@ -279,7 +274,7 @@ void PaletteWindow::InvalidateContents() {
 }
 
 void PaletteWindow::SelectPage(PaletteType id) {
-	if (!paletteBook || !paletteChoice) {
+	if (!paletteBook || !paletteButton) {
 		return;
 	}
 	if (id == GetSelectedPage()) {
@@ -296,7 +291,7 @@ void PaletteWindow::SelectPage(PaletteType id) {
 			int oldSelection = paletteBook->GetSelection();
 			OnSwitchingPage(oldSelection, pageIndex);
 			paletteBook->SetSelection(pageIndex);
-			paletteChoice->SetSelection(pageIndex);
+			paletteButton->SetLabel(panel->GetName() + " ▼");
 			g_gui.SelectBrush();
 			break;
 		}
@@ -439,18 +434,48 @@ bool PaletteWindow::OnSelectBrush(const Brush* whatBrush, PaletteType primary) {
 	return false;
 }
 
-void PaletteWindow::OnPaletteChoiceChanged(wxCommandEvent& event) {
-	if (!paletteBook || !paletteChoice) {
-		return;
+// Custom handler to show menu below the button
+void PaletteWindow::OnPaletteButtonClick(wxCommandEvent& event) {
+	if (!paletteBook) return;
+
+	wxMenu menu;
+	for (size_t i = 0; i < paletteBook->GetPageCount(); ++i) {
+		const auto page = dynamic_cast<PalettePanel*>(paletteBook->GetPage(i));
+		if (page) {
+			auto* item = menu.AppendRadioItem(i, page->GetName());
+			if (i == (size_t)paletteBook->GetSelection()) {
+				item->Check(true);
+			}
+		}
 	}
 
-	int newSelection = event.GetSelection();
-	int oldSelection = paletteBook->GetSelection();
+	// Calculate position: bottom-left of the button
+	// wxWidgets PopupMenu takes coordinates relative to the window client area if passed
 	
-	if (newSelection != oldSelection) {
-		OnSwitchingPage(oldSelection, newSelection);
-		paletteBook->SetSelection(newSelection);
-		g_gui.SelectBrush();
+	const wxSize btnSize = paletteButton->GetSize();
+	// Position 0, height puts it directly below the button top-left corner
+	paletteButton->PopupMenu(&menu, 0, btnSize.GetHeight());
+}
+
+void PaletteWindow::OnPaletteMenuSelect(wxCommandEvent& event) {
+	if (!paletteBook || !paletteButton) return;
+
+	int newSelection = event.GetId();
+	int oldSelection = paletteBook->GetSelection();
+
+	if (newSelection >= 0 && newSelection < (int)paletteBook->GetPageCount()) {
+		if (newSelection != oldSelection) {
+			OnSwitchingPage(oldSelection, newSelection);
+			paletteBook->SetSelection(newSelection);
+			
+			// Update button label
+			const auto page = dynamic_cast<PalettePanel*>(paletteBook->GetPage(newSelection));
+			if (page) {
+				paletteButton->SetLabel(page->GetName() + " ▼");
+			}
+
+			g_gui.SelectBrush();
+		}
 	}
 }
 
