@@ -1171,7 +1171,7 @@ wxMemoryDC* GameSprite::getDC(SpriteSize spriteSize) {
 		// Size adjustment if necessary
 		if (getWidth() > rme::SpritePixels || getHeight() > rme::SpritePixels) {
 			if (spriteSize == SPRITE_SIZE_32x32_SCALED) {
-				wxImage.Rescale(rme::SpritePixels, rme::SpritePixels, wxIMAGE_QUALITY_HIGH);
+				wxImage.Rescale(rme::SpritePixels, rme::SpritePixels, wxIMAGE_QUALITY_NEAREST);
 			} else {
 				wxImage.Resize(wxSize(rme::SpritePixels, rme::SpritePixels), wxPoint(0, 0));
 			}
