@@ -1831,7 +1831,7 @@ void BorderItemButton::OnPaint(wxPaintEvent& event) {
         if (type.id != 0) {
             Sprite* sprite = g_gui.gfx.getSprite(type.clientID);
             if (sprite) {
-                sprite->DrawTo(&dc, SPRITE_SIZE_32x32, 0, 0, rect.GetWidth(), rect.GetHeight());
+                sprite->DrawTo(&dc, SPRITE_SIZE_32x32_SCALED, 0, 0, rect.GetWidth(), rect.GetHeight());
             }
         }
     }
@@ -1986,7 +1986,7 @@ void SimpleRawPalettePanel::OnPaint(wxPaintEvent& event) {
              Sprite* sprite = g_gui.gfx.getSprite(type.clientID);
              if (sprite) {
                  // Draw directly to the DC to preserve transparency
-                 sprite->DrawTo(&dc, SPRITE_SIZE_32x32, x, y, m_itemSize, m_itemSize);
+                 sprite->DrawTo(&dc, SPRITE_SIZE_32x32_SCALED, x, y, m_itemSize, m_itemSize);
              }
         }
     }
@@ -2175,7 +2175,7 @@ void BorderGridPanel::OnPaint(wxPaintEvent& event) {
                     tempDC.Clear();
                     
                     // Draw sprite at native size to temp DC
-                    sprite->DrawTo(&tempDC, SPRITE_SIZE_32x32, 0, 0);
+                    sprite->DrawTo(&tempDC, SPRITE_SIZE_32x32_SCALED, 0, 0);
                     
                     tempDC.SelectObject(wxNullBitmap);
                     
@@ -3080,7 +3080,7 @@ void WallGridPanel::OnPaint(wxPaintEvent& event) {
                         tempDC.SelectObject(tempBitmap);
                         tempDC.SetBackground(*wxTRANSPARENT_BRUSH);
                         tempDC.Clear();
-                        s->DrawTo(&tempDC, SPRITE_SIZE_32x32, 0, 0);
+                        s->DrawTo(&tempDC, SPRITE_SIZE_32x32_SCALED, 0, 0);
                         tempDC.SelectObject(wxNullBitmap);
                         
                         wxImage img = tempBitmap.ConvertToImage();
@@ -3316,7 +3316,7 @@ void WallVisualPanel::OnPaint(wxPaintEvent& event) {
                             tempDC.SelectObject(tempBitmap);
                             tempDC.SetBackground(*wxTRANSPARENT_BRUSH);
                             tempDC.Clear();
-                            sprite->DrawTo(&tempDC, SPRITE_SIZE_32x32, 0, 0);
+                            sprite->DrawTo(&tempDC, SPRITE_SIZE_32x32_SCALED, 0, 0);
                             tempDC.SelectObject(wxNullBitmap);
                             
                             wxImage img = tempBitmap.ConvertToImage();
