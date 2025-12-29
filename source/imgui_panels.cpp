@@ -143,7 +143,7 @@ bool DrawWelcomeScreen(const std::vector<std::string>& recentFiles) {
             ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "%s", title);
             
             // Version
-            const char* version = "Version 4.0.0";
+            const char* version = "Version 4.1.0";
             float versionWidth = ImGui::CalcTextSize(version).x;
             ImGui::SetCursorPosX((leftColumnWidth - versionWidth) * 0.5f);
             ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "%s", version);
