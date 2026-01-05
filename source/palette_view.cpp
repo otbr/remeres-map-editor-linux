@@ -112,7 +112,7 @@ void PaletteView::AddBrushSizePanel(PalettePanel* panel, const Config::Key confi
 
 PalettePanel* PaletteView::CreateTerrainPalette(wxWindow* parent, const TilesetContainer &tilesets) {
 	const auto panel = newd BrushPalettePanel(parent, tilesets, TILESET_TERRAIN);
-	panel->SetListType(wxstr(g_settings.getString(Config::PALETTE_TERRAIN_STYLE)));
+	panel->SetListType(wxstr(g_settings.getString(Config::PALETTE_TERRAIN_STYLE_V2)));
 
 	AddBrushToolPanel(panel, Config::USE_LARGE_TERRAIN_TOOLBAR);
 
@@ -123,7 +123,7 @@ PalettePanel* PaletteView::CreateTerrainPalette(wxWindow* parent, const TilesetC
 
 PalettePanel* PaletteView::CreateDoodadPalette(wxWindow* parent, const TilesetContainer &tilesets) {
 	const auto panel = newd BrushPalettePanel(parent, tilesets, TILESET_DOODAD);
-	panel->SetListType(wxstr(g_settings.getString(Config::PALETTE_DOODAD_STYLE)));
+	panel->SetListType(wxstr(g_settings.getString(Config::PALETTE_DOODAD_STYLE_V2)));
 
 	panel->AddToolPanel(newd BrushThicknessPanel(panel));
 
@@ -196,11 +196,11 @@ bool PaletteView::CanSelectBrush(PalettePanel* palette, const Brush* whatBrush) 
 
 void PaletteView::ReloadSettings(Map* map) {
 	if (terrainPalette) {
-		terrainPalette->SetListType(wxstr(g_settings.getString(Config::PALETTE_TERRAIN_STYLE)));
+		terrainPalette->SetListType(wxstr(g_settings.getString(Config::PALETTE_TERRAIN_STYLE_V2)));
 		terrainPalette->SetToolbarIconSize(g_settings.getBoolean(Config::USE_LARGE_TERRAIN_TOOLBAR));
 	}
 	if (doodadPalette) {
-		doodadPalette->SetListType(wxstr(g_settings.getString(Config::PALETTE_DOODAD_STYLE)));
+		doodadPalette->SetListType(wxstr(g_settings.getString(Config::PALETTE_DOODAD_STYLE_V2)));
 		doodadPalette->SetToolbarIconSize(g_settings.getBoolean(Config::USE_LARGE_DOODAD_SIZEBAR));
 	}
 	if (housePalette) {

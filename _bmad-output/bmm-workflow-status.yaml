@@ -1,0 +1,113 @@
+generated: "2025-12-30"
+project: "rme_canary"
+project_type: "brownfield"
+selected_track: "bmad-method"
+field_type: "brownfield"
+workflow_path: "/home/user/Documentos/rme/rme_canary/_bmad/bmm/workflows/workflow-status/paths/method-brownfield.yaml"
+
+# Tracks progress through BMM methodology phases
+workflow_status:
+  phases:
+    - prerequisite: true
+      name: "Documentation"
+      conditional: "if_undocumented"
+      note: "NOT a phase - prerequisite for brownfield without docs"
+      workflows:
+        - id: "document-project"
+          required: true
+          state: "completed"
+          agent: "analyst"
+          command: "document-project"
+          output: "Comprehensive project documentation"
+          purpose: "Understand existing codebase before planning"
+
+    - phase: 0
+      name: "Discovery (Optional)"
+      optional: true
+      note: "User-selected during workflow-init"
+      workflows:
+        - id: "brainstorm-project"
+          state: "skipped"
+          agent: "analyst"
+          command: "brainstorm-project"
+          note: "Uses core brainstorming workflow with project context template"
+
+        - id: "research"
+          state: "required"
+          agent: "analyst"
+          command: "research"
+          
+        - id: "product-brief"
+          state: "skipped"
+          agent: "analyst"
+          command: "product-brief"
+          note: "Optional for brownfield, less common than greenfield"
+
+    - phase: 1
+      name: "Planning"
+      required: true
+      workflows:
+        - id: "prd"
+          required: true
+          state: "required"
+          agent: "pm"
+          command: "prd"
+          output: "PRD focused on new features/changes"
+          note: "Must consider existing system constraints"
+
+        - id: "create-ux-design"
+          conditional: "if_has_ui"
+          state: "conditional"
+          agent: "ux-designer"
+          command: "create-ux-design"
+
+    - phase: 2
+      name: "Solutioning"
+      required: true
+      workflows:
+        - id: "create-architecture"
+          recommended: true
+          state: "recommended"
+          agent: "architect"
+          command: "create-architecture"
+          output: "Integration architecture - solution design for THIS project"
+          note: "HIGHLY RECOMMENDED: Distills massive brownfield context into focused solution design. Prevents agent confusion."
+
+        - id: "create-epics-and-stories"
+          required: true
+          state: "required"
+          agent: "pm"
+          command: "create-epics-and-stories"
+          note: "Required: Break down PRD into implementable epics and stories with full context (PRD + UX + Architecture)"
+
+        - id: "test-design"
+          recommended: true
+          state: "recommended"
+          agent: "tea"
+          command: "test-design"
+          output: "System-level testability review"
+          note: "Testability assessment before gate check - auto-detects system-level mode"
+
+        - id: "validate-architecture"
+          optional: true
+          state: "optional"
+          agent: "architect"
+          command: "validate-architecture"
+
+        - id: "implementation-readiness"
+          required: true
+          state: "required"
+          agent: "architect"
+          command: "implementation-readiness"
+          note: "Validates PRD + Architecture + Epics + UX (optional)"
+
+    - phase: 3
+      name: "Implementation"
+      required: true
+      workflows:
+        - id: "sprint-planning"
+          required: true
+          state: "required"
+          agent: "sm"
+          command: "sprint-planning"
+          note: "Creates sprint plan with stories"
